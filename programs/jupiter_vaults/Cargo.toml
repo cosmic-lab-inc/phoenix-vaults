@@ -1,0 +1,28 @@
+[package]
+name = "jupiter-vaults"
+version = "0.1.0"
+description = "Created with Anchor"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "jupiter_vaults"
+
+[features]
+no-entrypoint = []
+cpi = ["no-entrypoint"]
+default = []
+
+[dependencies]
+anchor-lang = "0.29.0"
+anchor-spl = "0.29.0"
+bytemuck = "1.14.0"
+static_assertions = "1.1.0"
+ahash = "=0.8.6"
+uint = "0.9.1"
+num-traits = "0.2.15"
+drift-macros = { git = "https://github.com/drift-labs/drift-macros.git", rev = "c57d87" }
+borsh = ">=0.9, <1.0.0"
+solana-program = "1.16"
+#jupiter = { git = "https://github.com/cosmic-lab-inc/jupiter-cpi.git", branch = "main" }
+phoenix-common = { version = "0.2.1", features = [ "no-entrypoint" ]}
