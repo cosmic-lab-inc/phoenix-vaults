@@ -1,15 +1,18 @@
 import * as anchor from '@coral-xyz/anchor';
-import {ConfirmOptions, Keypair} from '@solana/web3.js';
+import {ConfirmOptions, Keypair, PublicKey} from '@solana/web3.js';
 import { assert } from 'chai';
 import {
 	getVaultAddressSync,
 	PhoenixVaults,
 	encodeName,
 	VaultParams,
-	getTokenVaultAddressSync, getInvestorAddressSync,
+	getTokenVaultAddressSync,
+	getInvestorAddressSync,
+	PHOENIX_VAULTS_PROGRAM_ID,
 } from "../ts/sdk";
 import {BN} from "@coral-xyz/anchor";
 import {mockUSDCMint} from "./testHelpers";
+import { AddressLookupTableProgram } from "@solana/web3.js";
 
 describe('phoenixVaults', () => {
 	const opts: ConfirmOptions = {
@@ -45,15 +48,50 @@ describe('phoenixVaults', () => {
 		mint = await mockUSDCMint(provider);
 		// const _solPerpOracle = await mockOracle(initialSolPerpPrice, undefined, undefined);
 	});
-	
-	// it('Initialize Market Lookup Table', async () => {
-	// 	const accounts = {
-	// 		authority: provider.publicKey,
-	// 	};
-	// 	await program.methods.initializeMarketLookupTable()
-	// 		.accounts(accounts)
-	// 		.rpc();
-	// });
+
+	it('Initialize Market Lookup Table', async () => {
+		const slot = await provider.connection.getSlot();
+		const params = {
+			slot: new BN(slot)
+		};
+
+		// convert slot to little endian
+		const slotBuffer = Buffer.alloc(8);
+		slotBuffer.writeBigInt64LE(BigInt(slot), 0);
+
+		// let lut_seeds = &[auth.as_ref(), &clock.slot.to_le_bytes()],
+		const lutSeeds = [
+			provider.publicKey.toBuffer(),
+			slotBuffer
+		];
+		const lut = PublicKey.findProgramAddressSync(
+			lutSeeds,
+			PHOENIX_VAULTS_PROGRAM_ID
+			// AddressLookupTableProgram.programId
+		)[0];
+		console.log('lut:', lut.toString());
+
+		const accounts = {
+			authority: provider.publicKey,
+			lut,
+			lutProgram: AddressLookupTableProgram.programId,
+		};
+
+		try {
+			const sim = await program.methods
+				.initializeMarketLookupTable(params)
+				.accounts(accounts)
+				.simulate();
+			console.log(sim);
+
+			await program.methods.initializeMarketLookupTable(params)
+				.accounts(accounts)
+				.rpc();
+		} catch (e) {
+			console.error(e);
+			assert(false);
+		}
+	});
 
 	it('Initialize Vault', async () => {
 		const config: VaultParams = {

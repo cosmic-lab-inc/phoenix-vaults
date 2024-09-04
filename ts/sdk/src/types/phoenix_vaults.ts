@@ -100,6 +100,11 @@ export type PhoenixVaults = {
 					isSigner: true;
 				},
 				{
+					name: 'lut';
+					isMut: true;
+					isSigner: false;
+				},
+				{
 					name: 'payer';
 					isMut: true;
 					isSigner: true;
@@ -113,9 +118,21 @@ export type PhoenixVaults = {
 					name: 'systemProgram';
 					isMut: false;
 					isSigner: false;
+				},
+				{
+					name: 'lutProgram';
+					isMut: false;
+					isSigner: false;
 				}
 			];
-			args: [];
+			args: [
+				{
+					name: 'params';
+					type: {
+						defined: 'MarketLookupTableParams';
+					};
+				}
+			];
 		}
 	];
 	accounts: [
@@ -464,6 +481,18 @@ export type PhoenixVaults = {
 		}
 	];
 	types: [
+		{
+			name: 'MarketLookupTableParams';
+			type: {
+				kind: 'struct';
+				fields: [
+					{
+						name: 'slot';
+						type: 'u64';
+					}
+				];
+			};
+		},
 		{
 			name: 'VaultParams';
 			type: {
@@ -973,6 +1002,11 @@ export const IDL: PhoenixVaults = {
 					isSigner: true,
 				},
 				{
+					name: 'lut',
+					isMut: true,
+					isSigner: false,
+				},
+				{
 					name: 'payer',
 					isMut: true,
 					isSigner: true,
@@ -987,8 +1021,20 @@ export const IDL: PhoenixVaults = {
 					isMut: false,
 					isSigner: false,
 				},
+				{
+					name: 'lutProgram',
+					isMut: false,
+					isSigner: false,
+				},
 			],
-			args: [],
+			args: [
+				{
+					name: 'params',
+					type: {
+						defined: 'MarketLookupTableParams',
+					},
+				},
+			],
 		},
 	],
 	accounts: [
@@ -1337,6 +1383,18 @@ export const IDL: PhoenixVaults = {
 		},
 	],
 	types: [
+		{
+			name: 'MarketLookupTableParams',
+			type: {
+				kind: 'struct',
+				fields: [
+					{
+						name: 'slot',
+						type: 'u64',
+					},
+				],
+			},
+		},
 		{
 			name: 'VaultParams',
 			type: {

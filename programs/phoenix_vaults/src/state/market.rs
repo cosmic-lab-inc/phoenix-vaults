@@ -3,13 +3,13 @@ use sokoban::ZeroCopy;
 use phoenix::program::{load_with_dispatch, MarketHeader};
 use solana_program::pubkey;
 use crate::error::ErrorCode;
-// use heapless::LinearMap;
+use heapless::LinearMap;
 
 pub const USDC_MINT: Pubkey = pubkey!("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v");
 pub const SOL_MINT: Pubkey = pubkey!("So11111111111111111111111111111111111111112");
 
 pub trait MarketMapProvider<'a> {
-    fn load_markets(&self) -> Result<[(Pubkey, u64); 32]>;
+    fn load_markets(&self) -> Result<LinearMap<Pubkey, u64, 32>>;
     fn load_sol_usdc_market(&self) -> Result<(Pubkey, u64)>;
 }
 
@@ -17,8 +17,9 @@ impl<'a: 'info, 'info, T: anchor_lang::Bumps> MarketMapProvider<'a>
 for Context<'_, '_, 'a, 'info, T>
 {
     /// Process all markets on Phoenix
-    fn load_markets(&self) -> Result<[(Pubkey, u64); 32]> {
-        let mut market_prices = [(Pubkey::default(), 0); 32];
+    fn load_markets(&self) -> Result<LinearMap<Pubkey, u64, 32>> {
+        // let mut market_prices = [(Pubkey::default(), 0); 32];
+        let mut market_prices = LinearMap::new();
         
         let sol_rem_acct = self.remaining_accounts.first().ok_or(anchor_lang::error::Error::from(ErrorCode::SolMarketMissing))?;
         let sol_price = extract_price(sol_rem_acct)?;
@@ -40,10 +41,12 @@ for Context<'_, '_, 'a, 'info, T>
             let base_mint = header.base_params.mint_key;
             match header.quote_params.mint_key {
                 USDC_MINT => {
-                    market_prices[i] = (base_mint, price);
+                    // market_prices[i] = (base_mint, price);
+                    market_prices.insert(base_mint, price).map_err(|_| anchor_lang::error::Error::from(ErrorCode::MarketMapFull))?;
                 },
                 SOL_MINT => {
-                    market_prices[i] = (base_mint, sol_price * price);
+                    // market_prices[i] = (base_mint, sol_price * price);
+                    market_prices.insert(base_mint, sol_price * price).map_err(|_| anchor_lang::error::Error::from(ErrorCode::MarketMapFull))?;
                 },
                 _ => {
                     return Err(anchor_lang::error::Error::from(ErrorCode::UnrecognizedQuoteMint));

@@ -1,7 +1,7 @@
 import {PublicKey} from "@solana/web3.js";
 import { BN } from '@coral-xyz/anchor';
 
-export const VAULT_PROGRAM_ID = new PublicKey(
+export const PHOENIX_VAULTS_PROGRAM_ID = new PublicKey(
   'VAULT8EhRg1mduZJYCab7xkNq7ieXMQ1Tqec2LPU6jv'
 );
 

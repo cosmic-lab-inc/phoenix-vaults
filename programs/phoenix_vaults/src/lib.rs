@@ -31,8 +31,9 @@ pub mod phoenix_vaults {
     }
 
     pub fn initialize_market_lookup_table<'c: 'info, 'info>(
-        ctx: Context<'_, '_, 'c, 'info, InitializeMarketLookupTable<'info>>
+        ctx: Context<'_, '_, 'c, 'info, InitializeMarketLookupTable<'info>>,
+        params: MarketLookupTableParams
     ) -> Result<()> {
-        instructions::initialize_market_lookup_table(ctx)
+        instructions::initialize_market_lookup_table(ctx, params)
     }
 }
