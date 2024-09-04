@@ -23,8 +23,8 @@ pub struct Vault {
     pub manager: Pubkey,
     /// The token mint the vault deposits into/withdraws from (e.g., USDC).
     pub mint: Pubkey,
-    /// The vault token account. Used to receive tokens between deposits and withdrawals.
-    /// This is a PDA of the vault signer seed and the mint defined for this vault.
+    /// The token account investors deposit into and withdraw from.
+    /// This uses the mint specified above, and is likely USDC.
     pub token_account: Pubkey,
     /// The delegate is the "portfolio manager", "trader", or "bot" that manages the vault's assets.
     /// They can swap 100% of vault tokens using Jupiter.
@@ -109,12 +109,6 @@ pub struct Vault {
 impl Vault {
     pub fn get_vault_signer_seeds<'a>(name: &'a [u8], bump: &'a u8) -> [&'a [u8]; 3] {
         [b"vault".as_ref(), name, bytemuck::bytes_of(bump)]
-    }
-    pub fn seeds(name: &str) -> [&[u8]; 2] {
-        [b"vault", name.as_bytes()]
-    }
-    pub fn token_seeds(vault: &Pubkey) -> [&[u8]; 2] {
-        [b"vault_token_account".as_ref(), vault.as_ref()]
     }
 }
 

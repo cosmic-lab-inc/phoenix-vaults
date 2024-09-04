@@ -3,7 +3,7 @@ seeds = false
 skip-lint = false
 
 [programs.localnet]
-jupiter_vaults = "VAULT8EhRg1mduZJYCab7xkNq7ieXMQ1Tqec2LPU6jv"
+phoenix_vaults = "VAULT8EhRg1mduZJYCab7xkNq7ieXMQ1Tqec2LPU6jv"
 #jupiter = "JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4"
 
 [registry]

@@ -40,5 +40,9 @@ pub fn is_token_for_vault(
     vault: &AccountLoader<Vault>,
     token: &Account<TokenAccount>,
 ) -> Result<bool> {
-    Ok(vault.load()?.token_account.eq(&token.key()))
+    let vault_ref = vault.load()?;
+    Ok(
+        vault_ref.token_account.eq(&token.key()) &&
+        vault_ref.mint.eq(&token.mint),
+    )
 }

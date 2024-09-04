@@ -14,7 +14,7 @@ use state::*;
 declare_id!("VAULT8EhRg1mduZJYCab7xkNq7ieXMQ1Tqec2LPU6jv");
 
 #[program]
-pub mod jupiter_vaults {
+pub mod phoenix_vaults {
     use super::*;
 
     pub fn initialize_vault<'c: 'info, 'info>(
@@ -28,5 +28,11 @@ pub mod jupiter_vaults {
         ctx: Context<'_, '_, 'c, 'info, InitializeInvestor<'info>>
     ) -> Result<()> {
         instructions::initialize_investor(ctx)
+    }
+
+    pub fn initialize_market_lookup_table<'c: 'info, 'info>(
+        ctx: Context<'_, '_, 'c, 'info, InitializeMarketLookupTable<'info>>
+    ) -> Result<()> {
+        instructions::initialize_market_lookup_table(ctx)
     }
 }

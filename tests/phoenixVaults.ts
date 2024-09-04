@@ -3,7 +3,7 @@ import {ConfirmOptions, Keypair} from '@solana/web3.js';
 import { assert } from 'chai';
 import {
 	getVaultAddressSync,
-	JupiterVaults,
+	PhoenixVaults,
 	encodeName,
 	VaultParams,
 	getTokenVaultAddressSync, getInvestorAddressSync,
@@ -11,7 +11,7 @@ import {
 import {BN} from "@coral-xyz/anchor";
 import {mockUSDCMint} from "./testHelpers";
 
-describe('jupiterVaults', () => {
+describe('phoenixVaults', () => {
 	const opts: ConfirmOptions = {
 		preflightCommitment: 'confirmed',
 		skipPreflight: false,
@@ -21,7 +21,7 @@ describe('jupiterVaults', () => {
 	// Configure the client to use the local cluster.
 	const provider = anchor.AnchorProvider.local(undefined, opts);
 	anchor.setProvider(provider);
-	const program = anchor.workspace.JupiterVaults as anchor.Program<JupiterVaults>;
+	const program = anchor.workspace.PhoenixVaults as anchor.Program<PhoenixVaults>;
 
 	// const initialSolPerpPrice = 100;
 
@@ -45,6 +45,15 @@ describe('jupiterVaults', () => {
 		mint = await mockUSDCMint(provider);
 		// const _solPerpOracle = await mockOracle(initialSolPerpPrice, undefined, undefined);
 	});
+	
+	// it('Initialize Market Lookup Table', async () => {
+	// 	const accounts = {
+	// 		authority: provider.publicKey,
+	// 	};
+	// 	await program.methods.initializeMarketLookupTable()
+	// 		.accounts(accounts)
+	// 		.rpc();
+	// });
 
 	it('Initialize Vault', async () => {
 		const config: VaultParams = {

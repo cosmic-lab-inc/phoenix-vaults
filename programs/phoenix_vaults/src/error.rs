@@ -59,6 +59,14 @@ pub enum ErrorCode {
     CastError,
     #[msg("UnwrapError")]
     UnwrapError,
+    #[msg("MarketDeserializationError")]
+    MarketDeserializationError,
+    #[msg("UnrecognizedQuoteMint")]
+    UnrecognizedQuoteMint,
+    #[msg("SolMarketMissing")]
+    SolMarketMissing,
+    #[msg("MarketMapFull")]
+    MarketMapFull,
 }
 
 #[macro_export]

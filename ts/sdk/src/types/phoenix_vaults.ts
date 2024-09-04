@@ -1,6 +1,6 @@
-export type JupiterVaults = {
+export type PhoenixVaults = {
 	version: '0.1.0';
-	name: 'jupiter_vaults';
+	name: 'phoenix_vaults';
 	instructions: [
 		{
 			name: 'initializeVault';
@@ -72,6 +72,32 @@ export type JupiterVaults = {
 					name: 'authority';
 					isMut: false;
 					isSigner: false;
+				},
+				{
+					name: 'payer';
+					isMut: true;
+					isSigner: true;
+				},
+				{
+					name: 'rent';
+					isMut: false;
+					isSigner: false;
+				},
+				{
+					name: 'systemProgram';
+					isMut: false;
+					isSigner: false;
+				}
+			];
+			args: [];
+		},
+		{
+			name: 'initializeMarketLookupTable';
+			accounts: [
+				{
+					name: 'authority';
+					isMut: false;
+					isSigner: true;
 				},
 				{
 					name: 'payer';
@@ -219,8 +245,8 @@ export type JupiterVaults = {
 					{
 						name: 'tokenAccount';
 						docs: [
-							'The vault token account. Used to receive tokens between deposits and withdrawals.',
-							'This is a PDA of the vault signer seed and the mint defined for this vault.'
+							'The token account investors deposit into and withdraw from.',
+							'This uses the mint specified above, and is likely USDC.'
 						];
 						type: 'publicKey';
 					},
@@ -821,13 +847,33 @@ export type JupiterVaults = {
 			code: 6026;
 			name: 'UnwrapError';
 			msg: 'UnwrapError';
+		},
+		{
+			code: 6027;
+			name: 'MarketDeserializationError';
+			msg: 'MarketDeserializationError';
+		},
+		{
+			code: 6028;
+			name: 'UnrecognizedQuoteMint';
+			msg: 'UnrecognizedQuoteMint';
+		},
+		{
+			code: 6029;
+			name: 'SolMarketMissing';
+			msg: 'SolMarketMissing';
+		},
+		{
+			code: 6030;
+			name: 'MarketMapFull';
+			msg: 'MarketMapFull';
 		}
 	];
 };
 
-export const IDL: JupiterVaults = {
+export const IDL: PhoenixVaults = {
 	version: '0.1.0',
-	name: 'jupiter_vaults',
+	name: 'phoenix_vaults',
 	instructions: [
 		{
 			name: 'initializeVault',
@@ -899,6 +945,32 @@ export const IDL: JupiterVaults = {
 					name: 'authority',
 					isMut: false,
 					isSigner: false,
+				},
+				{
+					name: 'payer',
+					isMut: true,
+					isSigner: true,
+				},
+				{
+					name: 'rent',
+					isMut: false,
+					isSigner: false,
+				},
+				{
+					name: 'systemProgram',
+					isMut: false,
+					isSigner: false,
+				},
+			],
+			args: [],
+		},
+		{
+			name: 'initializeMarketLookupTable',
+			accounts: [
+				{
+					name: 'authority',
+					isMut: false,
+					isSigner: true,
 				},
 				{
 					name: 'payer',
@@ -1046,8 +1118,8 @@ export const IDL: JupiterVaults = {
 					{
 						name: 'tokenAccount',
 						docs: [
-							'The vault token account. Used to receive tokens between deposits and withdrawals.',
-							'This is a PDA of the vault signer seed and the mint defined for this vault.',
+							'The token account investors deposit into and withdraw from.',
+							'This uses the mint specified above, and is likely USDC.',
 						],
 						type: 'publicKey',
 					},
@@ -1648,6 +1720,26 @@ export const IDL: JupiterVaults = {
 			code: 6026,
 			name: 'UnwrapError',
 			msg: 'UnwrapError',
+		},
+		{
+			code: 6027,
+			name: 'MarketDeserializationError',
+			msg: 'MarketDeserializationError',
+		},
+		{
+			code: 6028,
+			name: 'UnrecognizedQuoteMint',
+			msg: 'UnrecognizedQuoteMint',
+		},
+		{
+			code: 6029,
+			name: 'SolMarketMissing',
+			msg: 'SolMarketMissing',
+		},
+		{
+			code: 6030,
+			name: 'MarketMapFull',
+			msg: 'MarketMapFull',
 		},
 	],
 };

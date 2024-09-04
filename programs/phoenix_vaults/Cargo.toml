@@ -1,12 +1,12 @@
 [package]
-name = "jupiter-vaults"
+name = "phoenix-vaults"
 version = "0.1.0"
 description = "Created with Anchor"
 edition = "2021"
 
 [lib]
 crate-type = ["cdylib", "lib"]
-name = "jupiter_vaults"
+name = "phoenix_vaults"
 
 [features]
 no-entrypoint = []
@@ -22,7 +22,10 @@ ahash = "=0.8.6"
 uint = "0.9.1"
 num-traits = "0.2.15"
 drift-macros = { git = "https://github.com/drift-labs/drift-macros.git", rev = "c57d87" }
-borsh = ">=0.9, <1.0.0"
+#borsh = ">=0.9, <1.0.0"
+borsh = "0.10.3"
 solana-program = "1.16"
-#jupiter = { git = "https://github.com/cosmic-lab-inc/jupiter-cpi.git", branch = "main" }
+solana-address-lookup-table-program = "1.16"
 phoenix-common = { version = "0.2.1", features = [ "no-entrypoint" ]}
+lib-sokoban = "=0.3.0"
+heapless = "0.8.0"
