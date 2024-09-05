@@ -24,7 +24,7 @@ import {
 import { assert } from 'chai';
 import buffer from 'buffer';
 import { BN } from '@coral-xyz/anchor';
-import {PRICE_PRECISION} from "../ts/sdk";
+import { PRICE_PRECISION } from '../ts/sdk';
 
 export type OraclePriceData = {
 	price: BN;
@@ -600,12 +600,7 @@ export async function bootstrap(params: {
 	usdcMint: Keypair;
 	usdcAmount: BN;
 }): Promise<void> {
-	const {
-		payer,
-		programId,
-		usdcMint,
-		usdcAmount,
-	} = params;
+	const { payer, programId, usdcMint, usdcAmount } = params;
 
 	const signer = Keypair.generate();
 	await payer.connection.requestAirdrop(signer.publicKey, LAMPORTS_PER_SOL);

@@ -1,15 +1,12 @@
 use crate::error::{ErrorCode, VaultResult};
+use crate::math::casting::Cast;
+use crate::math::safe_math::SafeMath;
 use crate::validate;
 use anchor_lang::prelude::*;
 use anchor_lang::solana_program::msg;
 use borsh::{BorshDeserialize, BorshSerialize};
-use crate::math::casting::Cast;
-use crate::math::safe_math::SafeMath;
 
-use crate::math::{
-    shares_to_amount,
-    amount_to_shares,
-};
+use crate::math::{amount_to_shares, shares_to_amount};
 
 #[derive(Debug, Clone, Copy, BorshSerialize, BorshDeserialize, PartialEq, Eq)]
 pub enum WithdrawUnit {
@@ -31,8 +28,7 @@ impl WithdrawUnit {
         match self {
             WithdrawUnit::Token => {
                 let withdraw_value = withdraw_amount;
-                let n_shares: u128 =
-                    amount_to_shares(withdraw_value, total_shares, vault_equity)?;
+                let n_shares: u128 = amount_to_shares(withdraw_value, total_shares, vault_equity)?;
                 Ok((withdraw_value, n_shares))
             }
             WithdrawUnit::Shares => {
@@ -41,16 +37,14 @@ impl WithdrawUnit {
                     n_shares = n_shares.safe_div(rebase_divisor)?;
                 }
                 let withdraw_value =
-                    shares_to_amount(n_shares, total_shares, vault_equity)?
-                        .min(vault_equity);
+                    shares_to_amount(n_shares, total_shares, vault_equity)?.min(vault_equity);
                 Ok((withdraw_value, n_shares))
             }
             WithdrawUnit::SharesPercent => {
                 let n_shares =
                     WithdrawUnit::get_shares_from_percent(withdraw_amount.cast()?, shares)?;
                 let withdraw_value: u64 =
-                    shares_to_amount(n_shares, total_shares, vault_equity)?
-                        .min(vault_equity);
+                    shares_to_amount(n_shares, total_shares, vault_equity)?.min(vault_equity);
                 Ok((withdraw_value, n_shares))
             }
         }

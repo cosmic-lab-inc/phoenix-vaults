@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{Mint, TokenAccount};
 
-use crate::state::{Vault, Investor};
+use crate::state::{Investor, Vault};
 
 pub fn is_vault_for_investor(
     investor: &AccountLoader<Investor>,
@@ -29,10 +29,7 @@ pub fn is_protocol_for_vault(vault: &AccountLoader<Vault>, protocol: &Signer) ->
     Ok(vault.load()?.protocol.eq(protocol.key))
 }
 
-pub fn is_mint_for_vault(
-    vault: &AccountLoader<Vault>,
-    mint: &Account<Mint>,
-) -> Result<bool> {
+pub fn is_mint_for_vault(vault: &AccountLoader<Vault>, mint: &Account<Mint>) -> Result<bool> {
     Ok(vault.load()?.mint.eq(&mint.key()))
 }
 
@@ -41,8 +38,5 @@ pub fn is_token_for_vault(
     token: &Account<TokenAccount>,
 ) -> Result<bool> {
     let vault_ref = vault.load()?;
-    Ok(
-        vault_ref.token_account.eq(&token.key()) &&
-        vault_ref.mint.eq(&token.mint),
-    )
+    Ok(vault_ref.token_account.eq(&token.key()) && vault_ref.mint.eq(&token.mint))
 }

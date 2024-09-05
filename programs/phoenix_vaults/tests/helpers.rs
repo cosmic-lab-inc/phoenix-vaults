@@ -1,18 +1,19 @@
-use solana_program::native_token::LAMPORTS_PER_SOL;
-use solana_sdk::account::Account;
-use solana_sdk::signature::Signature;
-use solana_sdk::signer::{keypair::Keypair, Signer};
-use solana_sdk::pubkey::Pubkey;
-use anchor_spl::token::spl_token::state::Mint;
-use anchor_spl::token::spl_token::state::Account as TokenAccount;
-use std::str::FromStr;
 use anchor_spl::associated_token::get_associated_token_address;
+use anchor_spl::token::spl_token;
 use anchor_spl::token::spl_token::solana_program::program_pack::Pack;
+use anchor_spl::token::spl_token::state::Account as TokenAccount;
+use anchor_spl::token::spl_token::state::Mint;
 use solana_client::nonblocking::rpc_client::RpcClient;
 use solana_client::rpc_config::RpcSendTransactionConfig;
+use solana_program::native_token::LAMPORTS_PER_SOL;
 use solana_program::rent::Rent;
+use solana_sdk::account::Account;
 use solana_sdk::commitment_config::CommitmentConfig;
+use solana_sdk::pubkey::Pubkey;
+use solana_sdk::signature::Signature;
+use solana_sdk::signer::{keypair::Keypair, Signer};
 use solana_sdk::transaction::Transaction;
+use std::str::FromStr;
 
 pub fn sol(amount: f64) -> u64 {
     (amount * LAMPORTS_PER_SOL as f64) as u64
@@ -27,9 +28,8 @@ pub async fn get_token_account(
     token_account: &Pubkey,
 ) -> anyhow::Result<TokenAccount> {
     let account = client.get_account(token_account).await?;
-    TokenAccount::unpack(&account.data).map_err(
-        |err| anyhow::anyhow!("Failed to unpack token account: {:?}", err),
-    )
+    TokenAccount::unpack(&account.data)
+        .map_err(|err| anyhow::anyhow!("Failed to unpack token account: {:?}", err))
 }
 
 pub async fn get_token_balance(client: &RpcClient, token_account: &Pubkey) -> u64 {
@@ -70,14 +70,13 @@ pub async fn airdrop(
     receiver: &Pubkey,
     amount: u64,
 ) -> anyhow::Result<Signature> {
-
     let ixs = vec![solana_program::system_instruction::transfer(
         &payer.pubkey(),
         receiver,
         amount,
     )];
     let tx = Transaction::new_with_payer(&ixs, Some(&payer.pubkey()));
-    send_tx(client, tx, &vec![payer]).await
+    send_tx(client, tx, &[payer]).await
 }
 
 pub fn clone_keypair(keypair: &Keypair) -> Keypair {
@@ -92,9 +91,7 @@ pub async fn get_account(client: &RpcClient, pubkey: &Pubkey) -> anyhow::Result<
     client
         .get_account(pubkey)
         .await
-        .map_err(
-            |err| anyhow::anyhow!("Failed to get account: {:?}", err),
-        )
+        .map_err(|err| anyhow::anyhow!("Failed to get account: {:?}", err))
 }
 
 pub async fn create_associated_token_account(
@@ -104,17 +101,20 @@ pub async fn create_associated_token_account(
     token_program: &Pubkey,
 ) -> anyhow::Result<Pubkey> {
     let ixs = vec![
-        create_associated_token_account(
-            client,
-            payer,
+        spl_associated_token_account::instruction::create_associated_token_account(
+            &payer.pubkey(),
+            &payer.pubkey(),
             token_mint,
             token_program,
         ),
     ];
-    send_tx(client, Transaction::new_with_payer(&ixs, Some(&payer.pubkey())), &vec![payer]).await?;
-    Ok(get_associated_token_address(
-        &payer.pubkey(), token_mint,
-    ))
+    send_tx(
+        client,
+        Transaction::new_with_payer(&ixs, Some(&payer.pubkey())),
+        &[payer],
+    )
+    .await?;
+    Ok(get_associated_token_address(&payer.pubkey(), token_mint))
 }
 
 pub async fn create_mint(
@@ -126,8 +126,7 @@ pub async fn create_mint(
     mint: Option<Keypair>,
 ) -> anyhow::Result<Keypair> {
     let mint = mint.unwrap_or_else(Keypair::new);
-    
-    let create_acct_ix = anchor_lang::solana_program::system_instruction::create_account(
+    let create_acct_ix = solana_program::system_instruction::create_account(
         &payer.pubkey(),
         &mint.pubkey(),
         Rent::default().minimum_balance(Mint::LEN),
@@ -141,15 +140,13 @@ pub async fn create_mint(
         freeze_authority,
         decimals,
     )?;
-    let ixs = vec![
-        create_acct_ix,
-        init_mint_ix
-    ];
+    let ixs = vec![create_acct_ix, init_mint_ix];
     send_tx(
         client,
         Transaction::new_with_payer(&ixs, Some(&payer.pubkey())),
-        &vec![payer],
-    ).await?;
+        &[payer],
+    )
+    .await?;
     Ok(mint)
 }
 
@@ -175,11 +172,12 @@ pub async fn mint_tokens(
         &[],
         amount,
     )
-        .unwrap();
+    .unwrap();
 
     send_tx(
         client,
         Transaction::new_with_payer(&[ix], Some(&payer.pubkey())),
         &signing_keypairs,
-    ).await
+    )
+    .await
 }

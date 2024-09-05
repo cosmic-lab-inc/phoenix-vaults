@@ -1,5 +1,11 @@
 import * as anchor from '@coral-xyz/anchor';
-import {AccountMeta, AddressLookupTableProgram, ConfirmOptions, Keypair, PublicKey} from '@solana/web3.js';
+import {
+	AccountMeta,
+	AddressLookupTableProgram,
+	ConfirmOptions,
+	Keypair,
+	PublicKey,
+} from '@solana/web3.js';
 import { assert } from 'chai';
 import { before } from 'mocha';
 import {
@@ -8,11 +14,12 @@ import {
 	encodeName,
 	VaultParams,
 	getTokenVaultAddressSync,
-	getInvestorAddressSync, getMarketRegistryAddressSync,
-} from "../ts/sdk";
-import {BN} from "@coral-xyz/anchor";
-import { mockMint } from "./testHelpers";
-import * as phoenix from "@ellipsis-labs/phoenix-sdk";
+	getInvestorAddressSync,
+	getMarketRegistryAddressSync,
+} from '../ts/sdk';
+import { BN } from '@coral-xyz/anchor';
+import { mockMint } from './testHelpers';
+import * as phoenix from '@ellipsis-labs/phoenix-sdk';
 
 describe('phoenixVaults', () => {
 	const opts: ConfirmOptions = {
@@ -24,14 +31,19 @@ describe('phoenixVaults', () => {
 	// Configure the client to use the local cluster.
 	const provider = anchor.AnchorProvider.local(undefined, opts);
 	anchor.setProvider(provider);
-	const program = anchor.workspace.PhoenixVaults as anchor.Program<PhoenixVaults>;
+	const program = anchor.workspace
+		.PhoenixVaults as anchor.Program<PhoenixVaults>;
 
 	const mainnetConnection = new anchor.web3.Connection(
 		'https://api.mainnet-beta.solana.com',
 		'confirmed'
 	);
-	const mainnetUsdcMint = new PublicKey('EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v');
-	const mainnetSolMint = new PublicKey('So11111111111111111111111111111111111111112');
+	const mainnetUsdcMint = new PublicKey(
+		'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v'
+	);
+	const mainnetSolMint = new PublicKey(
+		'So11111111111111111111111111111111111111112'
+	);
 	let phoenixClient: phoenix.Client;
 	const marketRegistry = getMarketRegistryAddressSync();
 	let lutSlot: number;
@@ -56,10 +68,7 @@ describe('phoenixVaults', () => {
 		lutSlot = await provider.connection.getSlot();
 		const slotBuffer = Buffer.alloc(8);
 		slotBuffer.writeBigInt64LE(BigInt(lutSlot), 0);
-		const lutSeeds = [
-			provider.publicKey.toBuffer(),
-			slotBuffer
-		];
+		const lutSeeds = [provider.publicKey.toBuffer(), slotBuffer];
 		lut = PublicKey.findProgramAddressSync(
 			lutSeeds,
 			AddressLookupTableProgram.programId
@@ -67,15 +76,14 @@ describe('phoenixVaults', () => {
 	});
 
 	it('Create Address Lookup Table', async () => {
-		const [ix, _] =
-			AddressLookupTableProgram.createLookupTable({
-				authority: provider.publicKey,
-				payer: provider.publicKey,
-				recentSlot: lutSlot,
-			});
+		const [ix, _] = AddressLookupTableProgram.createLookupTable({
+			authority: provider.publicKey,
+			payer: provider.publicKey,
+			recentSlot: lutSlot,
+		});
 		const recentBlockhash = await provider.connection
 			.getLatestBlockhash()
-			.then(res => res.blockhash);
+			.then((res) => res.blockhash);
 		const msg = new anchor.web3.TransactionMessage({
 			payerKey: provider.publicKey,
 			recentBlockhash,
@@ -107,8 +115,9 @@ describe('phoenixVaults', () => {
 			};
 		});
 		const solUsdcMarketIndex = firstHalf.findIndex((m) => {
-			return (m.baseParams.mintKey.toString() === mainnetSolMint.toString()
-				&& m.quoteParams.mintKey.toString() === mainnetUsdcMint.toString()
+			return (
+				m.baseParams.mintKey.toString() === mainnetSolMint.toString() &&
+				m.quoteParams.mintKey.toString() === mainnetUsdcMint.toString()
 			);
 		});
 		if (solUsdcMarketIndex === -1) {
@@ -117,7 +126,7 @@ describe('phoenixVaults', () => {
 		const params = {
 			usdcMint: mainnetUsdcMint,
 			solMint: mainnetSolMint,
-			solUsdcMarketIndex
+			solUsdcMarketIndex,
 		};
 
 		try {
@@ -128,7 +137,8 @@ describe('phoenixVaults', () => {
 				.simulate();
 			console.log(sim);
 
-			await program.methods.initializeMarketRegistry(params)
+			await program.methods
+				.initializeMarketRegistry(params)
 				.accounts(accounts)
 				.remainingAccounts(markets)
 				.rpc();
@@ -158,9 +168,7 @@ describe('phoenixVaults', () => {
 			mint: usdcMint.publicKey,
 		};
 		// @ts-ignore
-		await program.methods.initializeVault(config)
-			.accounts(accounts)
-			.rpc();
+		await program.methods.initializeVault(config).accounts(accounts).rpc();
 		const acct = await program.account.vault.fetch(vaultKey);
 		assert(!!acct);
 	});
@@ -172,9 +180,7 @@ describe('phoenixVaults', () => {
 			authority: provider.publicKey,
 		};
 		// @ts-ignore
-		await program.methods.initializeInvestor()
-			.accounts(accounts)
-			.rpc();
+		await program.methods.initializeInvestor().accounts(accounts).rpc();
 		const acct = await program.account.investor.fetch(investor);
 		assert(!!acct);
 	});

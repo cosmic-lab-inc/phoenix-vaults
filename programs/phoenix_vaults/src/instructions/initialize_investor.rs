@@ -2,7 +2,7 @@ use anchor_lang::prelude::*;
 
 use crate::error::ErrorCode;
 use crate::state::Vault;
-use crate::{validate, Size, Investor};
+use crate::{validate, Investor, Size};
 
 pub fn initialize_investor(ctx: Context<InitializeInvestor>) -> Result<()> {
     let mut investor = ctx.accounts.investor.load_init()?;

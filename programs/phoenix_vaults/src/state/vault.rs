@@ -1,13 +1,13 @@
+use crate::constants::{ONE_YEAR, PERCENTAGE_PRECISION, PERCENTAGE_PRECISION_I128};
+use crate::error::{ErrorCode, VaultResult};
+use crate::math::{amount_to_shares, calculate_rebase_info, shares_to_amount, Cast, SafeMath};
 use crate::state::withdraw_request::WithdrawRequest;
-use crate::{Size, validate};
+use crate::state::{InvestorAction, InvestorRecord, VaultFee, WithdrawUnit};
+use crate::{validate, Size};
 use anchor_lang::prelude::*;
 use anchor_spl::token::TokenAccount;
 use drift_macros::assert_no_slop;
 use static_assertions::const_assert_eq;
-use crate::constants::{ONE_YEAR, PERCENTAGE_PRECISION, PERCENTAGE_PRECISION_I128};
-use crate::state::{InvestorAction, InvestorRecord, VaultFee, WithdrawUnit};
-use crate::math::{shares_to_amount, amount_to_shares, SafeMath, Cast, calculate_rebase_info};
-use crate::error::{ErrorCode, VaultResult};
 
 #[assert_no_slop]
 #[account(zero_copy(unsafe))]
@@ -118,11 +118,7 @@ impl Size for Vault {
 const_assert_eq!(Vault::SIZE, std::mem::size_of::<Vault>() + 8);
 
 impl Vault {
-    pub fn apply_fee(
-        &mut self,
-        vault_equity: u64,
-        now: i64,
-    ) -> Result<VaultFee> {
+    pub fn apply_fee(&mut self, vault_equity: u64, now: i64) -> Result<VaultFee> {
         let depositor_equity =
             shares_to_amount(self.investor_shares, self.total_shares, vault_equity)?
                 .cast::<i128>()?;
@@ -310,11 +306,8 @@ impl Vault {
         })
     }
 
-    pub fn get_manager_shares(
-        &self,
-    ) -> VaultResult<u128> {
-        self
-            .total_shares
+    pub fn get_manager_shares(&self) -> VaultResult<u128> {
+        self.total_shares
             .safe_sub(self.investor_shares)?
             .safe_sub(self.protocol_profit_and_fee_shares)
     }
@@ -327,10 +320,7 @@ impl Vault {
         self.profit_share.safe_add(self.protocol_profit_share)
     }
 
-    pub fn apply_rebase(
-        &mut self,
-        vault_equity: u64,
-    ) -> Result<Option<u128>> {
+    pub fn apply_rebase(&mut self, vault_equity: u64) -> Result<Option<u128>> {
         let mut rebase_divisor = None;
         if vault_equity != 0 && vault_equity.cast::<u128>()? < self.total_shares {
             let (expo_diff, _rebase_divisor) =
@@ -357,10 +347,7 @@ impl Vault {
         Ok(rebase_divisor)
     }
 
-    pub fn calculate_equity(
-        &self,
-        token_accounts: &[TokenAccount],
-    ) -> VaultResult<u64> {
+    pub fn calculate_equity(&self, token_accounts: &[TokenAccount]) -> VaultResult<u64> {
         // todo:
         //  read all token accounts given,
         //  assert owned by vault (using macro constraints in ix context)
@@ -369,12 +356,7 @@ impl Vault {
         Ok(0)
     }
 
-    pub fn manager_deposit(
-        &mut self,
-        amount: u64,
-        vault_equity: u64,
-        now: i64,
-    ) -> Result<()> {
+    pub fn manager_deposit(&mut self, amount: u64, vault_equity: u64, now: i64) -> Result<()> {
         self.apply_rebase(vault_equity)?;
         let VaultFee {
             management_fee_payment,
@@ -387,8 +369,7 @@ impl Vault {
         let total_vault_shares_before = self.total_shares;
         let vault_shares_before: u128 = self.get_manager_shares()?;
 
-        let n_shares =
-            amount_to_shares(amount, total_vault_shares_before, vault_equity)?;
+        let n_shares = amount_to_shares(amount, total_vault_shares_before, vault_equity)?;
 
         self.total_deposits = self.total_deposits.saturating_add(amount);
         self.manager_total_deposits = self.manager_total_deposits.saturating_add(amount);
@@ -500,11 +481,7 @@ impl Vault {
         Ok(())
     }
 
-    pub fn manager_cancel_withdraw_request(
-        &mut self,
-        vault_equity: u64,
-        now: i64,
-    ) -> Result<()> {
+    pub fn manager_cancel_withdraw_request(&mut self, vault_equity: u64, now: i64) -> Result<()> {
         self.apply_rebase(vault_equity)?;
 
         let vault_shares_before: u128 = self.get_manager_shares()?;
@@ -558,11 +535,7 @@ impl Vault {
         Ok(())
     }
 
-    pub fn manager_withdraw(
-        &mut self,
-        vault_equity: u64,
-        now: i64,
-    ) -> Result<u64> {
+    pub fn manager_withdraw(&mut self, vault_equity: u64, now: i64) -> Result<u64> {
         self.last_manager_withdraw_request
             .check_redeem_period_finished(self, now)?;
 
@@ -588,8 +561,7 @@ impl Vault {
             self.redeem_period
         )?;
 
-        let amount: u64 =
-            shares_to_amount(n_shares, self.total_shares, vault_equity)?;
+        let amount: u64 = shares_to_amount(n_shares, self.total_shares, vault_equity)?;
 
         let n_tokens = amount.min(self.last_manager_withdraw_request.value);
 
@@ -687,8 +659,7 @@ impl Vault {
             vault_equity,
             now,
         )?;
-        self.total_withdraw_requested =
-            self.total_withdraw_requested.safe_add(withdraw_value)?;
+        self.total_withdraw_requested = self.total_withdraw_requested.safe_add(withdraw_value)?;
 
         let vault_shares_after: u128 = self.get_protocol_shares();
 
@@ -717,11 +688,7 @@ impl Vault {
         Ok(())
     }
 
-    pub fn protocol_cancel_withdraw_request(
-        &mut self,
-        vault_equity: u64,
-        now: i64,
-    ) -> Result<()> {
+    pub fn protocol_cancel_withdraw_request(&mut self, vault_equity: u64, now: i64) -> Result<()> {
         self.apply_rebase(vault_equity)?;
 
         let vault_shares_before: u128 = self.get_protocol_shares();
@@ -775,11 +742,7 @@ impl Vault {
         Ok(())
     }
 
-    pub fn protocol_withdraw(
-        &mut self,
-        vault_equity: u64,
-        now: i64,
-    ) -> Result<u64> {
+    pub fn protocol_withdraw(&mut self, vault_equity: u64, now: i64) -> Result<u64> {
         self.last_manager_withdraw_request
             .check_redeem_period_finished(self, now)?;
 
@@ -805,8 +768,7 @@ impl Vault {
             self.redeem_period
         )?;
 
-        let amount: u64 =
-            shares_to_amount(n_shares, self.total_shares, vault_equity)?;
+        let amount: u64 = shares_to_amount(n_shares, self.total_shares, vault_equity)?;
 
         let n_tokens = amount.min(self.last_protocol_withdraw_request.value);
 

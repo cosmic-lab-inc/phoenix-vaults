@@ -1,10 +1,10 @@
 mod constants;
+mod cpis;
 mod error;
 mod instructions;
 pub mod macros;
 mod math;
 mod state;
-mod cpis;
 
 use anchor_lang::prelude::*;
 use instructions::*;
@@ -24,14 +24,14 @@ pub mod phoenix_vaults {
     }
 
     pub fn initialize_investor<'c: 'info, 'info>(
-        ctx: Context<'_, '_, 'c, 'info, InitializeInvestor<'info>>
+        ctx: Context<'_, '_, 'c, 'info, InitializeInvestor<'info>>,
     ) -> Result<()> {
         instructions::initialize_investor(ctx)
     }
 
     pub fn initialize_market_registry<'c: 'info, 'info>(
         ctx: Context<'_, '_, 'c, 'info, InitializeMarketRegistry<'info>>,
-        params: MarketLookupTableParams
+        params: MarketLookupTableParams,
     ) -> Result<()> {
         instructions::initialize_market_registry(ctx, params)
     }

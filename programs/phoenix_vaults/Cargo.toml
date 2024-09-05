@@ -15,10 +15,9 @@ default = []
 
 [dependencies]
 anchor-lang = "0.29.0"
-anchor-spl = "0.29.0"
+anchor-spl = { version = "0.29.0" , features = ["token", "associated_token"], default = false }
 bytemuck = "1.14.0"
 static_assertions = "1.1.0"
-ahash = "=0.8.6"
 uint = "0.9.1"
 num-traits = "0.2.15"
 drift-macros = { git = "https://github.com/drift-labs/drift-macros.git", rev = "c57d87" }
@@ -31,7 +30,7 @@ heapless = "0.8.0"
 
 [dev-dependencies]
 anyhow = "1"
-solana-client = "1.16"
-solana-sdk = "1.16"
-spl-token = "3.5.0"
-spl-associated-token-account = "1.1.1"
+solana-client = "^1.18"
+solana-sdk = "^1.18"
+spl-associated-token-account = "2.3.0"
+tokio = "1.40.0"
