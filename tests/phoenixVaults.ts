@@ -3,7 +3,6 @@ import {
 	AccountMeta,
 	AddressLookupTableProgram,
 	ConfirmOptions,
-	Keypair,
 	PublicKey,
 } from '@solana/web3.js';
 import { assert } from 'chai';
@@ -16,10 +15,15 @@ import {
 	getTokenVaultAddressSync,
 	getInvestorAddressSync,
 	getMarketRegistryAddressSync,
+	MOCK_USDC_MINT,
+	MOCK_SOL_MINT,
+	MOCK_JUP_MINT,
+	MOCK_SOL_USDC_MARKET,
+	MOCK_JUP_SOL_MARKET,
+	MOCK_JUP_USDC_MARKET,
 } from '../ts/sdk';
 import { BN } from '@coral-xyz/anchor';
 import { mockMint } from './testHelpers';
-import * as phoenix from '@ellipsis-labs/phoenix-sdk';
 
 describe('phoenixVaults', () => {
 	const opts: ConfirmOptions = {
@@ -34,23 +38,13 @@ describe('phoenixVaults', () => {
 	const program = anchor.workspace
 		.PhoenixVaults as anchor.Program<PhoenixVaults>;
 
-	const mainnetConnection = new anchor.web3.Connection(
-		'https://api.mainnet-beta.solana.com',
-		'confirmed'
-	);
-	const mainnetUsdcMint = new PublicKey(
-		'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v'
-	);
-	const mainnetSolMint = new PublicKey(
-		'So11111111111111111111111111111111111111112'
-	);
-	let phoenixClient: phoenix.Client;
 	const marketRegistry = getMarketRegistryAddressSync();
 	let lutSlot: number;
 	let lut: PublicKey;
 
-	let usdcMint: Keypair;
-	let _solMint: Keypair;
+	const usdcMint = MOCK_USDC_MINT;
+	const solMint = MOCK_SOL_MINT;
+	const _jupMint = MOCK_JUP_MINT;
 	const _manager = provider.publicKey;
 	const protocol = provider.publicKey;
 
@@ -59,11 +53,17 @@ describe('phoenixVaults', () => {
 	const vaultAta = getTokenVaultAddressSync(vaultKey);
 	const investor = getInvestorAddressSync(vaultKey, provider.publicKey);
 
-	before(async () => {
-		phoenixClient = await phoenix.Client.create(mainnetConnection);
+	const marketKeys: PublicKey[] = [
+		MOCK_SOL_USDC_MARKET.publicKey,
+		MOCK_JUP_SOL_MARKET.publicKey,
+		MOCK_JUP_USDC_MARKET.publicKey
+	];
+	const solUsdcMarketIndex = 0;
 
-		usdcMint = await mockMint(provider);
-		_solMint = await mockMint(provider);
+	before(async () => {
+		await mockMint(provider, MOCK_USDC_MINT);
+		await mockMint(provider, MOCK_SOL_MINT);
+		await mockMint(provider, MOCK_JUP_MINT);
 
 		lutSlot = await provider.connection.getSlot();
 		const slotBuffer = Buffer.alloc(8);
@@ -101,31 +101,17 @@ describe('phoenixVaults', () => {
 			lutProgram: AddressLookupTableProgram.programId,
 		};
 
-		const marketMetadatas = Array.from(phoenixClient.marketMetadatas.values());
-		// split in half
-		const half = Math.ceil(marketMetadatas.length / 2);
-		const firstHalf = marketMetadatas.slice(0, half);
-		// const secondHalf = marketMetadatas.slice(half, marketMetadatas.length);
-
-		const markets: AccountMeta[] = firstHalf.map((m) => {
+		const markets: AccountMeta[] = marketKeys
+			.map((pubkey) => {
 			return {
-				pubkey: m.address,
+				pubkey,
 				isWritable: false,
 				isSigner: false,
 			};
 		});
-		const solUsdcMarketIndex = firstHalf.findIndex((m) => {
-			return (
-				m.baseParams.mintKey.toString() === mainnetSolMint.toString() &&
-				m.quoteParams.mintKey.toString() === mainnetUsdcMint.toString()
-			);
-		});
-		if (solUsdcMarketIndex === -1) {
-			throw new Error('SOL/USDC market not found');
-		}
 		const params = {
-			usdcMint: mainnetUsdcMint,
-			solMint: mainnetSolMint,
+			usdcMint: usdcMint.publicKey,
+			solMint: solMint.publicKey,
 			solUsdcMarketIndex,
 		};
 

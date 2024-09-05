@@ -594,22 +594,22 @@ export async function getTokenAmountAsBN(
 	);
 }
 
-export async function bootstrap(params: {
-	payer: AnchorProvider;
-	programId: PublicKey;
-	usdcMint: Keypair;
-	usdcAmount: BN;
-}): Promise<void> {
-	const { payer, programId, usdcMint, usdcAmount } = params;
-
-	const signer = Keypair.generate();
-	await payer.connection.requestAirdrop(signer.publicKey, LAMPORTS_PER_SOL);
-	await sleep(1000);
-
-	const userUSDCAccount = await mockUserUSDCAccount(
-		usdcMint,
-		usdcAmount,
-		payer,
-		signer.publicKey
-	);
-}
+// export async function bootstrap(params: {
+// 	payer: AnchorProvider;
+// 	programId: PublicKey;
+// 	usdcMint: Keypair;
+// 	usdcAmount: BN;
+// }): Promise<void> {
+// 	const { payer, programId, usdcMint, usdcAmount } = params;
+//
+// 	const signer = Keypair.generate();
+// 	await payer.connection.requestAirdrop(signer.publicKey, LAMPORTS_PER_SOL);
+// 	await sleep(1000);
+//
+// 	const userUSDCAccount = await mockUserUSDCAccount(
+// 		usdcMint,
+// 		usdcAmount,
+// 		payer,
+// 		signer.publicKey
+// 	);
+// }

@@ -3,7 +3,7 @@ use anchor_spl::token::{self, Token, TokenAccount, Transfer};
 
 use crate::constraints::{is_authority_for_investor, is_token_for_vault};
 use crate::cpis::TokenTransferCPI;
-use crate::state::{Investor, MarketMapProvider, Vault};
+use crate::state::{Investor, Vault};
 
 pub fn deposit<'c: 'info, 'info>(
     ctx: Context<'_, '_, 'c, 'info, Deposit<'info>>,

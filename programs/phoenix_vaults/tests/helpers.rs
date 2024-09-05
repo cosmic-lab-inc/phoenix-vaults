@@ -8,7 +8,7 @@ use solana_client::rpc_config::RpcSendTransactionConfig;
 use solana_program::native_token::LAMPORTS_PER_SOL;
 use solana_program::rent::Rent;
 use solana_sdk::account::Account;
-use solana_sdk::commitment_config::CommitmentConfig;
+use solana_sdk::commitment_config::{CommitmentConfig, CommitmentLevel};
 use solana_sdk::pubkey::Pubkey;
 use solana_sdk::signature::Signature;
 use solana_sdk::signer::{keypair::Keypair, Signer};
@@ -43,13 +43,14 @@ pub async fn send_tx(
     client: &RpcClient,
     mut tx: Transaction,
     signers: &[&Keypair],
+    confirm: Option<bool>
 ) -> anyhow::Result<Signature> {
     let blockhash = client
         .get_latest_blockhash_with_commitment(CommitmentConfig::confirmed())
         .await?
         .0;
     tx.partial_sign(&signers.to_vec(), blockhash);
-    let signature = client
+    let sig = client
         .send_transaction_with_config(
             &tx,
             RpcSendTransactionConfig {
@@ -61,7 +62,14 @@ pub async fn send_tx(
             },
         )
         .await?;
-    Ok(signature)
+    if confirm.unwrap_or(false) {
+        client.confirm_transaction_with_spinner(
+            &sig,
+            &blockhash,
+            CommitmentConfig::confirmed()
+        ).await?;
+    }
+    Ok(sig)
 }
 
 pub async fn airdrop(
@@ -76,7 +84,7 @@ pub async fn airdrop(
         amount,
     )];
     let tx = Transaction::new_with_payer(&ixs, Some(&payer.pubkey()));
-    send_tx(client, tx, &[payer]).await
+    send_tx(client, tx, &[payer], None).await
 }
 
 pub fn clone_keypair(keypair: &Keypair) -> Keypair {
@@ -99,7 +107,7 @@ pub async fn create_associated_token_account(
     payer: &Keypair,
     token_mint: &Pubkey,
     token_program: &Pubkey,
-) -> anyhow::Result<Pubkey> {
+) -> anyhow::Result<(Pubkey, Signature)> {
     let ixs = vec![
         spl_associated_token_account::instruction::create_associated_token_account(
             &payer.pubkey(),
@@ -108,13 +116,17 @@ pub async fn create_associated_token_account(
             token_program,
         ),
     ];
-    send_tx(
+    let sig = send_tx(
         client,
-        Transaction::new_with_payer(&ixs, Some(&payer.pubkey())),
+        Transaction::new_with_payer(&ixs, None),
         &[payer],
+        Some(true)
     )
     .await?;
-    Ok(get_associated_token_address(&payer.pubkey(), token_mint))
+    Ok((
+        get_associated_token_address(&payer.pubkey(), token_mint),
+        sig,
+    ))
 }
 
 pub async fn create_mint(
@@ -123,9 +135,8 @@ pub async fn create_mint(
     authority: &Pubkey,
     freeze_authority: Option<&Pubkey>,
     decimals: u8,
-    mint: Option<Keypair>,
-) -> anyhow::Result<Keypair> {
-    let mint = mint.unwrap_or_else(Keypair::new);
+    mint: &Keypair,
+) -> anyhow::Result<Signature> {
     let create_acct_ix = solana_program::system_instruction::create_account(
         &payer.pubkey(),
         &mint.pubkey(),
@@ -141,13 +152,14 @@ pub async fn create_mint(
         decimals,
     )?;
     let ixs = vec![create_acct_ix, init_mint_ix];
-    send_tx(
+    let sig = send_tx(
         client,
-        Transaction::new_with_payer(&ixs, Some(&payer.pubkey())),
-        &[payer],
+        Transaction::new_with_payer(&ixs, None),
+        &[payer, mint],
+        Some(true)
     )
     .await?;
-    Ok(mint)
+    Ok(sig)
 }
 
 pub async fn mint_tokens(
@@ -176,8 +188,9 @@ pub async fn mint_tokens(
 
     send_tx(
         client,
-        Transaction::new_with_payer(&[ix], Some(&payer.pubkey())),
+        Transaction::new_with_payer(&[ix], None),
         &signing_keypairs,
+        Some(true)
     )
     .await
 }
