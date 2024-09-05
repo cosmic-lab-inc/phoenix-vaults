@@ -92,17 +92,27 @@ export type PhoenixVaults = {
 			args: [];
 		},
 		{
-			name: 'initializeMarketLookupTable';
+			name: 'initializeMarketRegistry';
 			accounts: [
 				{
 					name: 'authority';
 					isMut: false;
 					isSigner: true;
+					docs: ['Admin-level keypair'];
+				},
+				{
+					name: 'marketRegistry';
+					isMut: true;
+					isSigner: false;
 				},
 				{
 					name: 'lut';
 					isMut: true;
 					isSigner: false;
+					docs: [
+						'Assumes [`AddressLookupTable`] is initialized prior to calling this instruction,',
+						'ideally within the same transaction.'
+					];
 				},
 				{
 					name: 'payer';
@@ -219,6 +229,35 @@ export type PhoenixVaults = {
 						type: {
 							array: ['u64', 8];
 						};
+					}
+				];
+			};
+		},
+		{
+			name: 'marketRegistry';
+			type: {
+				kind: 'struct';
+				fields: [
+					{
+						name: 'lut';
+						docs: [
+							'[`AddressLookupTable`] that contains a list of Phoenix markets'
+						];
+						type: 'publicKey';
+					},
+					{
+						name: 'usdcMint';
+						docs: [
+							'Phoenix markets are denominated in USDC or SOL, so we must pre-define this'
+						];
+						type: 'publicKey';
+					},
+					{
+						name: 'solMint';
+						docs: [
+							'Phoenix markets are denominated in USDC or SOL, so we must pre-define this'
+						];
+						type: 'publicKey';
 					}
 				];
 			};
@@ -487,8 +526,17 @@ export type PhoenixVaults = {
 				kind: 'struct';
 				fields: [
 					{
-						name: 'slot';
-						type: 'u64';
+						name: 'usdcMint';
+						type: 'publicKey';
+					},
+					{
+						name: 'solMint';
+						type: 'publicKey';
+					},
+					{
+						name: 'solUsdcMarketIndex';
+						docs: ['Index of SOL/USDC market in remaining accounts'];
+						type: 'u8';
 					}
 				];
 			};
@@ -896,6 +944,21 @@ export type PhoenixVaults = {
 			code: 6030;
 			name: 'MarketMapFull';
 			msg: 'MarketMapFull';
+		},
+		{
+			code: 6031;
+			name: 'InvalidAddressLookupTableData';
+			msg: 'InvalidAddressLookupTableData';
+		},
+		{
+			code: 6032;
+			name: 'AddressLookupTableAuthorityMissing';
+			msg: 'AddressLookupTableAuthorityMissing';
+		},
+		{
+			code: 6033;
+			name: 'AddressLookupTableAuthorityInvalid';
+			msg: 'AddressLookupTableAuthorityInvalid';
 		}
 	];
 };
@@ -994,17 +1057,27 @@ export const IDL: PhoenixVaults = {
 			args: [],
 		},
 		{
-			name: 'initializeMarketLookupTable',
+			name: 'initializeMarketRegistry',
 			accounts: [
 				{
 					name: 'authority',
 					isMut: false,
 					isSigner: true,
+					docs: ['Admin-level keypair'],
+				},
+				{
+					name: 'marketRegistry',
+					isMut: true,
+					isSigner: false,
 				},
 				{
 					name: 'lut',
 					isMut: true,
 					isSigner: false,
+					docs: [
+						'Assumes [`AddressLookupTable`] is initialized prior to calling this instruction,',
+						'ideally within the same transaction.',
+					],
 				},
 				{
 					name: 'payer',
@@ -1121,6 +1194,35 @@ export const IDL: PhoenixVaults = {
 						type: {
 							array: ['u64', 8],
 						},
+					},
+				],
+			},
+		},
+		{
+			name: 'marketRegistry',
+			type: {
+				kind: 'struct',
+				fields: [
+					{
+						name: 'lut',
+						docs: [
+							'[`AddressLookupTable`] that contains a list of Phoenix markets',
+						],
+						type: 'publicKey',
+					},
+					{
+						name: 'usdcMint',
+						docs: [
+							'Phoenix markets are denominated in USDC or SOL, so we must pre-define this',
+						],
+						type: 'publicKey',
+					},
+					{
+						name: 'solMint',
+						docs: [
+							'Phoenix markets are denominated in USDC or SOL, so we must pre-define this',
+						],
+						type: 'publicKey',
 					},
 				],
 			},
@@ -1389,8 +1491,17 @@ export const IDL: PhoenixVaults = {
 				kind: 'struct',
 				fields: [
 					{
-						name: 'slot',
-						type: 'u64',
+						name: 'usdcMint',
+						type: 'publicKey',
+					},
+					{
+						name: 'solMint',
+						type: 'publicKey',
+					},
+					{
+						name: 'solUsdcMarketIndex',
+						docs: ['Index of SOL/USDC market in remaining accounts'],
+						type: 'u8',
 					},
 				],
 			},
@@ -1798,6 +1909,21 @@ export const IDL: PhoenixVaults = {
 			code: 6030,
 			name: 'MarketMapFull',
 			msg: 'MarketMapFull',
+		},
+		{
+			code: 6031,
+			name: 'InvalidAddressLookupTableData',
+			msg: 'InvalidAddressLookupTableData',
+		},
+		{
+			code: 6032,
+			name: 'AddressLookupTableAuthorityMissing',
+			msg: 'AddressLookupTableAuthorityMissing',
+		},
+		{
+			code: 6033,
+			name: 'AddressLookupTableAuthorityInvalid',
+			msg: 'AddressLookupTableAuthorityInvalid',
 		},
 	],
 };

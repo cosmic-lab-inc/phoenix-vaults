@@ -22,7 +22,6 @@ ahash = "=0.8.6"
 uint = "0.9.1"
 num-traits = "0.2.15"
 drift-macros = { git = "https://github.com/drift-labs/drift-macros.git", rev = "c57d87" }
-#borsh = ">=0.9, <1.0.0"
 borsh = "0.10.3"
 solana-program = "1.16"
 solana-address-lookup-table-program = "1.16"

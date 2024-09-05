@@ -21,7 +21,7 @@ pub fn deposit<'c: 'info, 'info>(
     //  so for each market we must check that the rem accts provides the vault's token account for that market's base mint.
     //  then fetch the price of that market and multiply by the vault's token balance to get the vault's equity.
     
-    let (sol_usdc_market, sol_price) = ctx.load_sol_usdc_market()?;
+    // let (sol_usdc_market, sol_price) = ctx.load_sol_usdc_market()?;
     let vault_equity = 0;
 
     investor.deposit(

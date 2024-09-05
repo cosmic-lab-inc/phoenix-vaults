@@ -1,8 +1,8 @@
 import { PublicKey } from '@solana/web3.js';
 import * as anchor from '@coral-xyz/anchor';
+import {PHOENIX_VAULTS_PROGRAM_ID} from "../types";
 
 export function getVaultAddressSync(
-  programId: PublicKey,
   encodedName: number[]
 ): PublicKey {
   return PublicKey.findProgramAddressSync(
@@ -10,12 +10,11 @@ export function getVaultAddressSync(
       Buffer.from(anchor.utils.bytes.utf8.encode('vault')),
       Buffer.from(encodedName),
     ],
-    programId
+    PHOENIX_VAULTS_PROGRAM_ID
   )[0];
 }
 
 export function getInvestorAddressSync(
-  programId: PublicKey,
   vault: PublicKey,
   authority: PublicKey
 ): PublicKey {
@@ -25,12 +24,11 @@ export function getInvestorAddressSync(
       vault.toBuffer(),
       authority.toBuffer(),
     ],
-    programId
+    PHOENIX_VAULTS_PROGRAM_ID
   )[0];
 }
 
 export function getTokenVaultAddressSync(
-  programId: PublicKey,
   vault: PublicKey
 ): PublicKey {
   return PublicKey.findProgramAddressSync(
@@ -38,6 +36,15 @@ export function getTokenVaultAddressSync(
       Buffer.from(anchor.utils.bytes.utf8.encode('vault_token_account')),
       vault.toBuffer(),
     ],
-    programId
+    PHOENIX_VAULTS_PROGRAM_ID
+  )[0];
+}
+
+export function getMarketRegistryAddressSync(): PublicKey {
+  return PublicKey.findProgramAddressSync(
+    [
+      Buffer.from(anchor.utils.bytes.utf8.encode('market_registry')),
+    ],
+    PHOENIX_VAULTS_PROGRAM_ID
   )[0];
 }

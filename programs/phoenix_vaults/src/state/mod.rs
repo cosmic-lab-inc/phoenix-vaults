@@ -7,6 +7,7 @@ pub mod events;
 mod withdraw_unit;
 mod market;
 mod phoenix;
+mod market_registry;
 
 pub use traits::*;
 pub use vault::*;
@@ -16,3 +17,4 @@ pub use events::*;
 pub use withdraw_unit::*;
 pub use market::*;
 pub use phoenix::*;
+pub use market_registry::*;

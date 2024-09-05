@@ -21,7 +21,7 @@
     "node": ">=16"
   },
   "scripts": {
-    "clean": "rm -rf lib",
-    "build": "yarn clean && tsc"
+    "clean": "rm -rf lib && rm -rf node_modules",
+    "build": "rm -rf lib && tsc"
   }
 }

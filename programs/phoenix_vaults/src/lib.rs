@@ -4,7 +4,6 @@ mod instructions;
 pub mod macros;
 mod math;
 mod state;
-mod tests;
 mod cpis;
 
 use anchor_lang::prelude::*;
@@ -30,10 +29,10 @@ pub mod phoenix_vaults {
         instructions::initialize_investor(ctx)
     }
 
-    pub fn initialize_market_lookup_table<'c: 'info, 'info>(
-        ctx: Context<'_, '_, 'c, 'info, InitializeMarketLookupTable<'info>>,
+    pub fn initialize_market_registry<'c: 'info, 'info>(
+        ctx: Context<'_, '_, 'c, 'info, InitializeMarketRegistry<'info>>,
         params: MarketLookupTableParams
     ) -> Result<()> {
-        instructions::initialize_market_lookup_table(ctx, params)
+        instructions::initialize_market_registry(ctx, params)
     }
 }

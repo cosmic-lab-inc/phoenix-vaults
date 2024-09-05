@@ -69,26 +69,26 @@ export async function mockOracle(
 	return priceFeedAddress;
 }
 
-export async function mockUSDCMint(
+export async function mockMint(
 	provider: Provider,
 	mint?: Keypair
 ): Promise<Keypair> {
-	let fakeUSDCMint: Keypair;
+	let fakeMint: Keypair;
 	if (mint) {
-		fakeUSDCMint = mint;
+		fakeMint = mint;
 	} else {
-		fakeUSDCMint = anchor.web3.Keypair.generate();
+		fakeMint = anchor.web3.Keypair.generate();
 	}
-	const createUSDCMintAccountIx = SystemProgram.createAccount({
+	const createMintAccountIx = SystemProgram.createAccount({
 		// @ts-ignore
 		fromPubkey: provider.wallet.publicKey,
-		newAccountPubkey: fakeUSDCMint.publicKey,
+		newAccountPubkey: fakeMint.publicKey,
 		lamports: await getMinimumBalanceForRentExemptMint(provider.connection),
 		space: MintLayout.span,
 		programId: TOKEN_PROGRAM_ID,
 	});
 	const initCollateralMintIx = createInitializeMintInstruction(
-		fakeUSDCMint.publicKey,
+		fakeMint.publicKey,
 		6,
 		// @ts-ignore
 		provider.wallet.publicKey,
@@ -96,22 +96,22 @@ export async function mockUSDCMint(
 		provider.wallet.publicKey
 	);
 
-	const fakeUSDCTx = new Transaction();
-	fakeUSDCTx.add(createUSDCMintAccountIx);
-	fakeUSDCTx.add(initCollateralMintIx);
+	const fakeTx = new Transaction();
+	fakeTx.add(createMintAccountIx);
+	fakeTx.add(initCollateralMintIx);
 
 	await sendAndConfirmTransaction(
 		provider.connection,
-		fakeUSDCTx,
+		fakeTx,
 		// @ts-ignore
-		[provider.wallet.payer, fakeUSDCMint],
+		[provider.wallet.payer, fakeMint],
 		{
 			skipPreflight: false,
 			commitment: 'recent',
 			preflightCommitment: 'recent',
 		}
 	);
-	return fakeUSDCMint;
+	return fakeMint;
 }
 
 export async function mockUserUSDCAccount(

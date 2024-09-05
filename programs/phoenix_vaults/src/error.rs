@@ -67,6 +67,12 @@ pub enum ErrorCode {
     SolMarketMissing,
     #[msg("MarketMapFull")]
     MarketMapFull,
+    #[msg("InvalidAddressLookupTableData")]
+    InvalidAddressLookupTableData,
+    #[msg("AddressLookupTableAuthorityMissing")]
+    AddressLookupTableAuthorityMissing,
+    #[msg("AddressLookupTableAuthorityInvalid")]
+    AddressLookupTableAuthorityInvalid,
 }
 
 #[macro_export]

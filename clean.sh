@@ -6,4 +6,4 @@ home
 
 cargo clean
 
-yarn clean && cd ts/sdk && yarn clean && home
+cd ts/sdk && yarn clean && home && rm -rf node_modules
