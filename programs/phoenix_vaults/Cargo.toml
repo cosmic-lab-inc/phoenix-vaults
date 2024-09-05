@@ -28,3 +28,10 @@ solana-address-lookup-table-program = "1.16"
 phoenix-common = { version = "0.2.1", features = [ "no-entrypoint" ]}
 lib-sokoban = "=0.3.0"
 heapless = "0.8.0"
+
+[dev-dependencies]
+anyhow = "1"
+solana-client = "1.16"
+solana-sdk = "1.16"
+spl-token = "3.5.0"
+spl-associated-token-account = "1.1.1"

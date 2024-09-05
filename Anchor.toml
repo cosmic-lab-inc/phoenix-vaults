@@ -4,7 +4,6 @@ skip-lint = false
 
 [programs.localnet]
 phoenix_vaults = "VAULT8EhRg1mduZJYCab7xkNq7ieXMQ1Tqec2LPU6jv"
-#phoenix = "PhoeNiXZ8ByJGLkxNfZRnkUfjvmuYqLR89jjFHGqdXY"
 
 [registry]
 url = "https://api.apr.dev"
@@ -13,9 +12,9 @@ url = "https://api.apr.dev"
 cluster = "Localnet"
 wallet = "~/.config/solana/id.json"
 
-#[[test.genesis]]
-#address = "PhoeNiXZ8ByJGLkxNfZRnkUfjvmuYqLR89jjFHGqdXY"
-#program = "./deps/phoenix.so"
+[[test.genesis]]
+address = "PhoeNiXZ8ByJGLkxNfZRnkUfjvmuYqLR89jjFHGqdXY"
+program = "./deps/phoenix.so"
 
 [scripts]
 test = "yarn anchor-tests"
