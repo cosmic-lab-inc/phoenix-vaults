@@ -9,12 +9,13 @@
         "clean": "chmod +x ./clean.sh && ./clean.sh",
         "idl": "cp target/types/phoenix_vaults.ts ts/sdk/src/types/phoenix_vaults.ts && prettier --write ts/sdk/src/types/phoenix_vaults.ts",
         "build": "chmod +x ./build.sh && ./build.sh",
-        "anchor-tests": "yarn build && yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
+        "anchor-tests": "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
     },
     "devDependencies": {
         "@coral-xyz/anchor": "0.28.0",
         "@solana/web3.js": "1.73.2",
         "@solana/spl-token": "0.4.8",
+        "@ellipsis-labs/phoenix-sdk": "2.0.3",
         "@types/bn.js": "^5.1.0",
         "@types/chai": "^4.3.0",
         "@types/mocha": "^9.0.0",
