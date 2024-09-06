@@ -44,8 +44,12 @@ bkg anchor localnet
 chmod +x ./bootstrap.sh
 ./bootstrap.sh
 
-# run cargo test
+# store pid of `yarn anchor-tests`
 yarn anchor-tests
+
+# when `yarn anchor-tests` is finished, send SIGINT
+# to parent process to kill all child processes
+kill -- -$parent_pid
 
 while true; do
     sleep 1
