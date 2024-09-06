@@ -56,7 +56,7 @@ describe('phoenixVaults', () => {
 	const marketKeys: PublicKey[] = [
 		MOCK_SOL_USDC_MARKET.publicKey,
 		MOCK_JUP_SOL_MARKET.publicKey,
-		MOCK_JUP_USDC_MARKET.publicKey
+		MOCK_JUP_USDC_MARKET.publicKey,
 	];
 	const solUsdcMarketIndex = 0;
 
@@ -101,8 +101,7 @@ describe('phoenixVaults', () => {
 			lutProgram: AddressLookupTableProgram.programId,
 		};
 
-		const markets: AccountMeta[] = marketKeys
-			.map((pubkey) => {
+		const markets: AccountMeta[] = marketKeys.map((pubkey) => {
 			return {
 				pubkey,
 				isWritable: false,

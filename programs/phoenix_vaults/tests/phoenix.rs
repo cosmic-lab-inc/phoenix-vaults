@@ -4,8 +4,7 @@ use solana_client::nonblocking::rpc_client::RpcClient;
 use solana_sdk::commitment_config::CommitmentConfig;
 use solana_sdk::signature::{Keypair, Signature};
 use solana_sdk::signer::Signer;
-use solana_sdk::transaction::Transaction;
-use tokio::time::sleep;
+use spl_associated_token_account::get_associated_token_address;
 
 pub mod helpers;
 use crate::helpers::*;
@@ -29,10 +28,10 @@ const MOCK_USDC_MINT: [u8; 64] = [
 const MOCK_USDC_DECIMALS: u8 = 6;
 
 const MOCK_SOL_MINT: [u8; 64] = [
-    5, 115, 129, 253, 239, 188, 34, 72, 142, 147, 21, 152, 94, 100, 191, 206, 26, 129, 167, 50,
-    201, 216, 101, 81, 145, 34, 176, 222, 158, 149, 230, 9, 171, 215, 53, 230, 38, 137, 41, 143,
-    238, 69, 176, 245, 195, 239, 161, 157, 215, 72, 0, 40, 202, 156, 21, 36, 111, 246, 221, 154,
-    168, 106, 235, 122,
+    168, 35, 20, 1, 139, 84, 3, 188, 183, 74, 164, 142, 249, 104, 144, 203, 18, 74, 246, 121, 144,
+    17, 17, 220, 68, 183, 73, 72, 98, 138, 227, 243, 236, 2, 190, 43, 13, 5, 202, 115, 113, 27,
+    211, 68, 74, 123, 176, 95, 132, 166, 213, 212, 17, 228, 204, 134, 113, 149, 209, 227, 99, 7,
+    170, 237,
 ];
 const MOCK_SOL_DECIMALS: u8 = 9;
 
@@ -65,104 +64,107 @@ const MOCK_JUP_USDC_MARKET: [u8; 64] = [
     160, 42, 233,
 ];
 
-#[allow(clippy::too_many_arguments)]
-async fn bootstrap_market_default(
-    payer: &Keypair,
-    authority: &Keypair,
-    market: &Keypair,
-    quote_mint: &Keypair,
-    quote_decimals: u8,
-    base_mint: &Keypair,
-    base_decimals: u8,
-    fees_bps: u16,
-) -> anyhow::Result<Signature> {
-    bootstrap_market(
-        payer,
-        authority, 
-        market, 
-        quote_mint, 
-        base_mint, 
-        100_000, 
-        1_000, 
-        1_000, 
-        base_decimals, 
-        quote_decimals, 
-        fees_bps,
-        None,
-    )
-    .await
+struct BootstrapMarketConfig<'a> {
+    pub client: &'a RpcClient,
+    pub payer: &'a Keypair,
+    pub authority: &'a Keypair,
+    pub market: &'a Keypair,
+    pub quote_mint: &'a Keypair,
+    pub base_mint: &'a Keypair,
+    pub base_decimals: u8,
+    pub quote_decimals: u8,
+    pub num_quote_lots_per_quote_unit: Option<u64>,
+    pub num_base_lots_per_base_unit: Option<u64>,
+    pub tick_size_in_quote_lots_per_base_unit: Option<u64>,
+    pub fee_bps: Option<u16>,
+    pub raw_base_units_per_base_unit: Option<u32>,
 }
 
-#[allow(clippy::too_many_arguments)]
-async fn bootstrap_market(
-    payer: &Keypair,
-    authority: &Keypair,
-    market: &Keypair,
-    quote_mint: &Keypair,
-    base_mint: &Keypair,
-    num_quote_lots_per_quote_unit: u64,
-    num_base_lots_per_base_unit: u64,
-    tick_size_in_quote_lots_per_base_unit: u64,
-    base_decimals: u8,
-    quote_decimals: u8,
-    fee_bps: u16,
-    raw_base_units_per_base_unit: Option<u32>,
-) -> anyhow::Result<Signature> {
-    let client = RpcClient::new("http://localhost:8899".to_string());
-    client
-        .request_airdrop(&payer.pubkey(), sol(100.0))
-        .await?;
-    client
-        .request_airdrop(&authority.pubkey(), sol(100.0))
-        .await?;
+async fn bootstrap_market(cfg: BootstrapMarketConfig<'_>) -> anyhow::Result<Signature> {
+    let BootstrapMarketConfig {
+        client,
+        payer,
+        authority,
+        market,
+        quote_mint,
+        base_mint,
+        base_decimals,
+        quote_decimals,
+        num_quote_lots_per_quote_unit: _num_quote_lots_per_quote_unit,
+        num_base_lots_per_base_unit: _num_base_lots_per_base_unit,
+        tick_size_in_quote_lots_per_base_unit: _tick_size_in_quote_lots_per_base_unit,
+        fee_bps: _fee_bps,
+        raw_base_units_per_base_unit,
+    } = cfg;
+    let num_quote_lots_per_quote_unit = _num_quote_lots_per_quote_unit.unwrap_or(100_000);
+    let num_base_lots_per_base_unit = _num_base_lots_per_base_unit.unwrap_or(1_000);
+    let tick_size_in_quote_lots_per_base_unit =
+        _tick_size_in_quote_lots_per_base_unit.unwrap_or(1_000);
+    let fee_bps = _fee_bps.unwrap_or(1);
+    
     let params = MarketSizeParams {
         bids_size: BOOK_SIZE as u64,
         asks_size: BOOK_SIZE as u64,
         num_seats: NUM_SEATS as u64,
     };
-
-    // create base and quote token mints
-    let create_base_mint_sig = create_mint(
-        &client,
-        payer,
-        &authority.pubkey(),
-        None,
-        base_decimals,
-        base_mint,
-    )
-    .await?;
-    println!("create_base_mint_sig: {:?}", create_base_mint_sig);
-
-    let create_quote_mint_sig = create_mint(
-        &client,
-        payer,
-        &authority.pubkey(),
-        None,
-        quote_decimals,
-        quote_mint,
-    )
-    .await?;
-    println!("create_quote_mint_sig: {:?}", create_quote_mint_sig);
     
-    sleep(
-        std::time::Duration::from_secs(2)
-    ).await;
-    let mint_acct = client.get_account_with_commitment(
-        &quote_mint.pubkey(),
-        CommitmentConfig::processed()
-    ).await?.value.unwrap();
-    println!("quote mint exists? {:?}", mint_acct.owner == anchor_spl::token::spl_token::id());
-    let (_, create_quote_ata_sig) = create_associated_token_account(
-        &client,
-        payer,
-        &quote_mint.pubkey(),
-        &anchor_spl::token::spl_token::id(),
-    )
-    .await?;
-    println!("create_quote_ata_sig: {:?}", create_quote_ata_sig);
+    tokio::time::sleep(std::time::Duration::from_secs(2)).await;
 
+    // create quote token mint
+    let quote_mint_acct = get_account(client, &quote_mint.pubkey()).await;
+    if quote_mint_acct.is_err() {
+        println!("making quote mint...");
+        let create_quote_mint_sig = create_mint(
+            client,
+            payer,
+            &authority.pubkey(),
+            None,
+            quote_decimals,
+            quote_mint,
+        )
+        .await?;
+        println!("create_quote_mint_sig: {:?}", create_quote_mint_sig);
+    } else {
+        println!("quote mint already exists");
+    }
+
+    // create base token mint
+    let base_mint_acct = get_account(client, &base_mint.pubkey()).await;
+    if base_mint_acct.is_err() {
+        println!("making base mint...");
+        let create_base_mint_sig = create_mint(
+            client,
+            payer,
+            &authority.pubkey(),
+            None,
+            base_decimals,
+            base_mint,
+        )
+            .await?;
+        println!("create_base_mint_sig: {:?}", create_base_mint_sig);
+    } else {
+        println!("base mint already exists");
+    }
+
+    // create quote associated token account for payer
+    let quote_ata = get_associated_token_address(&payer.pubkey(), &quote_mint.pubkey());
+    let quote_ata_acct = get_account(client, &quote_ata).await;
+    if quote_ata_acct.is_err() {
+        println!("making quote ata...");
+        let (_, create_quote_ata_sig) = create_associated_token_account(
+            client,
+            payer,
+            &quote_mint.pubkey(),
+            &anchor_spl::token::spl_token::id(),
+        )
+        .await?;
+        println!("create_quote_ata_sig: {:?}", create_quote_ata_sig);
+    } else {
+        println!("quote ata already exists");
+    }
+
+    // create market
     let mut init_instructions = vec![];
-
     init_instructions.extend(
         create_initialize_market_instructions_default(
             &market.pubkey(),
@@ -183,12 +185,12 @@ async fn bootstrap_market(
         &market.pubkey(),
         MarketStatus::Active,
     ));
-
+    
     let sig = send_tx(
-        &client,
-        Transaction::new_with_payer(&init_instructions, Some(&payer.pubkey())),
+        client,
+        payer,
+        &init_instructions,
         &[&payer, &market],
-        Some(true)
     )
     .await?;
     Ok(sig)
@@ -205,47 +207,93 @@ async fn bootstrap_markets() -> anyhow::Result<()> {
     let jup_sol_market = Keypair::from_bytes(&MOCK_JUP_SOL_MARKET).unwrap();
     let jup_usdc_market = Keypair::from_bytes(&MOCK_JUP_USDC_MARKET).unwrap();
 
-    // SOL/USDC market
-    let sol_usdc_sig = bootstrap_market_default(
-        &payer,
-        &authority,
-        &sol_usdc_market,
-        &usdc_mint,
-        MOCK_USDC_DECIMALS,
-        &sol_mint,
-        MOCK_SOL_DECIMALS,
-        1,
-    )
-    .await?;
-    println!("sol usdc: {:?}", sol_usdc_sig);
+    let client = RpcClient::new_with_timeouts_and_commitment(
+        "http://localhost:8899".to_string(),
+        std::time::Duration::from_secs(5),
+        CommitmentConfig::processed(),
+        std::time::Duration::from_secs(5),
+    );
+    airdrop(&client, &payer.pubkey(), 10.0).await?;
+    airdrop(&client, &authority.pubkey(), 10.0).await?;
 
-    // // JUP/SOL market
-    // let jup_sol_sig =
-    //     bootstrap_market_default(
-    //         &payer, 
-    //         &authority, 
-    //         &jup_sol_market, 
-    //         &sol_mint,
-    //         MOCK_SOL_DECIMALS,
-    //         &jup_mint,
-    //         MOCK_JUP_DECIMALS,
-    //         1
-    //     ).await?;
-    // println!("jup sol: {:?}", jup_sol_sig);
-    // 
-    // // JUP/USDC market
-    // let jup_usdc_sig = bootstrap_market_default(
-    //     &payer,
-    //     &authority,
-    //     &jup_usdc_market,
-    //     &usdc_mint,
-    //     MOCK_USDC_DECIMALS,
-    //     &jup_mint,
-    //     MOCK_JUP_DECIMALS,
-    //     1,
-    // )
-    // .await?;
-    // println!("jup usdc: {:?}", jup_usdc_sig);
+    // SOL/USDC market
+    let pre_balance = get_lamports(&client, &payer.pubkey()).await?;
+    println!("pre SOL/USDC balance: {}", pre_balance);
+    let create_sol_usdc_market_sig = bootstrap_market(BootstrapMarketConfig {
+        client: &client,
+        payer: &payer,
+        authority: &authority,
+        market: &sol_usdc_market,
+        quote_mint: &usdc_mint,
+        quote_decimals: MOCK_USDC_DECIMALS,
+        base_mint: &sol_mint,
+        base_decimals: MOCK_SOL_DECIMALS,
+
+        num_quote_lots_per_quote_unit: None,
+        num_base_lots_per_base_unit: None,
+        tick_size_in_quote_lots_per_base_unit: None,
+        fee_bps: None,
+        raw_base_units_per_base_unit: None,
+    })
+    .await?;
+    println!("create_sol_usdc_market_sig: {:?}", create_sol_usdc_market_sig);
+    let post_balance = get_lamports(&client, &payer.pubkey()).await?;
+    println!("post SOL/USDC balance: {}", post_balance);
+    println!("==================================================================");
+    
+    // JUP/SOL market
+    airdrop(&client, &payer.pubkey(), 10.0).await?;
+    airdrop(&client, &authority.pubkey(), 10.0).await?;
+    let pre_balance = get_lamports(&client, &payer.pubkey()).await?;
+    println!("pre JUP/SOL balance: {}", pre_balance);
+    let create_jup_sol_market_sig = bootstrap_market(BootstrapMarketConfig {
+        client: &client,
+        payer: &payer,
+        authority: &authority,
+        market: &jup_sol_market,
+        quote_mint: &sol_mint,
+        quote_decimals: MOCK_SOL_DECIMALS,
+        base_mint: &jup_mint,
+        base_decimals: MOCK_JUP_DECIMALS,
+    
+        num_quote_lots_per_quote_unit: None,
+        num_base_lots_per_base_unit: None,
+        tick_size_in_quote_lots_per_base_unit: None,
+        fee_bps: None,
+        raw_base_units_per_base_unit: None
+    })
+    .await?;
+    println!("create_jup_sol_market_sig: {:?}", create_jup_sol_market_sig);
+    let post_balance = get_lamports(&client, &payer.pubkey()).await?;
+    println!("post JUP/SOL balance: {}", post_balance);
+    println!("==================================================================");
+    
+    // JUP/USDC market
+    airdrop(&client, &payer.pubkey(), 10.0).await?;
+    airdrop(&client, &authority.pubkey(), 10.0).await?;
+    let pre_balance = get_lamports(&client, &payer.pubkey()).await?;
+    println!("pre JUP/USDC balance: {}", pre_balance);
+    let create_jup_usdc_market_sig = bootstrap_market(BootstrapMarketConfig {
+        client: &client,
+        payer: &payer,
+        authority: &authority,
+        market: &jup_usdc_market,
+        quote_mint: &usdc_mint,
+        quote_decimals: MOCK_USDC_DECIMALS,
+        base_mint: &jup_mint,
+        base_decimals: MOCK_JUP_DECIMALS,
+    
+        num_quote_lots_per_quote_unit: None,
+        num_base_lots_per_base_unit: None,
+        tick_size_in_quote_lots_per_base_unit: None,
+        fee_bps: None,
+        raw_base_units_per_base_unit: None
+    })
+    .await?;
+    println!("create_jup_usdc_market_sig: {:?}", create_jup_usdc_market_sig);
+    let post_balance = get_lamports(&client, &payer.pubkey()).await?;
+    println!("post JUP/USDC balance: {}", post_balance);
+    println!("==================================================================");
 
     Ok(())
 }

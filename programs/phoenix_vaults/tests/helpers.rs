@@ -4,7 +4,7 @@ use anchor_spl::token::spl_token::solana_program::program_pack::Pack;
 use anchor_spl::token::spl_token::state::Account as TokenAccount;
 use anchor_spl::token::spl_token::state::Mint;
 use solana_client::nonblocking::rpc_client::RpcClient;
-use solana_client::rpc_config::RpcSendTransactionConfig;
+use solana_client::rpc_config::{RpcRequestAirdropConfig, RpcSendTransactionConfig, RpcSimulateTransactionConfig};
 use solana_program::native_token::LAMPORTS_PER_SOL;
 use solana_program::rent::Rent;
 use solana_sdk::account::Account;
@@ -14,6 +14,7 @@ use solana_sdk::signature::Signature;
 use solana_sdk::signer::{keypair::Keypair, Signer};
 use solana_sdk::transaction::Transaction;
 use std::str::FromStr;
+use solana_program::instruction::Instruction;
 
 pub fn sol(amount: f64) -> u64 {
     (amount * LAMPORTS_PER_SOL as f64) as u64
@@ -23,11 +24,28 @@ pub fn usdc(amount: f64) -> u64 {
     (amount * 1_000_000_f64) as u64
 }
 
+pub async fn get_account(
+    client: &RpcClient,
+    key: &Pubkey
+) -> anyhow::Result<Account> {
+    client
+        .get_account_with_commitment(key, CommitmentConfig::processed())
+        .await
+        .map_err(|e| anyhow::anyhow!("{:?}", e))?
+        .value
+        .ok_or(anyhow::anyhow!("Account not found: {:?}", key))
+}
+
 pub async fn get_token_account(
     client: &RpcClient,
     token_account: &Pubkey,
 ) -> anyhow::Result<TokenAccount> {
-    let account = client.get_account(token_account).await?;
+    let account = client
+        .get_account_with_commitment(token_account, CommitmentConfig::processed())
+        .await
+        .map_err(|e| anyhow::anyhow!("{:?}", e))?
+        .value
+        .ok_or(anyhow::anyhow!("Token account not found: {:?}", token_account))?;
     TokenAccount::unpack(&account.data)
         .map_err(|err| anyhow::anyhow!("Failed to unpack token account: {:?}", err))
 }
@@ -39,40 +57,114 @@ pub async fn get_token_balance(client: &RpcClient, token_account: &Pubkey) -> u6
         .amount
 }
 
-pub async fn send_tx(
+pub async fn get_lamports(client: &RpcClient, key: &Pubkey) -> anyhow::Result<u64> {
+    Ok(client
+        .get_balance_with_commitment(key, CommitmentConfig::processed())
+        .await
+        .map_err(|e| anyhow::anyhow!("{:?}", e))?
+        .value)
+}
+
+pub async fn sim_tx(
     client: &RpcClient,
-    mut tx: Transaction,
+    payer: &Keypair,
+    ixs: &[Instruction],
     signers: &[&Keypair],
-    confirm: Option<bool>
-) -> anyhow::Result<Signature> {
+) -> anyhow::Result<()> {
+    let mut tx = Transaction::new_with_payer(ixs, Some(&payer.pubkey()));
     let blockhash = client
-        .get_latest_blockhash_with_commitment(CommitmentConfig::confirmed())
+        .get_latest_blockhash_with_commitment(CommitmentConfig::processed())
         .await?
         .0;
-    tx.partial_sign(&signers.to_vec(), blockhash);
-    let sig = client
-        .send_transaction_with_config(
-            &tx,
-            RpcSendTransactionConfig {
-                skip_preflight: true,
-                preflight_commitment: None,
-                encoding: None,
-                max_retries: None,
-                min_context_slot: None,
-            },
-        )
-        .await?;
-    if confirm.unwrap_or(false) {
-        client.confirm_transaction_with_spinner(
-            &sig,
-            &blockhash,
-            CommitmentConfig::confirmed()
-        ).await?;
-    }
+    tx.sign(&signers.to_vec(), blockhash);
+    
+    let sim = client.simulate_transaction_with_config(
+        &tx,
+        RpcSimulateTransactionConfig {
+            sig_verify: true,
+            replace_recent_blockhash: false,
+            commitment: Some(CommitmentConfig::processed()),
+            inner_instructions: false,
+            ..Default::default()
+        }
+    ).await?.value;
+    println!("{:#?}", sim.err);
+    Ok(())
+}
+
+pub async fn send_tx(
+    client: &RpcClient,
+    payer: &Keypair,
+    ixs: &[Instruction],
+    signers: &[&Keypair],
+) -> anyhow::Result<Signature> {
+    let mut tx = Transaction::new_with_payer(ixs, Some(&payer.pubkey()));
+    let blockhash = client
+        .get_latest_blockhash_with_commitment(CommitmentConfig::processed())
+        .await?
+        .0;
+    tx.sign(&signers.to_vec(), blockhash);
+    let sig = client.send_transaction_with_config(
+        &tx,
+        RpcSendTransactionConfig {
+            skip_preflight: true,
+            ..Default::default()
+        },
+    ).await?;
+    Ok(sig)
+}
+
+pub async fn send_and_confirm_tx(
+    client: &RpcClient,
+    payer: &Keypair,
+    ixs: &[Instruction],
+    signers: &[&Keypair],
+) -> anyhow::Result<Signature> {
+    let mut tx = Transaction::new_with_payer(ixs, Some(&payer.pubkey()));
+    let blockhash = client
+        .get_latest_blockhash_with_commitment(CommitmentConfig::processed())
+        .await?
+        .0;
+    tx.sign(&signers.to_vec(), blockhash);
+    let sig = client.send_and_confirm_transaction_with_spinner_and_config(
+        &tx,
+        CommitmentConfig::processed(),
+        RpcSendTransactionConfig {
+            skip_preflight: true,
+            ..Default::default()
+        },
+    ).await?;
     Ok(sig)
 }
 
 pub async fn airdrop(
+    client: &RpcClient,
+    key: &Pubkey,
+    amount: f64
+) -> anyhow::Result<Signature> {
+    let blockhash = client
+        .get_latest_blockhash_with_commitment(CommitmentConfig::processed())
+        .await?
+        .0;
+    let bh_str = solana_sdk::bs58::encode(blockhash).into_string();
+    let sig = client.request_airdrop_with_config(
+        key, 
+        sol(amount),
+        RpcRequestAirdropConfig {
+            recent_blockhash: Some(bh_str),
+            commitment: Some(CommitmentConfig::processed()),
+        }
+    ).await
+        .map_err(|e| anyhow::anyhow!("{:?}", e))?;
+    client.confirm_transaction_with_spinner(
+        &sig,
+        &blockhash,
+        CommitmentConfig::processed()
+    ).await?;
+    Ok(sig)
+}
+
+pub async fn transfer(
     client: &RpcClient,
     payer: &Keypair,
     receiver: &Pubkey,
@@ -83,8 +175,7 @@ pub async fn airdrop(
         receiver,
         amount,
     )];
-    let tx = Transaction::new_with_payer(&ixs, Some(&payer.pubkey()));
-    send_tx(client, tx, &[payer], None).await
+    send_and_confirm_tx(client, payer, &ixs, &[payer]).await
 }
 
 pub fn clone_keypair(keypair: &Keypair) -> Keypair {
@@ -93,13 +184,6 @@ pub fn clone_keypair(keypair: &Keypair) -> Keypair {
 
 pub fn clone_pubkey(pubkey: &Pubkey) -> Pubkey {
     Pubkey::from_str(&pubkey.to_string()).unwrap()
-}
-
-pub async fn get_account(client: &RpcClient, pubkey: &Pubkey) -> anyhow::Result<Account> {
-    client
-        .get_account(pubkey)
-        .await
-        .map_err(|err| anyhow::anyhow!("Failed to get account: {:?}", err))
 }
 
 pub async fn create_associated_token_account(
@@ -116,11 +200,11 @@ pub async fn create_associated_token_account(
             token_program,
         ),
     ];
-    let sig = send_tx(
+    let sig = send_and_confirm_tx(
         client,
-        Transaction::new_with_payer(&ixs, None),
+        payer,
+        &ixs,
         &[payer],
-        Some(true)
     )
     .await?;
     Ok((
@@ -152,11 +236,11 @@ pub async fn create_mint(
         decimals,
     )?;
     let ixs = vec![create_acct_ix, init_mint_ix];
-    let sig = send_tx(
+    let sig = send_and_confirm_tx(
         client,
-        Transaction::new_with_payer(&ixs, None),
+        payer,
+        &ixs,
         &[payer, mint],
-        Some(true)
     )
     .await?;
     Ok(sig)
@@ -186,11 +270,11 @@ pub async fn mint_tokens(
     )
     .unwrap();
 
-    send_tx(
+    send_and_confirm_tx(
         client,
-        Transaction::new_with_payer(&[ix], None),
+        payer,
+        &[ix],
         &signing_keypairs,
-        Some(true)
     )
     .await
 }
