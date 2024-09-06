@@ -101,13 +101,13 @@ async fn bootstrap_market(cfg: BootstrapMarketConfig<'_>) -> anyhow::Result<Sign
     let tick_size_in_quote_lots_per_base_unit =
         _tick_size_in_quote_lots_per_base_unit.unwrap_or(1_000);
     let fee_bps = _fee_bps.unwrap_or(1);
-    
+
     let params = MarketSizeParams {
         bids_size: BOOK_SIZE as u64,
         asks_size: BOOK_SIZE as u64,
         num_seats: NUM_SEATS as u64,
     };
-    
+
     tokio::time::sleep(std::time::Duration::from_secs(2)).await;
 
     // create quote token mint
@@ -140,7 +140,7 @@ async fn bootstrap_market(cfg: BootstrapMarketConfig<'_>) -> anyhow::Result<Sign
             base_decimals,
             base_mint,
         )
-            .await?;
+        .await?;
         println!("create_base_mint_sig: {:?}", create_base_mint_sig);
     } else {
         println!("base mint already exists");
@@ -185,14 +185,8 @@ async fn bootstrap_market(cfg: BootstrapMarketConfig<'_>) -> anyhow::Result<Sign
         &market.pubkey(),
         MarketStatus::Active,
     ));
-    
-    let sig = send_tx(
-        client,
-        payer,
-        &init_instructions,
-        &[&payer, &market],
-    )
-    .await?;
+
+    let sig = send_tx(client, payer, &init_instructions, &[&payer, &market]).await?;
     Ok(sig)
 }
 
@@ -236,11 +230,14 @@ async fn bootstrap_markets() -> anyhow::Result<()> {
         raw_base_units_per_base_unit: None,
     })
     .await?;
-    println!("create_sol_usdc_market_sig: {:?}", create_sol_usdc_market_sig);
+    println!(
+        "create_sol_usdc_market_sig: {:?}",
+        create_sol_usdc_market_sig
+    );
     let post_balance = get_lamports(&client, &payer.pubkey()).await?;
     println!("post SOL/USDC balance: {}", post_balance);
     println!("==================================================================");
-    
+
     // JUP/SOL market
     airdrop(&client, &payer.pubkey(), 10.0).await?;
     airdrop(&client, &authority.pubkey(), 10.0).await?;
@@ -255,19 +252,19 @@ async fn bootstrap_markets() -> anyhow::Result<()> {
         quote_decimals: MOCK_SOL_DECIMALS,
         base_mint: &jup_mint,
         base_decimals: MOCK_JUP_DECIMALS,
-    
+
         num_quote_lots_per_quote_unit: None,
         num_base_lots_per_base_unit: None,
         tick_size_in_quote_lots_per_base_unit: None,
         fee_bps: None,
-        raw_base_units_per_base_unit: None
+        raw_base_units_per_base_unit: None,
     })
     .await?;
     println!("create_jup_sol_market_sig: {:?}", create_jup_sol_market_sig);
     let post_balance = get_lamports(&client, &payer.pubkey()).await?;
     println!("post JUP/SOL balance: {}", post_balance);
     println!("==================================================================");
-    
+
     // JUP/USDC market
     airdrop(&client, &payer.pubkey(), 10.0).await?;
     airdrop(&client, &authority.pubkey(), 10.0).await?;
@@ -282,15 +279,18 @@ async fn bootstrap_markets() -> anyhow::Result<()> {
         quote_decimals: MOCK_USDC_DECIMALS,
         base_mint: &jup_mint,
         base_decimals: MOCK_JUP_DECIMALS,
-    
+
         num_quote_lots_per_quote_unit: None,
         num_base_lots_per_base_unit: None,
         tick_size_in_quote_lots_per_base_unit: None,
         fee_bps: None,
-        raw_base_units_per_base_unit: None
+        raw_base_units_per_base_unit: None,
     })
     .await?;
-    println!("create_jup_usdc_market_sig: {:?}", create_jup_usdc_market_sig);
+    println!(
+        "create_jup_usdc_market_sig: {:?}",
+        create_jup_usdc_market_sig
+    );
     let post_balance = get_lamports(&client, &payer.pubkey()).await?;
     println!("post JUP/USDC balance: {}", post_balance);
     println!("==================================================================");

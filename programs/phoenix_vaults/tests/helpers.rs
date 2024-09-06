@@ -4,7 +4,10 @@ use anchor_spl::token::spl_token::solana_program::program_pack::Pack;
 use anchor_spl::token::spl_token::state::Account as TokenAccount;
 use anchor_spl::token::spl_token::state::Mint;
 use solana_client::nonblocking::rpc_client::RpcClient;
-use solana_client::rpc_config::{RpcRequestAirdropConfig, RpcSendTransactionConfig, RpcSimulateTransactionConfig};
+use solana_client::rpc_config::{
+    RpcRequestAirdropConfig, RpcSendTransactionConfig, RpcSimulateTransactionConfig,
+};
+use solana_program::instruction::Instruction;
 use solana_program::native_token::LAMPORTS_PER_SOL;
 use solana_program::rent::Rent;
 use solana_sdk::account::Account;
@@ -14,7 +17,6 @@ use solana_sdk::signature::Signature;
 use solana_sdk::signer::{keypair::Keypair, Signer};
 use solana_sdk::transaction::Transaction;
 use std::str::FromStr;
-use solana_program::instruction::Instruction;
 
 pub fn sol(amount: f64) -> u64 {
     (amount * LAMPORTS_PER_SOL as f64) as u64
@@ -24,10 +26,7 @@ pub fn usdc(amount: f64) -> u64 {
     (amount * 1_000_000_f64) as u64
 }
 
-pub async fn get_account(
-    client: &RpcClient,
-    key: &Pubkey
-) -> anyhow::Result<Account> {
+pub async fn get_account(client: &RpcClient, key: &Pubkey) -> anyhow::Result<Account> {
     client
         .get_account_with_commitment(key, CommitmentConfig::processed())
         .await
@@ -45,7 +44,10 @@ pub async fn get_token_account(
         .await
         .map_err(|e| anyhow::anyhow!("{:?}", e))?
         .value
-        .ok_or(anyhow::anyhow!("Token account not found: {:?}", token_account))?;
+        .ok_or(anyhow::anyhow!(
+            "Token account not found: {:?}",
+            token_account
+        ))?;
     TokenAccount::unpack(&account.data)
         .map_err(|err| anyhow::anyhow!("Failed to unpack token account: {:?}", err))
 }
@@ -77,17 +79,20 @@ pub async fn sim_tx(
         .await?
         .0;
     tx.sign(&signers.to_vec(), blockhash);
-    
-    let sim = client.simulate_transaction_with_config(
-        &tx,
-        RpcSimulateTransactionConfig {
-            sig_verify: true,
-            replace_recent_blockhash: false,
-            commitment: Some(CommitmentConfig::processed()),
-            inner_instructions: false,
-            ..Default::default()
-        }
-    ).await?.value;
+
+    let sim = client
+        .simulate_transaction_with_config(
+            &tx,
+            RpcSimulateTransactionConfig {
+                sig_verify: true,
+                replace_recent_blockhash: false,
+                commitment: Some(CommitmentConfig::processed()),
+                inner_instructions: false,
+                ..Default::default()
+            },
+        )
+        .await?
+        .value;
     println!("{:#?}", sim.err);
     Ok(())
 }
@@ -104,13 +109,15 @@ pub async fn send_tx(
         .await?
         .0;
     tx.sign(&signers.to_vec(), blockhash);
-    let sig = client.send_transaction_with_config(
-        &tx,
-        RpcSendTransactionConfig {
-            skip_preflight: true,
-            ..Default::default()
-        },
-    ).await?;
+    let sig = client
+        .send_transaction_with_config(
+            &tx,
+            RpcSendTransactionConfig {
+                skip_preflight: true,
+                ..Default::default()
+            },
+        )
+        .await?;
     Ok(sig)
 }
 
@@ -126,41 +133,39 @@ pub async fn send_and_confirm_tx(
         .await?
         .0;
     tx.sign(&signers.to_vec(), blockhash);
-    let sig = client.send_and_confirm_transaction_with_spinner_and_config(
-        &tx,
-        CommitmentConfig::processed(),
-        RpcSendTransactionConfig {
-            skip_preflight: true,
-            ..Default::default()
-        },
-    ).await?;
+    let sig = client
+        .send_and_confirm_transaction_with_spinner_and_config(
+            &tx,
+            CommitmentConfig::processed(),
+            RpcSendTransactionConfig {
+                skip_preflight: true,
+                ..Default::default()
+            },
+        )
+        .await?;
     Ok(sig)
 }
 
-pub async fn airdrop(
-    client: &RpcClient,
-    key: &Pubkey,
-    amount: f64
-) -> anyhow::Result<Signature> {
+pub async fn airdrop(client: &RpcClient, key: &Pubkey, amount: f64) -> anyhow::Result<Signature> {
     let blockhash = client
         .get_latest_blockhash_with_commitment(CommitmentConfig::processed())
         .await?
         .0;
     let bh_str = solana_sdk::bs58::encode(blockhash).into_string();
-    let sig = client.request_airdrop_with_config(
-        key, 
-        sol(amount),
-        RpcRequestAirdropConfig {
-            recent_blockhash: Some(bh_str),
-            commitment: Some(CommitmentConfig::processed()),
-        }
-    ).await
+    let sig = client
+        .request_airdrop_with_config(
+            key,
+            sol(amount),
+            RpcRequestAirdropConfig {
+                recent_blockhash: Some(bh_str),
+                commitment: Some(CommitmentConfig::processed()),
+            },
+        )
+        .await
         .map_err(|e| anyhow::anyhow!("{:?}", e))?;
-    client.confirm_transaction_with_spinner(
-        &sig,
-        &blockhash,
-        CommitmentConfig::processed()
-    ).await?;
+    client
+        .confirm_transaction_with_spinner(&sig, &blockhash, CommitmentConfig::processed())
+        .await?;
     Ok(sig)
 }
 
@@ -200,13 +205,7 @@ pub async fn create_associated_token_account(
             token_program,
         ),
     ];
-    let sig = send_and_confirm_tx(
-        client,
-        payer,
-        &ixs,
-        &[payer],
-    )
-    .await?;
+    let sig = send_and_confirm_tx(client, payer, &ixs, &[payer]).await?;
     Ok((
         get_associated_token_address(&payer.pubkey(), token_mint),
         sig,
@@ -236,13 +235,7 @@ pub async fn create_mint(
         decimals,
     )?;
     let ixs = vec![create_acct_ix, init_mint_ix];
-    let sig = send_and_confirm_tx(
-        client,
-        payer,
-        &ixs,
-        &[payer, mint],
-    )
-    .await?;
+    let sig = send_and_confirm_tx(client, payer, &ixs, &[payer, mint]).await?;
     Ok(sig)
 }
 
@@ -270,11 +263,5 @@ pub async fn mint_tokens(
     )
     .unwrap();
 
-    send_and_confirm_tx(
-        client,
-        payer,
-        &[ix],
-        &signing_keypairs,
-    )
-    .await
+    send_and_confirm_tx(client, payer, &[ix], &signing_keypairs).await
 }

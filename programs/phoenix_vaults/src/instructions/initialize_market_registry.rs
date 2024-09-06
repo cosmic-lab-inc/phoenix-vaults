@@ -17,10 +17,10 @@ pub fn initialize_market_registry<'c: 'info, 'info>(
     let markets: Vec<Pubkey> = ctx.load_markets(params)?.keys().cloned().collect();
 
     let auth = ctx.accounts.authority.key();
-    let _ = MarketRegistry::deserialize_lookup_table(
-        auth,
-        ctx.accounts.lut.to_account_info().data.borrow().as_ref(),
-    )?;
+    let lut_acct_info = ctx.accounts.lut.to_account_info();
+    let lut_data = lut_acct_info.data.borrow();
+    msg!("lut data: {}", lut_data.len());
+    let _ = MarketRegistry::deserialize_lookup_table(auth, lut_data.as_ref())?;
 
     let ix = solana_address_lookup_table_program::instruction::extend_lookup_table(
         ctx.accounts.lut.key(),

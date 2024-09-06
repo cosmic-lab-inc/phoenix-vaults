@@ -29,7 +29,10 @@ impl<'a: 'info, 'info, T: anchor_lang::Bumps> MarketMapProvider<'a>
             )?);
             let market = load_with_dispatch(&header.market_size_params, bytes)?;
             let ladder = market.inner.get_ladder(1);
-            let tick_price = ladder.asks[0].price_in_ticks;
+            let tick_price = match ladder.asks.first() {
+                Some(ask) => ask.price_in_ticks,
+                None => 0,
+            };
             let price = ticks_to_u64_price(&header, tick_price);
 
             let base_mint = header.base_params.mint_key;
@@ -73,7 +76,10 @@ impl<'a: 'info, 'info, T: anchor_lang::Bumps> MarketMapProvider<'a>
         }
         let market = load_with_dispatch(&header.market_size_params, bytes)?;
         let ladder = market.inner.get_ladder(1);
-        let tick_price = ladder.asks[0].price_in_ticks;
+        let tick_price = match ladder.asks.first() {
+            Some(ask) => ask.price_in_ticks,
+            None => 0,
+        };
         let price = ticks_to_u64_price(&header, tick_price);
         Ok((account.key(), price))
     }

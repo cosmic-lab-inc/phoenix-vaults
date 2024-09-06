@@ -1,9 +1,12 @@
 import * as anchor from '@coral-xyz/anchor';
 import {
 	AccountMeta,
+	AddressLookupTableAccount,
 	AddressLookupTableProgram,
 	ConfirmOptions,
+	Keypair,
 	PublicKey,
+	TransactionConfirmationStrategy,
 } from '@solana/web3.js';
 import { assert } from 'chai';
 import { before } from 'mocha';
@@ -23,7 +26,6 @@ import {
 	MOCK_JUP_USDC_MARKET,
 } from '../ts/sdk';
 import { BN } from '@coral-xyz/anchor';
-import { mockMint } from './testHelpers';
 
 describe('phoenixVaults', () => {
 	const opts: ConfirmOptions = {
@@ -35,6 +37,9 @@ describe('phoenixVaults', () => {
 	// Configure the client to use the local cluster.
 	const provider = anchor.AnchorProvider.local(undefined, opts);
 	anchor.setProvider(provider);
+	// @ts-ignore
+	const payer: any = provider.wallet.payer;
+	const providerKeypair = payer as Keypair;
 	const program = anchor.workspace
 		.PhoenixVaults as anchor.Program<PhoenixVaults>;
 
@@ -61,11 +66,11 @@ describe('phoenixVaults', () => {
 	const solUsdcMarketIndex = 0;
 
 	before(async () => {
-		await mockMint(provider, MOCK_USDC_MINT);
-		await mockMint(provider, MOCK_SOL_MINT);
-		await mockMint(provider, MOCK_JUP_MINT);
+		// await mockMint(provider, MOCK_USDC_MINT);
+		// await mockMint(provider, MOCK_SOL_MINT);
+		// await mockMint(provider, MOCK_JUP_MINT);
 
-		lutSlot = await provider.connection.getSlot();
+		lutSlot = await provider.connection.getSlot('finalized');
 		const slotBuffer = Buffer.alloc(8);
 		slotBuffer.writeBigInt64LE(BigInt(lutSlot), 0);
 		const lutSeeds = [provider.publicKey.toBuffer(), slotBuffer];
@@ -76,11 +81,12 @@ describe('phoenixVaults', () => {
 	});
 
 	it('Create Address Lookup Table', async () => {
-		const [ix, _] = AddressLookupTableProgram.createLookupTable({
+		const [ix, lutKey] = AddressLookupTableProgram.createLookupTable({
 			authority: provider.publicKey,
 			payer: provider.publicKey,
 			recentSlot: lutSlot,
 		});
+		assert(lutKey.toString() === lut.toString());
 		const recentBlockhash = await provider.connection
 			.getLatestBlockhash()
 			.then((res) => res.blockhash);
@@ -90,7 +96,20 @@ describe('phoenixVaults', () => {
 			instructions: [ix],
 		}).compileToV0Message();
 		const tx = new anchor.web3.VersionedTransaction(msg);
-		await provider.wallet.signTransaction(tx);
+		tx.sign([providerKeypair]);
+
+		const sig = await provider.sendAndConfirm(tx, [], {
+			skipPreflight: true,
+		});
+		console.log('create lut:', sig);
+
+		const lutAcctInfo = await provider.connection.getAccountInfo(
+			lut,
+			'processed'
+		);
+		assert(lutAcctInfo !== null);
+		const lutAcct = AddressLookupTableAccount.deserialize(lutAcctInfo.data);
+		assert(lutAcct.authority.toString() === provider.publicKey.toString());
 	});
 
 	it('Initialize Market Registry', async () => {
