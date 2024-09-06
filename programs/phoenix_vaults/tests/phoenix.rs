@@ -6,7 +6,7 @@ use solana_sdk::signature::{Keypair, Signature};
 use solana_sdk::signer::Signer;
 use spl_associated_token_account::get_associated_token_address;
 
-pub mod helpers;
+mod helpers;
 use crate::helpers::*;
 
 const BOOK_SIZE: usize = 4096;

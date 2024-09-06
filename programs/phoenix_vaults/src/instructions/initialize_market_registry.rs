@@ -7,33 +7,31 @@ pub fn initialize_market_registry<'c: 'info, 'info>(
     ctx: Context<'_, '_, 'c, 'info, InitializeMarketRegistry<'info>>,
     params: MarketLookupTableParams,
 ) -> Result<()> {
-    // drift validates markets given in rem accts because it checks all spot/perp positions for the user,
-    // and if a market is missing it will fail since it can't compute the USDC equity of that position.
-    //
-    // for Phoenix, we can load all markets but that must be cross-referenced to vault tokens owned.
-    // so for each market we must check that the rem accts provides the vault's token account for that market's base mint.
-    // then fetch the price of that market and multiply by the vault's token balance to get the vault's equity.
-
-    let markets: Vec<Pubkey> = ctx.load_markets(params)?.keys().cloned().collect();
-
     let auth = ctx.accounts.authority.key();
     let lut_acct_info = ctx.accounts.lut.to_account_info();
     let lut_data = lut_acct_info.data.borrow();
-    msg!("lut data: {}", lut_data.len());
-    let _ = MarketRegistry::deserialize_lookup_table(auth, lut_data.as_ref())?;
+    // checks unchecked account info is a lookup table
+    let lut = MarketRegistry::deserialize_lookup_table(auth, lut_data.as_ref())?;
 
-    let ix = solana_address_lookup_table_program::instruction::extend_lookup_table(
-        ctx.accounts.lut.key(),
-        auth,
-        None,
-        markets,
-    );
-    let acct_infos = [
-        ctx.accounts.lut.to_account_info(),
-        ctx.accounts.authority.to_account_info(),
-    ];
-    if let Err(e) = solana_program::program::invoke(&ix, &acct_infos) {
-        msg!("{:?}", e);
+    let markets: Vec<Pubkey> = ctx.load_markets(params)?.keys().cloned().collect();
+
+    if markets.len() != lut.addresses.len() {
+        msg!(
+            "MarketRegistryLength: {:?} != {:?}",
+            markets.len(),
+            lut.addresses.len()
+        );
+        return Err(crate::error::ErrorCode::MarketRegistryLength.into());
+    }
+
+    // zip markets and lut addresses and check they match
+    // if this ix was built correctly, the order of the remaining accounts should simply be the lut addresses
+    for (market, lut_address) in markets.iter().zip(lut.addresses.iter()) {
+        if market != lut_address {
+            msg!("MarketRegistryMismatch: {:?} != {:?}", market, lut_address);
+            return Err(crate::error::ErrorCode::MarketRegistryMismatch.into());
+            // return Err(anchor_lang::error::Error::from(crate::error::ErrorCode::MarketRegistryMismatch));
+        }
     }
 
     let mut registry = ctx.accounts.market_registry.load_init()?;

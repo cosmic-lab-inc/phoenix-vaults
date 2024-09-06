@@ -143,6 +143,62 @@ export type PhoenixVaults = {
 					};
 				}
 			];
+		},
+		{
+			name: 'deposit';
+			accounts: [
+				{
+					name: 'vault';
+					isMut: true;
+					isSigner: false;
+				},
+				{
+					name: 'investor';
+					isMut: true;
+					isSigner: false;
+				},
+				{
+					name: 'authority';
+					isMut: false;
+					isSigner: true;
+				},
+				{
+					name: 'marketRegistry';
+					isMut: false;
+					isSigner: false;
+				},
+				{
+					name: 'vaultTokenAccount';
+					isMut: true;
+					isSigner: false;
+				},
+				{
+					name: 'investorTokenAccount';
+					isMut: true;
+					isSigner: false;
+				},
+				{
+					name: 'tokenProgram';
+					isMut: false;
+					isSigner: false;
+				},
+				{
+					name: 'rent';
+					isMut: false;
+					isSigner: false;
+				},
+				{
+					name: 'systemProgram';
+					isMut: false;
+					isSigner: false;
+				}
+			];
+			args: [
+				{
+					name: 'amount';
+					type: 'u64';
+				}
+			];
 		}
 	];
 	accounts: [
@@ -959,6 +1015,16 @@ export type PhoenixVaults = {
 			code: 6033;
 			name: 'AddressLookupTableAuthorityInvalid';
 			msg: 'AddressLookupTableAuthorityInvalid';
+		},
+		{
+			code: 6034;
+			name: 'MarketRegistryLength';
+			msg: 'MarketRegistryLength';
+		},
+		{
+			code: 6035;
+			name: 'MarketRegistryMismatch';
+			msg: 'MarketRegistryMismatch';
 		}
 	];
 };
@@ -1106,6 +1172,62 @@ export const IDL: PhoenixVaults = {
 					type: {
 						defined: 'MarketLookupTableParams',
 					},
+				},
+			],
+		},
+		{
+			name: 'deposit',
+			accounts: [
+				{
+					name: 'vault',
+					isMut: true,
+					isSigner: false,
+				},
+				{
+					name: 'investor',
+					isMut: true,
+					isSigner: false,
+				},
+				{
+					name: 'authority',
+					isMut: false,
+					isSigner: true,
+				},
+				{
+					name: 'marketRegistry',
+					isMut: false,
+					isSigner: false,
+				},
+				{
+					name: 'vaultTokenAccount',
+					isMut: true,
+					isSigner: false,
+				},
+				{
+					name: 'investorTokenAccount',
+					isMut: true,
+					isSigner: false,
+				},
+				{
+					name: 'tokenProgram',
+					isMut: false,
+					isSigner: false,
+				},
+				{
+					name: 'rent',
+					isMut: false,
+					isSigner: false,
+				},
+				{
+					name: 'systemProgram',
+					isMut: false,
+					isSigner: false,
+				},
+			],
+			args: [
+				{
+					name: 'amount',
+					type: 'u64',
 				},
 			],
 		},
@@ -1924,6 +2046,16 @@ export const IDL: PhoenixVaults = {
 			code: 6033,
 			name: 'AddressLookupTableAuthorityInvalid',
 			msg: 'AddressLookupTableAuthorityInvalid',
+		},
+		{
+			code: 6034,
+			name: 'MarketRegistryLength',
+			msg: 'MarketRegistryLength',
+		},
+		{
+			code: 6035,
+			name: 'MarketRegistryMismatch',
+			msg: 'MarketRegistryMismatch',
 		},
 	],
 };

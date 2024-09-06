@@ -3,7 +3,8 @@ use anchor_spl::token::{self, Token, TokenAccount, Transfer};
 
 use crate::constraints::{is_authority_for_investor, is_token_for_vault};
 use crate::cpis::TokenTransferCPI;
-use crate::state::{Investor, Vault};
+use crate::instructions::MarketLookupTableParams;
+use crate::state::{Investor, MarketMapProvider, MarketRegistry, Vault};
 
 pub fn deposit<'c: 'info, 'info>(
     ctx: Context<'_, '_, 'c, 'info, Deposit<'info>>,
@@ -11,18 +12,24 @@ pub fn deposit<'c: 'info, 'info>(
 ) -> Result<()> {
     let clock = &Clock::get()?;
 
+    let vault_key = ctx.accounts.vault.key();
     let mut vault = ctx.accounts.vault.load_mut()?;
     let mut investor = ctx.accounts.investor.load_mut()?;
 
-    // todo:
-    //  drift validates markets given in rem accts because it checks all spot/perp positions for the user,
-    //  and if a market is missing it will fail since it can't compute the USDC equity of that position.
-    //  for phoenix we can load all markets but that must be cross-referenced to vault tokens owned.
-    //  so for each market we must check that the rem accts provides the vault's token account for that market's base mint.
-    //  then fetch the price of that market and multiply by the vault's token balance to get the vault's equity.
+    // Drift validates vault user positions against the remaining accounts provider for those markets.
+    // If the remaining accounts do not contain every market the user has a position in, then it errors.
+    // For Phoenix, we use our MarketRegistry as the official source of truth for the "list of markets",
+    // and we can get the TraderState for the vault within each market to determine the vault's positions.
+    // If the remaining accounts do not contain every market in the MarketRegistry that the vault has a position in,
+    // then this instruction will error.
 
-    // let (sol_usdc_market, sol_price) = ctx.load_sol_usdc_market()?;
-    let vault_equity = 0;
+    let registry = ctx.accounts.market_registry.load()?;
+    let params = MarketLookupTableParams {
+        usdc_mint: registry.usdc_mint,
+        sol_mint: registry.sol_mint,
+        sol_usdc_market_index: 0,
+    };
+    let vault_equity = ctx.equity(&vault_key, params)?;
 
     investor.deposit(amount, vault_equity, &mut vault, clock.unix_timestamp)?;
 
@@ -45,6 +52,12 @@ pub struct Deposit<'info> {
     )]
     pub investor: AccountLoader<'info, Investor>,
     pub authority: Signer<'info>,
+
+    #[account(
+        seeds = [b"market_registry"],
+        bump
+    )]
+    pub market_registry: AccountLoader<'info, MarketRegistry>,
 
     #[account(
         mut,

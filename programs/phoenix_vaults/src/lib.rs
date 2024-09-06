@@ -35,4 +35,11 @@ pub mod phoenix_vaults {
     ) -> Result<()> {
         instructions::initialize_market_registry(ctx, params)
     }
+
+    pub fn deposit<'c: 'info, 'info>(
+        ctx: Context<'_, '_, 'c, 'info, Deposit<'info>>,
+        amount: u64,
+    ) -> Result<()> {
+        instructions::deposit(ctx, amount)
+    }
 }

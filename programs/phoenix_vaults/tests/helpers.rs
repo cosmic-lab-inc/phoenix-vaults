@@ -265,3 +265,11 @@ pub async fn mint_tokens(
 
     send_and_confirm_tx(client, payer, &[ix], &signing_keypairs).await
 }
+
+#[macro_export]
+macro_rules! trunc {
+    ($num:expr, $decimals:expr) => {{
+        let factor = 10.0_f64.powi($decimals);
+        ($num * factor).round() / factor
+    }};
+}
