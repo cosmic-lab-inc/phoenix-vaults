@@ -14,7 +14,6 @@ import {
 import {
 	Connection,
 	Keypair,
-	LAMPORTS_PER_SOL,
 	PublicKey,
 	sendAndConfirmTransaction,
 	SystemProgram,
@@ -172,16 +171,16 @@ export async function mockUserUSDCAccount(
 	}
 }
 
-export async function mintUSDCToUser(
-	fakeUSDCMint: Keypair,
-	userUSDCAccount: PublicKey,
+export async function mintTokens(
+	fakeMint: Keypair,
+	userAccount: PublicKey,
 	usdcMintAmount: BN,
 	provider: Provider
 ): Promise<void> {
 	const tx = new Transaction();
 	const mintToUserAccountTx = await createMintToInstruction(
-		fakeUSDCMint.publicKey,
-		userUSDCAccount,
+		fakeMint.publicKey,
+		userAccount,
 		// @ts-ignore
 		provider.wallet.publicKey,
 		usdcMintAmount.toNumber()

@@ -49,7 +49,7 @@ yarn anchor-tests
 
 # when `yarn anchor-tests` is finished, send SIGINT
 # to parent process to kill all child processes
-kill -- -$parent_pid
+kill_process
 
 while true; do
     sleep 1

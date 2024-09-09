@@ -23,13 +23,18 @@ import {
 	MOCK_SOL_USDC_MARKET,
 	MOCK_JUP_SOL_MARKET,
 	MOCK_JUP_USDC_MARKET,
+	MOCK_MARKET_AUTHORITY,
+	QUOTE_PRECISION,
 } from '../ts/sdk';
 import { BN } from '@coral-xyz/anchor';
 import {
 	createAssociatedTokenAccountInstruction,
+	createMintToInstruction,
 	getAssociatedTokenAddressSync,
+	mintTo,
 	TOKEN_PROGRAM_ID,
 } from '@solana/spl-token';
+import { mintTokens } from './testHelpers';
 
 describe('phoenixVaults', () => {
 	const opts: ConfirmOptions = {
@@ -51,6 +56,7 @@ describe('phoenixVaults', () => {
 	let lutSlot: number;
 	let lut: PublicKey;
 
+	const mintAuth = MOCK_MARKET_AUTHORITY;
 	const usdcMint = MOCK_USDC_MINT;
 	const solMint = MOCK_SOL_MINT;
 	const _jupMint = MOCK_JUP_MINT;
@@ -71,6 +77,7 @@ describe('phoenixVaults', () => {
 
 	const marketKeys: PublicKey[] = [solUsdcMarket, jupSolMarket, jupUsdcMarket];
 	const solUsdcMarketIndex = 0;
+	const usdcAmount = new BN(1_000).mul(QUOTE_PRECISION);
 
 	before(async () => {
 		lutSlot = await provider.connection.getSlot('finalized');
@@ -224,7 +231,21 @@ describe('phoenixVaults', () => {
 			provider.publicKey,
 			usdcMint.publicKey
 		);
-		// todo: mint tokens to investorAta
+		const mintToIx = createMintToInstruction(
+			usdcMint.publicKey,
+			investorAta,
+			mintAuth.publicKey,
+			usdcAmount.toNumber()
+		);
+		// await mintTo(
+		// 	provider.connection,
+		// 	providerKeypair,
+		// 	usdcMint.publicKey,
+		// 	investorAta,
+		// 	mintAuth,
+		// 	usdcAmount.toNumber(),
+		// 	[]
+		// );
 
 		const accounts = {
 			vault: vaultKey,
@@ -242,14 +263,17 @@ describe('phoenixVaults', () => {
 				isSigner: false,
 			};
 		});
-		const amount = 0 as number;
 		await program.methods
-			.deposit(new BN(amount))
-			.preInstructions([createAtaIx])
+			.deposit(usdcAmount)
+			.preInstructions([createAtaIx, mintToIx])
 			.accounts(accounts)
 			.remainingAccounts(markets)
+			.signers([mintAuth])
 			.rpc();
-		const acct = await program.account.investor.fetch(investor);
-		assert(!!acct);
+		const investorAcct = await program.account.investor.fetch(investor);
+		const deposits = investorAcct.netDeposits.div(QUOTE_PRECISION).toNumber();
+		const shares = investorAcct.vaultShares.div(QUOTE_PRECISION).toNumber();
+		assert(deposits === 1000);
+		assert(shares === 1000);
 	});
 });
