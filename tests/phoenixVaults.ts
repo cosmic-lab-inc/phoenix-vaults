@@ -43,6 +43,8 @@ import {
 	getMakerSetupInstructionsForMarket,
 	getLimitOrderPacket,
 	Side,
+	getSeatManagerAddress,
+	deserializeSeatManagerData,
 } from '@ellipsis-labs/phoenix-sdk';
 
 const MARKET_CONFIG: RawMarketConfig = {
@@ -319,7 +321,26 @@ describe('phoenixVaults', () => {
 		assert(shares === 1000);
 	});
 
-	it('Long SOL-USDC', async () => {
+	it('Check SOL/USDC Seat Manager', async () => {
+		const smKey = getSeatManagerAddress(solUsdcMarket);
+		const smAcct = await provider.connection.getAccountInfo(smKey);
+		if (!smAcct) {
+			throw new Error(
+				`Seat manager ${smKey.toString()} not found for market ${solUsdcMarket.toString()}`
+			);
+		}
+
+		// Deserialize the data inside the Seat Manager Account
+		const sm = deserializeSeatManagerData(smAcct.data);
+
+		// For the purposes of this example, assert that the authority for the above market is the same as the devnetSeatManagerAuthority.
+		// You can remove or replace the below logic with the conditions you want to verify.
+		console.log(`seat manager auth: ${sm.authority.toString()}`);
+		assert.equal(sm.market.toBase58(), solUsdcMarket.toBase58());
+		console.log('Seat Manager Market: ', sm.market.toBase58());
+	});
+
+	it('Long SOL/USDC', async () => {
 		// todo
 		//   init maker and place maker order
 		//   place taker order with vault

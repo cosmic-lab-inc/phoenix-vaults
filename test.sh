@@ -1,5 +1,13 @@
 #!/usr/bin/env bash
 
+detach=false
+# receive OPTIONS from command line
+# if --detach then store detach=true
+if [[ "$1" == "--detach" ]]; then
+    detach=true
+fi
+
+
 kill_process() {
     # Killing local validator if currently running
     solana_pid=$(pgrep -f solana)
@@ -38,9 +46,13 @@ chmod +x ./bootstrap.sh
 # store pid of `yarn anchor-tests`
 yarn anchor-tests
 
-# when `yarn anchor-tests` is finished, send SIGINT
-# to parent process to kill all child processes
-kill_process
+# if detach is false, run kill_process
+if [[ $detach == false ]]; then
+    kill_process
+fi
+if [[ $detach == true ]]; then
+    echo "Validator still running..."
+fi
 
 while true; do
     sleep 1

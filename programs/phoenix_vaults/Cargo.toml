@@ -27,6 +27,7 @@ solana-address-lookup-table-program = "1.16"
 phoenix-common = { version = "0.2.1", features = [ "no-entrypoint" ]}
 lib-sokoban = "=0.3.0"
 heapless = "0.8.0"
+phoenix-seat-manager-common = { version = "0.1.1", features = [ "no-entrypoint" ]}
 
 [dev-dependencies]
 anyhow = "1"
