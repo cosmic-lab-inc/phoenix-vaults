@@ -14,8 +14,8 @@ kill_process() {
         pkill -f solana
     fi
 
-    echo "killing parent process"
-    kill -- -$parent_pid
+#    echo "killing parent process"
+#    kill -- -$parent_pid
     # # exit shell script with error code 2
     # # if omitted, shell script will continue execution
     exit 2

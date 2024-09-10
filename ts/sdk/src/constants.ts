@@ -24,6 +24,8 @@ export const MOCK_USDC_MINT = Keypair.fromSecretKey(
 		32, 183, 120, 247, 19, 243, 83, 246, 212, 233, 178, 151, 121, 161,
 	])
 );
+export const MOCK_USDC_DECIMALS = 6;
+export const MOCK_USDC_PRECISION = new BN(10).pow(new BN(MOCK_USDC_DECIMALS));
 
 export const MOCK_SOL_MINT = Keypair.fromSecretKey(
 	Uint8Array.from([
@@ -33,6 +35,8 @@ export const MOCK_SOL_MINT = Keypair.fromSecretKey(
 		212, 17, 228, 204, 134, 113, 149, 209, 227, 99, 7, 170, 237,
 	])
 );
+export const MOCK_SOL_DECIMALS = 9;
+export const MOCK_SOL_PRECISION = new BN(10).pow(new BN(MOCK_SOL_DECIMALS));
 
 export const MOCK_JUP_MINT = Keypair.fromSecretKey(
 	Uint8Array.from([
@@ -42,6 +46,8 @@ export const MOCK_JUP_MINT = Keypair.fromSecretKey(
 		222, 174, 198, 7, 131, 115, 181, 13, 17, 236, 173, 207, 77,
 	])
 );
+export const MOCK_JUP_DECIMALS = 9;
+export const MOCK_JUP_PRECISION = new BN(10).pow(new BN(MOCK_JUP_DECIMALS));
 
 export const MOCK_SOL_USDC_MARKET = Keypair.fromSecretKey(
 	Uint8Array.from([

@@ -16,8 +16,10 @@ import {
 	Keypair,
 	PublicKey,
 	sendAndConfirmTransaction,
+	Signer,
 	SystemProgram,
 	Transaction,
+	TransactionInstruction,
 	TransactionSignature,
 } from '@solana/web3.js';
 import { assert } from 'chai';
@@ -178,7 +180,7 @@ export async function mintTokens(
 	provider: Provider
 ): Promise<void> {
 	const tx = new Transaction();
-	const mintToUserAccountTx = await createMintToInstruction(
+	const mintToUserAccountTx = createMintToInstruction(
 		fakeMint.publicKey,
 		userAccount,
 		// @ts-ignore
@@ -593,22 +595,29 @@ export async function getTokenAmountAsBN(
 	);
 }
 
-// export async function bootstrap(params: {
-// 	payer: AnchorProvider;
-// 	programId: PublicKey;
-// 	usdcMint: Keypair;
-// 	usdcAmount: BN;
-// }): Promise<void> {
-// 	const { payer, programId, usdcMint, usdcAmount } = params;
-//
-// 	const signer = Keypair.generate();
-// 	await payer.connection.requestAirdrop(signer.publicKey, LAMPORTS_PER_SOL);
-// 	await sleep(1000);
-//
-// 	const userUSDCAccount = await mockUserUSDCAccount(
-// 		usdcMint,
-// 		usdcAmount,
-// 		payer,
-// 		signer.publicKey
-// 	);
-// }
+export async function sendAndConfirm(
+	provider: Provider,
+	payer: Signer,
+	instructions: TransactionInstruction[],
+	signers: Signer[] = []
+): Promise<string> {
+	try {
+		const recentBlockhash = await provider.connection
+			.getLatestBlockhash()
+			.then((res) => res.blockhash);
+		const msg = new anchor.web3.TransactionMessage({
+			payerKey: provider.publicKey,
+			recentBlockhash,
+			instructions,
+		}).compileToV0Message();
+		const tx = new anchor.web3.VersionedTransaction(msg);
+		tx.sign([payer, ...signers]);
+
+		return await provider.sendAndConfirm(tx, [], {
+			skipPreflight: true,
+		});
+	} catch (e: any) {
+		console.error(e);
+		throw new Error(e);
+	}
+}
