@@ -1,12 +1,6 @@
 #!/usr/bin/env bash
 
-# initialise trap to call kill script processes
-# SIGINT received
-parent_pid="$$"
-
 kill_process() {
-    # perform cleanup here
-    echo "killing validator"
     # Killing local validator if currently running
     solana_pid=$(pgrep -f solana)
     # # if no value is returned do nothing, else pkill -f solana
@@ -14,11 +8,8 @@ kill_process() {
         pkill -f solana
     fi
 
-#    echo "killing parent process"
-#    kill -- -$parent_pid
-    # # exit shell script with error code 2
-    # # if omitted, shell script will continue execution
-    exit 2
+    # exit shell script with success status
+    exit 0
 }
 
 #trap 'kill -- -$parent_pid' SIGINT SIGQUIT EXIT
