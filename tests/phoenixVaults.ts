@@ -149,10 +149,10 @@ describe('phoenixVaults', () => {
 	const _solAmount = new BN(1_000).mul(MOCK_SOL_PRECISION);
 
 	before(async () => {
-		// phoenix = await PhoenixClient.createFromConfig(
-		// 	provider.connection,
-		// 	MARKET_CONFIG
-		// );
+		phoenix = await PhoenixClient.createFromConfig(
+			provider.connection,
+			MARKET_CONFIG
+		);
 		// await phoenix.addMarket(solUsdcMarket.toBase58(), true);
 
 		await provider.connection.requestAirdrop(maker.publicKey, LAMPORTS_PER_SOL);
