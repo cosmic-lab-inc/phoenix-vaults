@@ -44,7 +44,10 @@ import { sendAndConfirm } from './testHelpers';
 // 	getLimitOrderPacket,
 // 	Side,
 // } from '@ellipsis-labs/phoenix-sdk';
-import { RawMarketConfig } from '@ellipsis-labs/phoenix-sdk';
+import {
+	RawMarketConfig,
+	Client as PhoenixClient,
+} from '@ellipsis-labs/phoenix-sdk';
 
 const MARKET_CONFIG: RawMarketConfig = {
 	['localhost']: {
@@ -112,7 +115,7 @@ describe('phoenixVaults', () => {
 	const program = anchor.workspace
 		.PhoenixVaults as anchor.Program<PhoenixVaults>;
 
-	// let phoenix: PhoenixClient;
+	let phoenix: PhoenixClient;
 
 	const marketRegistry = getMarketRegistryAddressSync();
 	let lutSlot: number;
