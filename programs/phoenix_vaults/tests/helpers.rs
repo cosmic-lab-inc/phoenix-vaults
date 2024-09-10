@@ -5,13 +5,14 @@ use anchor_spl::token::spl_token::state::Account as TokenAccount;
 use anchor_spl::token::spl_token::state::Mint;
 use solana_client::nonblocking::rpc_client::RpcClient;
 use solana_client::rpc_config::{
-    RpcRequestAirdropConfig, RpcSendTransactionConfig, RpcSimulateTransactionConfig,
+    RpcRequestAirdropConfig, RpcSendTransactionConfig, RpcSimulateTransactionAccountsConfig,
+    RpcSimulateTransactionConfig,
 };
 use solana_program::instruction::Instruction;
 use solana_program::native_token::LAMPORTS_PER_SOL;
 use solana_program::rent::Rent;
 use solana_sdk::account::Account;
-use solana_sdk::commitment_config::{CommitmentConfig, CommitmentLevel};
+use solana_sdk::commitment_config::CommitmentConfig;
 use solana_sdk::pubkey::Pubkey;
 use solana_sdk::signature::Signature;
 use solana_sdk::signer::{keypair::Keypair, Signer};
@@ -87,13 +88,16 @@ pub async fn sim_tx(
                 sig_verify: true,
                 replace_recent_blockhash: false,
                 commitment: Some(CommitmentConfig::processed()),
-                inner_instructions: false,
+                inner_instructions: true,
                 ..Default::default()
             },
         )
         .await?
         .value;
-    println!("{:#?}", sim.err);
+    println!(
+        "simulation, err: {:?}, logs: {:#?}, ixs: {:#?}",
+        sim.err, sim.logs, sim.inner_instructions
+    );
     Ok(())
 }
 
@@ -109,7 +113,7 @@ pub async fn send_tx(
         .await?
         .0;
     tx.sign(&signers.to_vec(), blockhash);
-    let sig = client
+    let sig = match client
         .send_transaction_with_config(
             &tx,
             RpcSendTransactionConfig {
@@ -117,7 +121,11 @@ pub async fn send_tx(
                 ..Default::default()
             },
         )
-        .await?;
+        .await
+    {
+        Ok(sig) => Ok(sig),
+        Err(e) => Err(anyhow::anyhow!("Error sending transaction: {:#?}", e)),
+    }?;
     Ok(sig)
 }
 
@@ -133,15 +141,22 @@ pub async fn send_and_confirm_tx(
         .await?
         .0;
     tx.sign(&signers.to_vec(), blockhash);
-    let sig = client
-        .send_and_confirm_transaction_with_spinner_and_config(
+
+    let sig = match client
+        .send_transaction_with_config(
             &tx,
-            CommitmentConfig::processed(),
             RpcSendTransactionConfig {
                 skip_preflight: true,
                 ..Default::default()
             },
         )
+        .await
+    {
+        Ok(sig) => Ok(sig),
+        Err(e) => Err(anyhow::anyhow!("Error sending transaction: {:#?}", e)),
+    }?;
+    client
+        .confirm_transaction_with_spinner(&sig, &blockhash, CommitmentConfig::processed())
         .await?;
     Ok(sig)
 }
@@ -272,4 +287,36 @@ macro_rules! trunc {
         let factor = 10.0_f64.powi($decimals);
         ($num * factor).round() / factor
     }};
+}
+
+pub fn signature_link(client: &RpcClient, signature: &Signature) -> String {
+    let cluster_url = client.url();
+    let uri_encoded_cluster_url = urlencoding::encode(&cluster_url);
+    format!(
+        "https://explorer.solana.com/tx/{}?cluster=custom&customUrl={}",
+        signature, uri_encoded_cluster_url
+    )
+}
+
+pub async fn simulate_link(
+    client: &RpcClient,
+    payer: &Keypair,
+    ixs: &[Instruction],
+    signers: &[&Keypair],
+) -> anyhow::Result<String> {
+    let mut tx = Transaction::new_with_payer(ixs, Some(&payer.pubkey()));
+    let blockhash = client
+        .get_latest_blockhash_with_commitment(CommitmentConfig::processed())
+        .await?
+        .0;
+    tx.sign(&signers.to_vec(), blockhash);
+    let cluster_url = client.url();
+    let uri_encoded_cluster_url = urlencoding::encode(&cluster_url);
+    let serialized_message = tx.message.serialize();
+    let base64_message = base64::encode(serialized_message);
+    let uri_encoded_message = urlencoding::encode(&base64_message);
+    Ok(format!(
+        "https://explorer.solana.com/tx/inspector?message={}&cluster=custom&customUrl={}",
+        uri_encoded_message, uri_encoded_cluster_url
+    ))
 }

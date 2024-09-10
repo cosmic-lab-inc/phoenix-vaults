@@ -31,7 +31,5 @@ export PATH="/opt/homebrew/opt/gnu-tar/libexec/gnubin:$PATH"
 
 ## Run tests
 ```shell
-yarn && cd ts/sdk && yarn && yarn build && cd ..
-
-export ANCHOR_WALLET=~/.config/solana/id.json && anchor test
+yarn test
 ```

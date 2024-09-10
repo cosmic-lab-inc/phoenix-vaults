@@ -36,7 +36,7 @@ import {
 	getAssociatedTokenAddressSync,
 	TOKEN_PROGRAM_ID,
 } from '@solana/spl-token';
-import { sendAndConfirm } from './testHelpers';
+import { sendAndConfirm, simulate } from './testHelpers';
 import {
 	RawMarketConfig,
 	Client as PhoenixClient,
@@ -151,11 +151,16 @@ describe('phoenixVaults', () => {
 	before(async () => {
 		phoenix = await PhoenixClient.createFromConfig(
 			provider.connection,
-			MARKET_CONFIG
+			MARKET_CONFIG,
+			true,
+			false
 		);
-		await phoenix.addMarket(solUsdcMarket.toBase58(), false, false);
+		await phoenix.addMarket(solUsdcMarket.toBase58(), true, false);
 
-		await provider.connection.requestAirdrop(maker.publicKey, LAMPORTS_PER_SOL);
+		await provider.connection.requestAirdrop(
+			maker.publicKey,
+			LAMPORTS_PER_SOL * 10
+		);
 
 		lutSlot = await provider.connection.getSlot('finalized');
 		const slotBuffer = Buffer.alloc(8);
@@ -360,9 +365,10 @@ describe('phoenixVaults', () => {
 			maker.publicKey
 		);
 		// maker is selling SOL
+		const solAta = getAssociatedTokenAddressSync(solMint, maker.publicKey);
 		const mintSolIx = createMintToInstruction(
-			usdcMint,
-			investorAta,
+			solMint,
+			solAta,
 			mintAuth.publicKey,
 			solAmount.toNumber()
 		);

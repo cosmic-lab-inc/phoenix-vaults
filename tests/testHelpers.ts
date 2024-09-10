@@ -19,6 +19,7 @@ import {
 	Signer,
 	SystemProgram,
 	Transaction,
+	TransactionConfirmationStrategy,
 	TransactionInstruction,
 	TransactionSignature,
 } from '@solana/web3.js';
@@ -595,6 +596,34 @@ export async function getTokenAmountAsBN(
 	);
 }
 
+export async function simulate(
+	provider: Provider,
+	payer: Signer,
+	instructions: TransactionInstruction[],
+	signers: Signer[] = []
+): Promise<void> {
+	try {
+		const recentBlockhash = await provider.connection
+			.getLatestBlockhash()
+			.then((res) => res.blockhash);
+		const msg = new anchor.web3.TransactionMessage({
+			payerKey: provider.publicKey,
+			recentBlockhash,
+			instructions,
+		}).compileToV0Message();
+		const tx = new anchor.web3.VersionedTransaction(msg);
+		tx.sign([payer, ...signers]);
+
+		const sim = await provider.connection.simulateTransaction(tx, {
+			sigVerify: false,
+		});
+		console.log('simulation:', sim.value.err, sim.value.logs);
+	} catch (e: any) {
+		console.error(e);
+		throw new Error(e);
+	}
+}
+
 export async function sendAndConfirm(
 	provider: Provider,
 	payer: Signer,
@@ -613,9 +642,17 @@ export async function sendAndConfirm(
 		const tx = new anchor.web3.VersionedTransaction(msg);
 		tx.sign([payer, ...signers]);
 
-		return await provider.sendAndConfirm(tx, [], {
+		const sig = await provider.connection.sendTransaction(tx, {
 			skipPreflight: true,
 		});
+		const strategy = {
+			signature: sig,
+		} as TransactionConfirmationStrategy;
+		const confirm = await provider.connection.confirmTransaction(strategy);
+		if (confirm.value.err) {
+			throw new Error(JSON.stringify(confirm.value.err));
+		}
+		return sig;
 	} catch (e: any) {
 		console.error(e);
 		throw new Error(e);

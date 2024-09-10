@@ -1,12 +1,48 @@
 #!/usr/bin/env bash
 
 detach=false
-# receive OPTIONS from command line
-# if --detach then store detach=true
-if [[ "$1" == "--detach" ]]; then
-    detach=true
-fi
+no_test=false
 
+usage() {
+  if [[ -n $1 ]]; then
+    echo "$*"
+    echo
+  fi
+  cat <<EOF
+
+usage: $0 [OPTIONS]
+
+Bootstrap a validator to start a network.
+Gossip host must be set to a private or public IP to communicate beyond localhost.
+
+OPTIONS:
+  --detach             - Once bootstrap and tests are complete, keep the validator running
+  --no-test            - Skip running tests and only bootstrap the validator
+
+EOF
+  exit 1
+}
+
+positional_args=()
+while [[ -n $1 ]]; do
+  if [[ ${1:0:1} = - ]]; then
+    if [[ $1 = --detach ]]; then
+      detach=true
+      shift 1
+    elif [[ $1 = --no-test ]]; then
+      no_test=true
+      shift 1
+    elif [[ $1 = -h ]]; then
+      usage "$@"
+    else
+      echo "Unknown argument: $1"
+      exit 1
+    fi
+  else
+    positional_args+=("$1")
+    shift
+  fi
+done
 
 kill_process() {
     # Killing local validator if currently running
@@ -19,8 +55,6 @@ kill_process() {
     # exit shell script with success status
     exit 0
 }
-
-#trap 'kill -- -$parent_pid' SIGINT SIGQUIT EXIT
 trap kill_process SIGINT
 
 # helper function to silence background processes
@@ -43,8 +77,9 @@ bkg anchor localnet
 chmod +x ./bootstrap.sh
 ./bootstrap.sh
 
-# store pid of `yarn anchor-tests`
-yarn anchor-tests
+if [[ $no_test == false ]]; then
+  yarn anchor-tests
+fi
 
 # if detach is false, run kill_process
 if [[ $detach == false ]]; then

@@ -1,5 +1,10 @@
 use phoenix::program::status::MarketStatus;
 use phoenix::program::*;
+use phoenix_seat_manager::get_seat_manager_address;
+use phoenix_seat_manager::instruction_builders::{
+    create_claim_market_authority_instruction, create_name_seat_manager_successor_instruction,
+};
+use phoenix_seat_manager::seat_manager::SeatManager;
 use solana_client::nonblocking::rpc_client::RpcClient;
 use solana_sdk::commitment_config::CommitmentConfig;
 use solana_sdk::signature::{Keypair, Signature};
@@ -10,7 +15,7 @@ mod helpers;
 use crate::helpers::*;
 
 const BOOK_SIZE: usize = 4096;
-const NUM_SEATS: usize = 8193;
+const NUM_SEATS: usize = 8321;
 
 const MOCK_MARKET_AUTHORITY_KEYPAIR: [u8; 64] = [
     51, 85, 204, 221, 166, 99, 229, 39, 196, 242, 180, 231, 122, 9, 62, 131, 140, 27, 117, 23, 93,
@@ -80,7 +85,8 @@ struct BootstrapMarketConfig<'a> {
     pub raw_base_units_per_base_unit: Option<u32>,
 }
 
-async fn bootstrap_market(cfg: BootstrapMarketConfig<'_>) -> anyhow::Result<Signature> {
+/// Replicating most of this process: https://github.com/Ellipsis-Labs/phoenix-seat-manager-v1/blob/31ad32a186d7e0e5aa747dcaa9463b7e27089b47/tests/setup/init.rs#L195
+async fn bootstrap_market(cfg: BootstrapMarketConfig<'_>) -> anyhow::Result<()> {
     let BootstrapMarketConfig {
         client,
         payer,
@@ -131,7 +137,6 @@ async fn bootstrap_market(cfg: BootstrapMarketConfig<'_>) -> anyhow::Result<Sign
     // create base token mint
     let base_mint_acct = get_account(client, &base_mint.pubkey()).await;
     if base_mint_acct.is_err() {
-        println!("making base mint...");
         let create_base_mint_sig = create_mint(
             client,
             payer,
@@ -150,7 +155,6 @@ async fn bootstrap_market(cfg: BootstrapMarketConfig<'_>) -> anyhow::Result<Sign
     let quote_ata = get_associated_token_address(&payer.pubkey(), &quote_mint.pubkey());
     let quote_ata_acct = get_account(client, &quote_ata).await;
     if quote_ata_acct.is_err() {
-        println!("making quote ata...");
         let (_, create_quote_ata_sig) = create_associated_token_account(
             client,
             payer,
@@ -180,14 +184,57 @@ async fn bootstrap_market(cfg: BootstrapMarketConfig<'_>) -> anyhow::Result<Sign
         )
         .unwrap(),
     );
+
+    let seat_manager_key = get_seat_manager_address(&market.pubkey()).0;
+    init_instructions.push(create_name_successor_instruction(
+        &payer.pubkey(),
+        &market.pubkey(),
+        &seat_manager_key,
+    ));
+
     init_instructions.push(create_change_market_status_instruction(
         &payer.pubkey(),
         &market.pubkey(),
         MarketStatus::Active,
     ));
 
-    let sig = send_tx(client, payer, &init_instructions, &[&payer, &market]).await?;
-    Ok(sig)
+    let create_market_sig =
+        send_and_confirm_tx(client, payer, &init_instructions, &[&payer, &market]).await?;
+    println!(
+        "create market: {}",
+        signature_link(client, &create_market_sig)
+    );
+
+    //
+    // claim seat manager
+    //
+
+    let market_ai = client.get_account(&market.pubkey()).await?;
+    let market_bytes = market_ai.data;
+    let (header_bytes, _) = market_bytes.split_at(std::mem::size_of::<MarketHeader>());
+    let header = bytemuck::try_from_bytes::<MarketHeader>(header_bytes).unwrap();
+    println!("market auth: {:?}", header.authority);
+    println!("seat manager: {:?}", seat_manager_key);
+
+    // this creates SeatManager: https://github.com/Ellipsis-Labs/phoenix-seat-manager-v1/blob/31ad32a186d7e0e5aa747dcaa9463b7e27089b47/src/processor/claim_market_authority.rs#L98
+    let claim_auth_ix =
+        create_claim_market_authority_instruction(&market.pubkey(), &payer.pubkey());
+
+    let claim_auth_sig = send_and_confirm_tx(client, payer, &[claim_auth_ix], &[payer]).await?;
+    println!(
+        "claim seat manager auth: {}",
+        signature_link(client, &claim_auth_sig)
+    );
+
+    let (seat_manager_address, _) = get_seat_manager_address(&market.pubkey());
+    let seat_manager_data = client
+        .get_account_data(&seat_manager_address)
+        .await
+        .unwrap();
+    bytemuck::try_from_bytes::<SeatManager>(&seat_manager_data)
+        .map_err(|e| anyhow::anyhow!("failed to deserialize seat manager data: {:?}", e))?;
+
+    Ok(())
 }
 
 #[tokio::test]
@@ -213,7 +260,7 @@ async fn bootstrap_markets() -> anyhow::Result<()> {
     // SOL/USDC market
     let pre_balance = get_lamports(&client, &payer.pubkey()).await?;
     println!("pre SOL/USDC balance: {}", pre_balance);
-    let create_sol_usdc_market_sig = bootstrap_market(BootstrapMarketConfig {
+    bootstrap_market(BootstrapMarketConfig {
         client: &client,
         payer: &payer,
         authority: &authority,
@@ -230,10 +277,6 @@ async fn bootstrap_markets() -> anyhow::Result<()> {
         raw_base_units_per_base_unit: None,
     })
     .await?;
-    println!(
-        "create_sol_usdc_market_sig: {:?}",
-        create_sol_usdc_market_sig
-    );
     let post_balance = get_lamports(&client, &payer.pubkey()).await?;
     println!("post SOL/USDC balance: {}", post_balance);
     println!("==================================================================");
@@ -243,7 +286,7 @@ async fn bootstrap_markets() -> anyhow::Result<()> {
     airdrop(&client, &authority.pubkey(), 10.0).await?;
     let pre_balance = get_lamports(&client, &payer.pubkey()).await?;
     println!("pre JUP/SOL balance: {}", pre_balance);
-    let create_jup_sol_market_sig = bootstrap_market(BootstrapMarketConfig {
+    bootstrap_market(BootstrapMarketConfig {
         client: &client,
         payer: &payer,
         authority: &authority,
@@ -260,7 +303,6 @@ async fn bootstrap_markets() -> anyhow::Result<()> {
         raw_base_units_per_base_unit: None,
     })
     .await?;
-    println!("create_jup_sol_market_sig: {:?}", create_jup_sol_market_sig);
     let post_balance = get_lamports(&client, &payer.pubkey()).await?;
     println!("post JUP/SOL balance: {}", post_balance);
     println!("==================================================================");
@@ -270,7 +312,7 @@ async fn bootstrap_markets() -> anyhow::Result<()> {
     airdrop(&client, &authority.pubkey(), 10.0).await?;
     let pre_balance = get_lamports(&client, &payer.pubkey()).await?;
     println!("pre JUP/USDC balance: {}", pre_balance);
-    let create_jup_usdc_market_sig = bootstrap_market(BootstrapMarketConfig {
+    bootstrap_market(BootstrapMarketConfig {
         client: &client,
         payer: &payer,
         authority: &authority,
@@ -287,10 +329,6 @@ async fn bootstrap_markets() -> anyhow::Result<()> {
         raw_base_units_per_base_unit: None,
     })
     .await?;
-    println!(
-        "create_jup_usdc_market_sig: {:?}",
-        create_jup_usdc_market_sig
-    );
     let post_balance = get_lamports(&client, &payer.pubkey()).await?;
     println!("post JUP/USDC balance: {}", post_balance);
     println!("==================================================================");
