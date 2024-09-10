@@ -37,16 +37,12 @@ import {
 	TOKEN_PROGRAM_ID,
 } from '@solana/spl-token';
 import { sendAndConfirm } from './testHelpers';
-// import {
-// 	RawMarketConfig,
-// 	Client as PhoenixClient,
-// 	getMakerSetupInstructionsForMarket,
-// 	getLimitOrderPacket,
-// 	Side,
-// } from '@ellipsis-labs/phoenix-sdk';
 import {
 	RawMarketConfig,
 	Client as PhoenixClient,
+	getMakerSetupInstructionsForMarket,
+	getLimitOrderPacket,
+	Side,
 } from '@ellipsis-labs/phoenix-sdk';
 
 const MARKET_CONFIG: RawMarketConfig = {
@@ -143,17 +139,19 @@ describe('phoenixVaults', () => {
 
 	const marketKeys: PublicKey[] = [solUsdcMarket, jupSolMarket, jupUsdcMarket];
 	const solUsdcMarketIndex = 0;
-	const _startSolUsdcPrice = 100;
+	const startSolUsdcPrice = 100;
 	const _endSolUsdcPrice = 110;
-	const usdcAmount = new BN(1_000).mul(MOCK_USDC_PRECISION);
-	const _solAmount = new BN(1_000).mul(MOCK_SOL_PRECISION);
+	const usdcUiAmount = 1_000;
+	const usdcAmount = new BN(usdcUiAmount).mul(MOCK_USDC_PRECISION);
+	const solUiAmount = usdcUiAmount / startSolUsdcPrice;
+	const solAmount = new BN(solUiAmount).mul(MOCK_SOL_PRECISION);
 
 	before(async () => {
 		phoenix = await PhoenixClient.createFromConfig(
 			provider.connection,
 			MARKET_CONFIG
 		);
-		// await phoenix.addMarket(solUsdcMarket.toBase58(), true);
+		await phoenix.addMarket(solUsdcMarket.toBase58(), false, false);
 
 		await provider.connection.requestAirdrop(maker.publicKey, LAMPORTS_PER_SOL);
 
@@ -321,52 +319,59 @@ describe('phoenixVaults', () => {
 		assert(shares === 1000);
 	});
 
-	// it('Long SOL-USDC', async () => {
-	// 	// todo
-	// 	//   init maker and place maker order
-	// 	//   place taker order with vault
-	// 	//   assert balances
-	//
-	// 	const marketState = phoenix.marketStates.get(solUsdcMarket.toString());
-	// 	if (marketState === undefined) {
-	// 		throw Error('SOL/USDC market not found');
-	// 	}
-	//
-	// 	// This function creates a bundle of new instructions that includes:
-	// 	// - Create associated token accounts for base and quote tokens, if needed
-	// 	// - Claim a maker seat on the market, if needed
-	// 	const setupMakerIxs = await getMakerSetupInstructionsForMarket(
-	// 		provider.connection,
-	// 		marketState,
-	// 		maker.publicKey
-	// 	);
-	// 	// maker is selling SOL
-	// 	const mintSolIx = createMintToInstruction(
-	// 		usdcMint,
-	// 		investorAta,
-	// 		mintAuth.publicKey,
-	// 		solAmount.toNumber()
-	// 	);
-	// 	await sendAndConfirm(
-	// 		provider,
-	// 		payer,
-	// 		[...setupMakerIxs, mintSolIx],
-	// 		[mintAuth, maker]
-	// 	);
-	// 	console.log('setup maker');
-	//
-	// 	// todo: convert float values to ticks and lots
-	// 	const makerOrderPacket = getLimitOrderPacket({
-	// 		side: Side.Ask,
-	// 		priceInTicks: 200,
-	// 		numBaseLots: 1,
-	// 	});
-	// 	const makerOrderIx = phoenix.createPlaceLimitOrderInstruction(
-	// 		makerOrderPacket,
-	// 		solUsdcMarket.toString(),
-	// 		maker.publicKey
-	// 	);
-	// 	await sendAndConfirm(provider, payer, [makerOrderIx], [maker]);
-	// 	console.log('placed maker ask');
-	// });
+	it('Long SOL-USDC', async () => {
+		// todo
+		//   init maker and place maker order
+		//   place taker order with vault
+		//   assert balances
+
+		const marketState = phoenix.marketStates.get(solUsdcMarket.toString());
+		if (marketState === undefined) {
+			throw Error('SOL/USDC market not found');
+		}
+
+		// This function creates a bundle of new instructions that includes:
+		// - Create associated token accounts for base and quote tokens, if needed
+		// - Claim a maker seat on the market, if needed
+		const setupMakerIxs = await getMakerSetupInstructionsForMarket(
+			provider.connection,
+			marketState,
+			maker.publicKey
+		);
+		// maker is selling SOL
+		const mintSolIx = createMintToInstruction(
+			usdcMint,
+			investorAta,
+			mintAuth.publicKey,
+			solAmount.toNumber()
+		);
+		await sendAndConfirm(
+			provider,
+			payer,
+			[...setupMakerIxs, mintSolIx],
+			[mintAuth, maker]
+		);
+		console.log('setup maker');
+
+		const priceInTicks = phoenix.floatPriceToTicks(
+			startSolUsdcPrice,
+			solUsdcMarket.toBase58()
+		);
+		const numBaseLots = phoenix.rawBaseUnitsToBaseLotsRoundedDown(
+			solUiAmount,
+			solUsdcMarket.toBase58()
+		);
+		const makerOrderPacket = getLimitOrderPacket({
+			side: Side.Ask,
+			priceInTicks,
+			numBaseLots,
+		});
+		const makerOrderIx = phoenix.createPlaceLimitOrderInstruction(
+			makerOrderPacket,
+			solUsdcMarket.toString(),
+			maker.publicKey
+		);
+		await sendAndConfirm(provider, payer, [makerOrderIx], [maker]);
+		console.log('placed maker ask');
+	});
 });
