@@ -38,8 +38,8 @@ import {
 } from '@solana/spl-token';
 import { sendAndConfirm } from './testHelpers';
 // import {
-// 	Client as PhoenixClient,
 // 	RawMarketConfig,
+// 	Client as PhoenixClient,
 // 	getMakerSetupInstructionsForMarket,
 // 	getLimitOrderPacket,
 // 	Side,
@@ -139,10 +139,10 @@ describe('phoenixVaults', () => {
 
 	const marketKeys: PublicKey[] = [solUsdcMarket, jupSolMarket, jupUsdcMarket];
 	const solUsdcMarketIndex = 0;
-	const startSolUsdcPrice = 100;
-	const endSolUsdcPrice = 110;
+	const _startSolUsdcPrice = 100;
+	const _endSolUsdcPrice = 110;
 	const usdcAmount = new BN(1_000).mul(MOCK_USDC_PRECISION);
-	const solAmount = new BN(1_000).mul(MOCK_SOL_PRECISION);
+	const _solAmount = new BN(1_000).mul(MOCK_SOL_PRECISION);
 
 	before(async () => {
 		// phoenix = await PhoenixClient.createFromConfig(
