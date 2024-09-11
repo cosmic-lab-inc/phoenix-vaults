@@ -44,6 +44,11 @@ export type PhoenixVaults = {
 					name: 'tokenProgram';
 					isMut: false;
 					isSigner: false;
+				},
+				{
+					name: 'associatedTokenProgram';
+					isMut: false;
+					isSigner: false;
 				}
 			];
 			args: [
@@ -1122,6 +1127,11 @@ export const IDL: PhoenixVaults = {
 				},
 				{
 					name: 'tokenProgram',
+					isMut: false,
+					isSigner: false,
+				},
+				{
+					name: 'associatedTokenProgram',
 					isMut: false,
 					isSigner: false,
 				},

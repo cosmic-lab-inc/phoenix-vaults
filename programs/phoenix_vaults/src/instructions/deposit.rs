@@ -61,9 +61,7 @@ pub struct Deposit<'info> {
 
     #[account(
         mut,
-        seeds = [b"vault_token_account".as_ref(), vault.key().as_ref()],
-        bump,
-        constraint = is_token_for_vault(&vault, &vault_token_account)?
+        constraint = is_token_for_vault(&vault, &vault_token_account)?,
     )]
     pub vault_token_account: Box<Account<'info, TokenAccount>>,
 

@@ -1,6 +1,7 @@
 use crate::constants::PERCENTAGE_PRECISION_U64;
 use crate::math::Cast;
 use anchor_lang::prelude::*;
+use anchor_spl::associated_token::AssociatedToken;
 use anchor_spl::token::{Mint, Token, TokenAccount};
 
 use crate::constants::ONE_DAY;
@@ -97,10 +98,14 @@ pub struct InitializeVault<'info> {
     )]
     pub vault: AccountLoader<'info, Vault>,
     #[account(
-        init,
-        seeds = [b"vault_token_account".as_ref(), vault.key().as_ref()],
+        mut,
+        seeds = [
+            vault.key().as_ref(),
+            token_program.key().as_ref(),
+            mint.key().as_ref(),
+        ],
+        seeds::program = associated_token_program.key(),
         bump,
-        payer = payer,
         token::mint = mint,
         token::authority = vault
     )]
@@ -112,4 +117,5 @@ pub struct InitializeVault<'info> {
     pub rent: Sysvar<'info, Rent>,
     pub system_program: Program<'info, System>,
     pub token_program: Program<'info, Token>,
+    pub associated_token_program: Program<'info, AssociatedToken>,
 }

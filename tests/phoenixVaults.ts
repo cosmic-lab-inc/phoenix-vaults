@@ -15,7 +15,6 @@ import {
 	PhoenixVaults,
 	encodeName,
 	VaultParams,
-	getTokenVaultAddressSync,
 	getInvestorAddressSync,
 	getMarketRegistryAddressSync,
 	MOCK_USDC_MINT,
@@ -44,8 +43,11 @@ import {
 	getLimitOrderPacket,
 	Side,
 	getSeatManagerAddress,
-	deserializeSeatManagerData, createPlaceLimitOrderInstruction,
-	PROGRAM_ID as PHOENIX_PROGRAM_ID, getLogAuthority, getSeatAddress,
+	deserializeSeatManagerData,
+	// createPlaceLimitOrderInstruction,
+	// PROGRAM_ID as PHOENIX_PROGRAM_ID,
+	// getLogAuthority,
+	// getSeatAddress,
 } from '@ellipsis-labs/phoenix-sdk';
 
 const MARKET_CONFIG: RawMarketConfig = {
@@ -133,7 +135,8 @@ describe('phoenixVaults', () => {
 
 	const name = 'Test Vault';
 	const vaultKey = getVaultAddressSync(encodeName(name));
-	const vaultAta = getTokenVaultAddressSync(vaultKey);
+	// const vaultAta = getTokenVaultAddressSync(vaultKey);
+	const vaultAta = getAssociatedTokenAddressSync(usdcMint, vaultKey, true);
 	const investor = getInvestorAddressSync(vaultKey, provider.publicKey);
 	const investorAta = getAssociatedTokenAddressSync(
 		usdcMint,
@@ -247,6 +250,15 @@ describe('phoenixVaults', () => {
 	});
 
 	it('Initialize Vault', async () => {
+		const createAtaIx = createAssociatedTokenAccountInstruction(
+			payer.publicKey,
+			vaultAta,
+			vaultKey,
+			usdcMint
+		);
+		await sendAndConfirm(provider, payer, [createAtaIx]);
+
+		console.log('vault ata:', vaultAta.toString());
 		const config: VaultParams = {
 			name: encodeName(name),
 			redeemPeriod: new BN(0),
