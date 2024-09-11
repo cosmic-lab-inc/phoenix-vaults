@@ -199,6 +199,42 @@ export type PhoenixVaults = {
 					type: 'u64';
 				}
 			];
+		},
+		{
+			name: 'phoenix';
+			accounts: [
+				{
+					name: 'vault';
+					isMut: false;
+					isSigner: false;
+					docs: [
+						'If delegate has authority to sign for vault, then any Phoenix CPI is valid.',
+						'Phoenix CPI validates that opaque instruction data is a [`PhoenixInstruction`],',
+						'so this is safe since any Phoenix CPI is secure.'
+					];
+				},
+				{
+					name: 'delegate';
+					isMut: false;
+					isSigner: true;
+					docs: [
+						'Is manager by default, but can be delegated to another pubkey using `update_delegate`'
+					];
+				},
+				{
+					name: 'phoenix';
+					isMut: false;
+					isSigner: false;
+				}
+			];
+			args: [
+				{
+					name: 'params';
+					type: {
+						defined: 'PhoenixParams';
+					};
+				}
+			];
 		}
 	];
 	accounts: [
@@ -366,7 +402,8 @@ export type PhoenixVaults = {
 						name: 'delegate';
 						docs: [
 							'The delegate is the "portfolio manager", "trader", or "bot" that manages the vault\'s assets.',
-							'They can swap 100% of vault tokens using Jupiter.'
+							'They can swap 100% of vault tokens.',
+							'This is the manager by default.'
 						];
 						type: 'publicKey';
 					},
@@ -651,6 +688,18 @@ export type PhoenixVaults = {
 					{
 						name: 'protocolProfitShare';
 						type: 'u32';
+					}
+				];
+			};
+		},
+		{
+			name: 'PhoenixParams';
+			type: {
+				kind: 'struct';
+				fields: [
+					{
+						name: 'phoenixIxData';
+						type: 'bytes';
 					}
 				];
 			};
@@ -1231,6 +1280,42 @@ export const IDL: PhoenixVaults = {
 				},
 			],
 		},
+		{
+			name: 'phoenix',
+			accounts: [
+				{
+					name: 'vault',
+					isMut: false,
+					isSigner: false,
+					docs: [
+						'If delegate has authority to sign for vault, then any Phoenix CPI is valid.',
+						'Phoenix CPI validates that opaque instruction data is a [`PhoenixInstruction`],',
+						'so this is safe since any Phoenix CPI is secure.',
+					],
+				},
+				{
+					name: 'delegate',
+					isMut: false,
+					isSigner: true,
+					docs: [
+						'Is manager by default, but can be delegated to another pubkey using `update_delegate`',
+					],
+				},
+				{
+					name: 'phoenix',
+					isMut: false,
+					isSigner: false,
+				},
+			],
+			args: [
+				{
+					name: 'params',
+					type: {
+						defined: 'PhoenixParams',
+					},
+				},
+			],
+		},
 	],
 	accounts: [
 		{
@@ -1397,7 +1482,8 @@ export const IDL: PhoenixVaults = {
 						name: 'delegate',
 						docs: [
 							'The delegate is the "portfolio manager", "trader", or "bot" that manages the vault\'s assets.',
-							'They can swap 100% of vault tokens using Jupiter.',
+							'They can swap 100% of vault tokens.',
+							'This is the manager by default.',
 						],
 						type: 'publicKey',
 					},
@@ -1682,6 +1768,18 @@ export const IDL: PhoenixVaults = {
 					{
 						name: 'protocolProfitShare',
 						type: 'u32',
+					},
+				],
+			},
+		},
+		{
+			name: 'PhoenixParams',
+			type: {
+				kind: 'struct',
+				fields: [
+					{
+						name: 'phoenixIxData',
+						type: 'bytes',
 					},
 				],
 			},

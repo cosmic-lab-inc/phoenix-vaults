@@ -27,7 +27,8 @@ pub struct Vault {
     /// This uses the mint specified above, and is likely USDC.
     pub token_account: Pubkey,
     /// The delegate is the "portfolio manager", "trader", or "bot" that manages the vault's assets.
-    /// They can swap 100% of vault tokens using Jupiter.
+    /// They can swap 100% of vault tokens.
+    /// This is the manager by default.
     pub delegate: Pubkey,
     /// The sum of all shares held by the investors
     pub investor_shares: u128,

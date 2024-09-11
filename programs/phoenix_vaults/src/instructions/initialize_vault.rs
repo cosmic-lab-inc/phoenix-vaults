@@ -17,6 +17,7 @@ pub fn initialize_vault<'c: 'info, 'info>(
     vault.name = params.name;
     vault.pubkey = *ctx.accounts.vault.to_account_info().key;
     vault.manager = *ctx.accounts.manager.key;
+    vault.delegate = *ctx.accounts.manager.key;
     vault.protocol = params.protocol;
     vault.token_account = *ctx.accounts.token_account.to_account_info().key;
     vault.mint = *ctx.accounts.mint.to_account_info().key;

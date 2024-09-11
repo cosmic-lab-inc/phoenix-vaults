@@ -44,7 +44,8 @@ import {
 	getLimitOrderPacket,
 	Side,
 	getSeatManagerAddress,
-	deserializeSeatManagerData,
+	deserializeSeatManagerData, createPlaceLimitOrderInstruction,
+	PROGRAM_ID as PHOENIX_PROGRAM_ID, getLogAuthority, getSeatAddress,
 } from '@ellipsis-labs/phoenix-sdk';
 
 const MARKET_CONFIG: RawMarketConfig = {
@@ -322,13 +323,13 @@ describe('phoenixVaults', () => {
 		const investorAcct = await program.account.investor.fetch(investor);
 		const deposits = investorAcct.netDeposits.div(QUOTE_PRECISION).toNumber();
 		const shares = investorAcct.vaultShares.div(QUOTE_PRECISION).toNumber();
-		assert(deposits === 1000);
-		assert(shares === 1000);
+		assert.equal(deposits, 1000);
+		assert.equal(shares, 1000);
 
 		const vaultAtaBalance = (
 			await provider.connection.getTokenAccountBalance(vaultAta)
 		).value.uiAmount;
-		assert(vaultAtaBalance === 1000);
+		assert.equal(vaultAtaBalance, 1000);
 	});
 
 	it('Check SOL/USDC Seat Manager', async () => {
@@ -445,11 +446,40 @@ describe('phoenixVaults', () => {
 	// 		priceInTicks,
 	// 		numBaseLots,
 	// 	});
+	// 	const takerOrderIx = createPlaceLimitOrderInstruction(
+	// 		{
+	// 			phoenixProgram: PHOENIX_PROGRAM_ID,
+	// 			logAuthority: getLogAuthority(),
+	// 			market: solUsdcMarket,
+	// 			trader: vaultKey,
+	// 			seat: getSeatAddress(solUsdcMarket, vaultKey),
+	// 			baseAccount: this.getBaseAccountKey(trader),
+	// 			quoteAccount: this.getQuoteAccountKey(trader),
+	// 			baseVault: this.getBaseVaultKey(),
+	// 			quoteVault: this.getQuoteVaultKey(),
+	// 		},
+	// 		{
+	// 			orderPacket,
+	// 		}
+	// 	)
 	// 	const takerOrderIx = phoenix.createPlaceLimitOrderInstruction(
 	// 		takerOrderPacket,
 	// 		solUsdcMarket.toString(),
 	// 		vaultKey
 	// 	);
+	//
+	// 	const params = {
+	// 		phoenixIxData: takerOrderIx.data,
+	// 	};
+	// 	const cpi = await program.methods
+	// 		.phoenix(params)
+	// 		.accounts({
+	// 			vault: vaultKey,
+	// 			phoenix: takerOrderIx.programId,
+	// 		})
+	// 		.remainingAccounts(takerOrderIx.keys)
+	// 		.instruction();
+	//
 	// 	await sendAndConfirm(provider, payer, [takerOrderIx], [maker]);
 	// 	console.log('placed taker bid');
 	// });

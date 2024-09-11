@@ -73,3 +73,7 @@ export type Vault = {
 	bump: number;
 	padding: number[];
 };
+
+export type PhoenixParams = {
+	phoenixIxData: Buffer;
+};

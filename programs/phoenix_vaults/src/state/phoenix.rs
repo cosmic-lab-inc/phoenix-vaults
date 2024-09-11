@@ -1,9 +1,9 @@
 use anchor_lang::prelude::*;
 
 #[derive(Clone)]
-pub struct Phoenix;
+pub struct PhoenixProgram;
 
-impl Id for Phoenix {
+impl Id for PhoenixProgram {
     fn id() -> Pubkey {
         phoenix::ID
     }

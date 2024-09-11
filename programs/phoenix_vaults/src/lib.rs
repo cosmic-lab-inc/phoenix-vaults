@@ -42,4 +42,11 @@ pub mod phoenix_vaults {
     ) -> Result<()> {
         instructions::deposit(ctx, amount)
     }
+
+    pub fn phoenix<'c: 'info, 'info>(
+        ctx: Context<'_, '_, 'c, 'info, Phoenix<'info>>,
+        params: PhoenixParams,
+    ) -> Result<()> {
+        instructions::phoenix(ctx, params)
+    }
 }
