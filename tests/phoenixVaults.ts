@@ -324,6 +324,11 @@ describe('phoenixVaults', () => {
 		const shares = investorAcct.vaultShares.div(QUOTE_PRECISION).toNumber();
 		assert(deposits === 1000);
 		assert(shares === 1000);
+
+		const vaultAtaBalance = (
+			await provider.connection.getTokenAccountBalance(vaultAta)
+		).value.uiAmount;
+		assert(vaultAtaBalance === 1000);
 	});
 
 	it('Check SOL/USDC Seat Manager', async () => {
