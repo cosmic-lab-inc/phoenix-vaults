@@ -7,6 +7,7 @@ import {
 	Keypair,
 	LAMPORTS_PER_SOL,
 	PublicKey,
+	TransactionInstruction,
 } from '@solana/web3.js';
 import { assert } from 'chai';
 import { before } from 'mocha';
@@ -35,7 +36,12 @@ import {
 	getAssociatedTokenAddressSync,
 	TOKEN_PROGRAM_ID,
 } from '@solana/spl-token';
-import { sendAndConfirm } from './testHelpers';
+import {
+	createMarketTokenAccountIxs,
+	signatureLink,
+	sendAndConfirm,
+	simulate,
+} from './testHelpers';
 import {
 	RawMarketConfig,
 	Client as PhoenixClient,
@@ -44,10 +50,12 @@ import {
 	Side,
 	getSeatManagerAddress,
 	deserializeSeatManagerData,
-	// createPlaceLimitOrderInstruction,
-	// PROGRAM_ID as PHOENIX_PROGRAM_ID,
-	// getLogAuthority,
-	// getSeatAddress,
+	createPlaceLimitOrderInstruction,
+	PROGRAM_ID as PHOENIX_PROGRAM_ID,
+	getLogAuthority,
+	getSeatAddress,
+	confirmOrCreateClaimSeatIxs,
+	createRequestSeatInstruction,
 } from '@ellipsis-labs/phoenix-sdk';
 
 const MARKET_CONFIG: RawMarketConfig = {
@@ -110,6 +118,7 @@ describe('phoenixVaults', () => {
 	// Configure the client to use the local cluster.
 	const provider = anchor.AnchorProvider.local(undefined, opts);
 	anchor.setProvider(provider);
+	const conn = provider.connection;
 	// @ts-ignore
 	const payer: any = provider.wallet.payer as any as Keypair;
 	// const payer = _payer as Keypair;
@@ -129,7 +138,8 @@ describe('phoenixVaults', () => {
 	const solUsdcMarket = MOCK_SOL_USDC_MARKET.publicKey;
 	const jupSolMarket = MOCK_JUP_SOL_MARKET.publicKey;
 	const jupUsdcMarket = MOCK_JUP_USDC_MARKET.publicKey;
-	const _manager = Keypair.generate();
+	// const manager = Keypair.generate();
+	const manager = payer;
 	const protocol = Keypair.generate();
 	const maker = Keypair.generate();
 
@@ -154,19 +164,16 @@ describe('phoenixVaults', () => {
 
 	before(async () => {
 		phoenix = await PhoenixClient.createFromConfig(
-			provider.connection,
+			conn,
 			MARKET_CONFIG,
 			true,
 			false
 		);
 		await phoenix.addMarket(solUsdcMarket.toBase58(), true, false);
 
-		await provider.connection.requestAirdrop(
-			maker.publicKey,
-			LAMPORTS_PER_SOL * 10
-		);
+		await conn.requestAirdrop(maker.publicKey, LAMPORTS_PER_SOL * 10);
 
-		lutSlot = await provider.connection.getSlot('finalized');
+		lutSlot = await conn.getSlot('finalized');
 		const slotBuffer = Buffer.alloc(8);
 		slotBuffer.writeBigInt64LE(BigInt(lutSlot), 0);
 		const lutSeeds = [provider.publicKey.toBuffer(), slotBuffer];
@@ -184,13 +191,9 @@ describe('phoenixVaults', () => {
 		});
 		assert(lutKey.toString() === lut.toString());
 
-		const sig = await sendAndConfirm(provider, payer, [ix]);
-		console.log('create lut:', sig);
+		await sendAndConfirm(conn, payer, [ix]);
 
-		const lutAcctInfo = await provider.connection.getAccountInfo(
-			lut,
-			'processed'
-		);
+		const lutAcctInfo = await conn.getAccountInfo(lut, 'processed');
 		assert(lutAcctInfo !== null);
 		const lutAcct = AddressLookupTableAccount.deserialize(lutAcctInfo.data);
 		assert(lutAcct.authority.toString() === provider.publicKey.toString());
@@ -204,13 +207,9 @@ describe('phoenixVaults', () => {
 			addresses: marketKeys,
 		});
 
-		const sig = await sendAndConfirm(provider, payer, [ix]);
-		console.log('extend lut:', sig);
+		await sendAndConfirm(conn, payer, [ix]);
 
-		const lutAcctInfo = await provider.connection.getAccountInfo(
-			lut,
-			'processed'
-		);
+		const lutAcctInfo = await conn.getAccountInfo(lut, 'processed');
 		assert(lutAcctInfo !== null);
 		const lutAcct = AddressLookupTableAccount.deserialize(lutAcctInfo.data);
 		assert(lutAcct.addresses.length === marketKeys.length);
@@ -256,9 +255,8 @@ describe('phoenixVaults', () => {
 			vaultKey,
 			usdcMint
 		);
-		await sendAndConfirm(provider, payer, [createAtaIx]);
+		await sendAndConfirm(conn, payer, [createAtaIx]);
 
-		console.log('vault ata:', vaultAta.toString());
 		const config: VaultParams = {
 			name: encodeName(name),
 			redeemPeriod: new BN(0),
@@ -276,6 +274,7 @@ describe('phoenixVaults', () => {
 			vault: vaultKey,
 			tokenAccount: vaultAta,
 			mint: usdcMint,
+			manager: manager.publicKey,
 		};
 		// @ts-ignore
 		await program.methods.initializeVault(config).accounts(accounts).rpc();
@@ -338,15 +337,14 @@ describe('phoenixVaults', () => {
 		assert.equal(deposits, 1000);
 		assert.equal(shares, 1000);
 
-		const vaultAtaBalance = (
-			await provider.connection.getTokenAccountBalance(vaultAta)
-		).value.uiAmount;
+		const vaultAtaBalance = (await conn.getTokenAccountBalance(vaultAta)).value
+			.uiAmount;
 		assert.equal(vaultAtaBalance, 1000);
 	});
 
 	it('Check SOL/USDC Seat Manager', async () => {
 		const smKey = getSeatManagerAddress(solUsdcMarket);
-		const smAcct = await provider.connection.getAccountInfo(smKey);
+		const smAcct = await conn.getAccountInfo(smKey);
 		if (!smAcct) {
 			throw new Error(
 				`Seat manager ${smKey.toString()} not found for market ${solUsdcMarket.toString()}`
@@ -358,9 +356,7 @@ describe('phoenixVaults', () => {
 
 		// For the purposes of this example, assert that the authority for the above market is the same as the devnetSeatManagerAuthority.
 		// You can remove or replace the below logic with the conditions you want to verify.
-		console.log(`seat manager auth: ${sm.authority.toString()}`);
 		assert.equal(sm.market.toBase58(), solUsdcMarket.toBase58());
-		console.log('Seat Manager Market: ', sm.market.toBase58());
 	});
 
 	it('Maker Short SOL/USDC', async () => {
@@ -369,29 +365,65 @@ describe('phoenixVaults', () => {
 			throw Error('SOL/USDC market not found');
 		}
 
-		// This function creates a bundle of new instructions that includes:
-		// - Create associated token accounts for base and quote tokens, if needed
-		// - Claim a maker seat on the market, if needed
-		const setupMakerIxs = await getMakerSetupInstructionsForMarket(
-			provider.connection,
+		const createAtaIxs = await createMarketTokenAccountIxs(
+			conn,
 			marketState,
-			maker.publicKey
+			maker.publicKey,
+			payer
 		);
-		// maker is selling SOL
-		const solAta = getAssociatedTokenAddressSync(solMint, maker.publicKey);
+		const solAta = getAssociatedTokenAddressSync(
+			solMint,
+			maker.publicKey,
+			true
+		);
 		const mintSolIx = createMintToInstruction(
 			solMint,
 			solAta,
 			mintAuth.publicKey,
 			solAmount.toNumber()
 		);
-		await sendAndConfirm(
-			provider,
-			payer,
-			[...setupMakerIxs, mintSolIx],
-			[mintAuth, maker]
+		await sendAndConfirm(conn, payer, [...createAtaIxs, mintSolIx], [mintAuth]);
+		console.log('setup maker tokens');
+
+		const claimMakerSeatIxs = await confirmOrCreateClaimSeatIxs(
+			conn,
+			marketState,
+			maker.publicKey
 		);
-		console.log('setup maker');
+		console.log('maker:', maker.publicKey.toString());
+		for (const ix of claimMakerSeatIxs) {
+			for (const acct of ix.keys) {
+				console.log(`${acct.pubkey.toString()}, signer: ${acct.isSigner}`);
+			}
+		}
+		// const sig = await sendAndConfirm(conn, payer, claimMakerSeatIxs, [maker]);
+		// console.log('claim maker seat:', signatureLink(sig, conn));
+
+		try {
+			const claimSeatIxs: TransactionInstruction[] = [];
+			for (const ix of claimMakerSeatIxs) {
+				claimSeatIxs.push(
+					await program.methods
+						.phoenix({
+							phoenixIxData: ix.data,
+						})
+						.accounts({
+							vault: vaultKey,
+							delegate: manager.publicKey,
+							phoenix: PHOENIX_PROGRAM_ID,
+							phoenixVaults: program.programId,
+						})
+						.remainingAccounts(ix.keys)
+						.signers([payer, maker])
+						.instruction()
+				);
+			}
+			await simulate(conn, payer, claimSeatIxs, [maker, manager]);
+			const sig = await sendAndConfirm(conn, payer, claimSeatIxs, [maker]);
+			console.log('claim maker seat:', signatureLink(sig, conn));
+		} catch (e: any) {
+			throw new Error(e);
+		}
 
 		const priceInTicks = phoenix.floatPriceToTicks(
 			startSolUsdcPrice,
@@ -411,7 +443,7 @@ describe('phoenixVaults', () => {
 			solUsdcMarket.toString(),
 			maker.publicKey
 		);
-		await sendAndConfirm(provider, payer, [makerOrderIx], [maker]);
+		await sendAndConfirm(conn, payer, [makerOrderIx], [maker]);
 		console.log('placed maker ask');
 	});
 
@@ -421,29 +453,56 @@ describe('phoenixVaults', () => {
 	// 		throw Error('SOL/USDC market not found');
 	// 	}
 	//
-	// 	// This function creates a bundle of new instructions that includes:
-	// 	// - Create associated token accounts for base and quote tokens, if needed
-	// 	// - Claim a maker seat on the market, if needed
-	// 	const setupTakerIxs = await getMakerSetupInstructionsForMarket(
-	// 		provider.connection,
+	// 	// taker is buying SOL
+	// 	const createAtaIxs = await createMarketTokenAccountIxs(
+	// 		conn,
 	// 		marketState,
-	// 		vaultKey
+	// 		vaultKey,
+	// 		payer
 	// 	);
-	// 	// maker is selling SOL
-	// 	const usdcAta = getAssociatedTokenAddressSync(usdcMint, vaultKey);
+	// 	const usdcAta = getAssociatedTokenAddressSync(usdcMint, vaultKey, true);
 	// 	const mintUsdcIx = createMintToInstruction(
 	// 		usdcMint,
 	// 		usdcAta,
 	// 		mintAuth.publicKey,
 	// 		usdcAmount.toNumber()
 	// 	);
+	//
 	// 	await sendAndConfirm(
-	// 		provider,
+	// 		conn,
 	// 		payer,
-	// 		[...setupTakerIxs, mintUsdcIx],
-	// 		[mintAuth, maker]
+	// 		[...createAtaIxs, mintUsdcIx],
+	// 		[mintAuth]
 	// 	);
-	// 	console.log('setup taker');
+	// 	console.log('setup taker tokens');
+	//
+	// 	const claimTakerSeatIxs = await confirmOrCreateClaimSeatIxs(
+	// 		conn,
+	// 		marketState,
+	// 		vaultKey
+	// 	);
+	// 	try {
+	// 		const claimSeatIxs: TransactionInstruction[] = [];
+	// 		for (const ix of claimTakerSeatIxs) {
+	// 			claimSeatIxs.push(
+	// 				await program.methods
+	// 					.phoenix({
+	// 						phoenixIxData: ix.data,
+	// 					})
+	// 					.accounts({
+	// 						vault: vaultKey,
+	// 						phoenix: PHOENIX_PROGRAM_ID,
+	// 					})
+	// 					.remainingAccounts(ix.keys)
+	// 					.instruction()
+	// 			);
+	// 		}
+	// 		await simulate(conn, payer, claimSeatIxs);
+	// 		const sig = await sendAndConfirm(conn, payer, claimSeatIxs);
+	// 		console.log('claim taker seat:', signatureLink(sig, conn));
+	// 	} catch (e: any) {
+	// 		throw new Error(e);
+	// 	}
 	//
 	// 	const priceInTicks = phoenix.floatPriceToTicks(
 	// 		startSolUsdcPrice,
@@ -465,34 +524,47 @@ describe('phoenixVaults', () => {
 	// 			market: solUsdcMarket,
 	// 			trader: vaultKey,
 	// 			seat: getSeatAddress(solUsdcMarket, vaultKey),
-	// 			baseAccount: this.getBaseAccountKey(trader),
-	// 			quoteAccount: this.getQuoteAccountKey(trader),
-	// 			baseVault: this.getBaseVaultKey(),
-	// 			quoteVault: this.getQuoteVaultKey(),
+	// 			baseAccount: phoenix.getBaseAccountKey(
+	// 				vaultKey,
+	// 				solUsdcMarket.toString()
+	// 			),
+	// 			quoteAccount: phoenix.getQuoteAccountKey(
+	// 				vaultKey,
+	// 				solUsdcMarket.toString()
+	// 			),
+	// 			baseVault: phoenix.getBaseVaultKey(solUsdcMarket.toString()),
+	// 			quoteVault: phoenix.getQuoteVaultKey(solUsdcMarket.toString()),
 	// 		},
 	// 		{
-	// 			orderPacket,
+	// 			orderPacket: takerOrderPacket,
 	// 		}
-	// 	)
-	// 	const takerOrderIx = phoenix.createPlaceLimitOrderInstruction(
-	// 		takerOrderPacket,
-	// 		solUsdcMarket.toString(),
-	// 		vaultKey
 	// 	);
+	// 	try {
+	// 		const ix = await program.methods
+	// 			.phoenix({
+	// 				phoenixIxData: takerOrderIx.data,
+	// 			})
+	// 			.accounts({
+	// 				vault: vaultKey,
+	// 				phoenix: PHOENIX_PROGRAM_ID,
+	// 			})
+	// 			.remainingAccounts(takerOrderIx.keys)
+	// 			.instruction();
+	// 		await simulate(conn, payer, [ix]);
 	//
-	// 	const params = {
-	// 		phoenixIxData: takerOrderIx.data,
-	// 	};
-	// 	const cpi = await program.methods
-	// 		.phoenix(params)
-	// 		.accounts({
-	// 			vault: vaultKey,
-	// 			phoenix: takerOrderIx.programId,
-	// 		})
-	// 		.remainingAccounts(takerOrderIx.keys)
-	// 		.instruction();
-	//
-	// 	await sendAndConfirm(provider, payer, [takerOrderIx], [maker]);
-	// 	console.log('placed taker bid');
+	// 		const sig = await program.methods
+	// 			.phoenix({
+	// 				phoenixIxData: takerOrderIx.data,
+	// 			})
+	// 			.accounts({
+	// 				vault: vaultKey,
+	// 				phoenix: PHOENIX_PROGRAM_ID,
+	// 			})
+	// 			.remainingAccounts(takerOrderIx.keys)
+	// 			.rpc();
+	// 		console.log('placed taker bid:', signatureLink(sig, conn));
+	// 	} catch (e: any) {
+	// 		throw new Error(e);
+	// 	}
 	// });
 });

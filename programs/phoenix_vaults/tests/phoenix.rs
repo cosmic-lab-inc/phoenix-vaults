@@ -221,10 +221,6 @@ async fn bootstrap_market(cfg: BootstrapMarketConfig<'_>) -> anyhow::Result<()> 
         create_claim_market_authority_instruction(&market.pubkey(), &payer.pubkey());
 
     let claim_auth_sig = send_and_confirm_tx(client, payer, &[claim_auth_ix], &[payer]).await?;
-    println!(
-        "claim seat manager auth: {}",
-        signature_link(client, &claim_auth_sig)
-    );
 
     let (seat_manager_address, _) = get_seat_manager_address(&market.pubkey());
     let seat_manager_data = client

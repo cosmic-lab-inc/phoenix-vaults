@@ -4,6 +4,10 @@ home() {
 
 home
 
+solana-install init 1.18.8
+
+# check if arch is apple-silicon
+
 CXX=/opt/homebrew/bin/c++-14 cargo build
 
 cargo fmt

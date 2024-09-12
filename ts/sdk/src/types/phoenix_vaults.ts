@@ -230,6 +230,11 @@ export type PhoenixVaults = {
 					name: 'phoenix';
 					isMut: false;
 					isSigner: false;
+				},
+				{
+					name: 'phoenixVaults';
+					isMut: false;
+					isSigner: false;
 				}
 			];
 			args: [
@@ -1313,6 +1318,11 @@ export const IDL: PhoenixVaults = {
 				},
 				{
 					name: 'phoenix',
+					isMut: false,
+					isSigner: false,
+				},
+				{
+					name: 'phoenixVaults',
 					isMut: false,
 					isSigner: false,
 				},

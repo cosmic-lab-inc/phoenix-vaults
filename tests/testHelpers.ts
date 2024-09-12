@@ -10,6 +10,8 @@ import {
 	createInitializeAccountInstruction,
 	createMintToInstruction,
 	createWrappedNativeAccount,
+	getAssociatedTokenAddress,
+	createAssociatedTokenAccountInstruction,
 } from '@solana/spl-token';
 import {
 	Connection,
@@ -22,11 +24,20 @@ import {
 	TransactionConfirmationStrategy,
 	TransactionInstruction,
 	TransactionSignature,
+	VersionedTransaction,
 } from '@solana/web3.js';
 import { assert } from 'chai';
 import buffer from 'buffer';
 import { BN } from '@coral-xyz/anchor';
 import { PRICE_PRECISION } from '../ts/sdk';
+import {
+	getLogAuthority,
+	getSeatAddress,
+	getSeatDepositCollectorAddress,
+	getSeatManagerAddress,
+	MarketState,
+	PROGRAM_ID as PHOENIX_PROGRAM_ID,
+} from '@ellipsis-labs/phoenix-sdk';
 
 export type OraclePriceData = {
 	price: BN;
@@ -597,24 +608,28 @@ export async function getTokenAmountAsBN(
 }
 
 export async function simulate(
-	provider: Provider,
+	connection: Connection,
 	payer: Signer,
 	instructions: TransactionInstruction[],
 	signers: Signer[] = []
 ): Promise<void> {
 	try {
-		const recentBlockhash = await provider.connection
+		const recentBlockhash = await connection
 			.getLatestBlockhash()
 			.then((res) => res.blockhash);
 		const msg = new anchor.web3.TransactionMessage({
-			payerKey: provider.publicKey,
+			payerKey: payer.publicKey,
 			recentBlockhash,
 			instructions,
 		}).compileToV0Message();
 		const tx = new anchor.web3.VersionedTransaction(msg);
 		tx.sign([payer, ...signers]);
 
-		const sim = await provider.connection.simulateTransaction(tx, {
+		const requiredSigs = msg.header.numRequiredSignatures;
+		const sigs = tx.signatures.length;
+		console.log(`tx sigs: ${requiredSigs}/${sigs}`);
+
+		const sim = await connection.simulateTransaction(tx, {
 			sigVerify: false,
 		});
 		console.log('simulation:', sim.value.err, sim.value.logs);
@@ -625,30 +640,30 @@ export async function simulate(
 }
 
 export async function sendAndConfirm(
-	provider: Provider,
+	connection: Connection,
 	payer: Signer,
 	instructions: TransactionInstruction[],
 	signers: Signer[] = []
 ): Promise<string> {
 	try {
-		const recentBlockhash = await provider.connection
+		const recentBlockhash = await connection
 			.getLatestBlockhash()
 			.then((res) => res.blockhash);
 		const msg = new anchor.web3.TransactionMessage({
-			payerKey: provider.publicKey,
+			payerKey: payer.publicKey,
 			recentBlockhash,
 			instructions,
 		}).compileToV0Message();
 		const tx = new anchor.web3.VersionedTransaction(msg);
 		tx.sign([payer, ...signers]);
 
-		const sig = await provider.connection.sendTransaction(tx, {
+		const sig = await connection.sendTransaction(tx, {
 			skipPreflight: true,
 		});
 		const strategy = {
 			signature: sig,
 		} as TransactionConfirmationStrategy;
-		const confirm = await provider.connection.confirmTransaction(strategy);
+		const confirm = await connection.confirmTransaction(strategy);
 		if (confirm.value.err) {
 			throw new Error(JSON.stringify(confirm.value.err));
 		}
@@ -658,3 +673,101 @@ export async function sendAndConfirm(
 		throw new Error(e);
 	}
 }
+
+export async function createAtaIdempotent(
+	connection: Connection,
+	owner: PublicKey,
+	payer: PublicKey,
+	tokenMintAddress: PublicKey
+): Promise<TransactionInstruction[]> {
+	const associatedTokenAccountAddress = await getAssociatedTokenAddress(
+		tokenMintAddress,
+		owner,
+		true
+	);
+
+	const ata = await connection.getAccountInfo(
+		associatedTokenAccountAddress,
+		'confirmed'
+	);
+	const ixs: TransactionInstruction[] = [];
+	if (ata === null || ata.data.length == 0) {
+		ixs.push(
+			createAssociatedTokenAccountInstruction(
+				payer,
+				associatedTokenAccountAddress,
+				owner,
+				tokenMintAddress
+			)
+		);
+	}
+	return ixs;
+}
+
+export async function createMarketTokenAccountIxs(
+	connection: Connection,
+	market: MarketState,
+	trader: PublicKey,
+	payer: Signer
+): Promise<TransactionInstruction[]> {
+	const baseAtaIxs = await createAtaIdempotent(
+		connection,
+		trader,
+		payer.publicKey,
+		market.data.header.baseParams.mintKey
+	);
+	const quoteAtaIxs = await createAtaIdempotent(
+		connection,
+		trader,
+		payer.publicKey,
+		market.data.header.quoteParams.mintKey
+	);
+	return [...baseAtaIxs, ...quoteAtaIxs];
+}
+
+export function signatureLink(sig: string, connection: Connection): string {
+	const clusterUrl = encodeURIComponent(connection.rpcEndpoint);
+	return `https://explorer.solana.com/tx/${sig}?cluster=custom&customUrl=${clusterUrl}`;
+}
+
+export function messageLink(
+	tx: VersionedTransaction,
+	connection: Connection
+): string {
+	const clusterUrl = encodeURIComponent(connection.rpcEndpoint);
+	const serializedMessage: Buffer = Buffer.from(tx.message.serialize());
+	const message = encodeURIComponent(serializedMessage.toString('base64'));
+	return `https://explorer.solana.com/tx/inspector?message=${message}&cluster=custom&customUrl=${clusterUrl}`;
+}
+
+export function formatExplorerLink(
+	signature: TransactionSignature | string
+): string {
+	return `https://solana.fm/tx/${signature}`;
+}
+
+// import { createClaimSeatInstruction } from '@ellipsis-labs/phoenix-sdk/psm-src/instructions/ClaimSeat';
+//
+// export function claimSeatIx(
+// 	payer: Signer,
+// 	market: PublicKey,
+// 	trader: PublicKey
+// ) {
+// 	const seatManager = getSeatManagerAddress(market);
+// 	const seatDepositCollector = getSeatDepositCollectorAddress(market);
+// 	const seat = getSeatAddress(market, trader);
+// 	const logAuthority = getLogAuthority();
+//
+// 	const claimSeatAccounts = {
+// 		phoenixProgram: PHOENIX_PROGRAM_ID,
+// 		logAuthority,
+// 		market,
+// 		seatManager,
+// 		seatDepositCollector,
+// 		trader,
+// 		payer: payer.publicKey,
+// 		seat,
+// 	};
+//
+// 	return createClaimSeatInstruction(claimSeatAccounts);
+// }
