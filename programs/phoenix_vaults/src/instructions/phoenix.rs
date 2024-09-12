@@ -1,23 +1,23 @@
 use anchor_lang::prelude::*;
-use phoenix::program::{assert_with_msg, PhoenixInstruction};
 use solana_program::instruction::Instruction;
 use solana_program::program::{invoke, invoke_signed};
 
 use crate::constraints::is_delegate_for_vault;
 use crate::cpis::PhoenixCPI;
-use crate::state::{PhoenixProgram, PhoenixVaultsProgram, Vault};
+use crate::declare_vault_seeds;
+use crate::state::{PhoenixProgram, PhoenixSeatManagerProgram, Vault};
 
 pub fn phoenix<'c: 'info, 'info>(
     ctx: Context<'_, '_, 'c, 'info, Phoenix<'info>>,
     params: PhoenixParams,
 ) -> Result<()> {
-    ctx.phoenix_cpi(&params.phoenix_ix_data)?;
+    ctx.phoenix_cpi(&params.cpi_ix_data)?;
     Ok(())
 }
 
 #[derive(Debug, Clone, AnchorSerialize, AnchorDeserialize, PartialEq, Eq)]
 pub struct PhoenixParams {
-    pub phoenix_ix_data: Vec<u8>,
+    pub cpi_ix_data: Vec<u8>,
 }
 
 #[derive(Accounts)]
@@ -32,34 +32,25 @@ pub struct Phoenix<'info> {
     pub vault: AccountLoader<'info, Vault>,
     /// Is manager by default, but can be delegated to another pubkey using `update_delegate`
     pub delegate: Signer<'info>,
-    pub phoenix: Program<'info, PhoenixProgram>,
-    pub phoenix_vaults: Program<'info, PhoenixVaultsProgram>,
+    pub phoenix: Option<Program<'info, PhoenixProgram>>,
+    pub phoenix_seat_manager: Option<Program<'info, PhoenixSeatManagerProgram>>,
 }
 
 impl<'info> PhoenixCPI for Context<'_, '_, '_, 'info, Phoenix<'info>> {
     fn phoenix_cpi(&self, ix_data: &[u8]) -> Result<()> {
-        let vault = self.accounts.vault.load()?;
-        let name = vault.name;
-        let bump = vault.bump;
-        let vault_signer_seeds = &[&Vault::get_vault_signer_seeds(&name, &bump)[..]];
+        let cpi_program_id = match (&self.accounts.phoenix, &self.accounts.phoenix_seat_manager) {
+            (None, None) => Err(crate::error::ErrorCode::MissingBothPhoenixPrograms),
+            (Some(phoenix), None) => Ok(phoenix.key()),
+            (None, Some(psm)) => Ok(psm.key()),
+            (Some(_), Some(_)) => Err(crate::error::ErrorCode::BothPhoenixProgramsProvided),
+        }?;
 
-        drop(vault);
+        declare_vault_seeds!(self.accounts.vault, seeds);
 
-        let metas: Vec<AccountMeta> = self.remaining_accounts.to_owned().to_account_metas(None);
-
-        // let (program_accounts, _) = self.remaining_accounts.split_at(4);
-        // let accounts_iter = &mut program_accounts.iter();
-        // let info = next_account_info(accounts_iter)?;
-        // assert_with_msg(
-        //     info.is_signer,
-        //     ProgramError::MissingRequiredSignature,
-        //     &format!("{:?} missing required signature", info.key),
-        // )?;
-
-        let ix = Instruction::new_with_bytes(self.accounts.phoenix.key(), ix_data, metas);
-        // invoke_signed(&ix, self.remaining_accounts, vault_signer_seeds)?;
-
-        invoke(&ix, self.remaining_accounts)?;
+        // let metas: Vec<AccountMeta> = self.remaining_accounts.to_owned().to_account_metas(None);
+        //
+        // let ix = Instruction::new_with_bytes(cpi_program_id, ix_data, metas);
+        // invoke_signed(&ix, self.remaining_accounts, seeds)?;
 
         Ok(())
     }

@@ -75,5 +75,5 @@ export type Vault = {
 };
 
 export type PhoenixParams = {
-	phoenixIxData: Buffer;
+	cpiIxData: Buffer;
 };

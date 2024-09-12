@@ -28,6 +28,9 @@ import {
 	QUOTE_PRECISION,
 	MOCK_USDC_PRECISION,
 	MOCK_SOL_PRECISION,
+	PhoenixParams,
+	PHOENIX_PROGRAM_ID,
+	PHOENIX_SEAT_MANAGER_PROGRAM_ID,
 } from '../ts/sdk';
 import { BN } from '@coral-xyz/anchor';
 import {
@@ -38,25 +41,22 @@ import {
 } from '@solana/spl-token';
 import {
 	createMarketTokenAccountIxs,
-	signatureLink,
 	sendAndConfirm,
+	signatureLink,
 	simulate,
 } from './testHelpers';
 import {
 	RawMarketConfig,
 	Client as PhoenixClient,
-	getMakerSetupInstructionsForMarket,
-	getLimitOrderPacket,
-	Side,
 	getSeatManagerAddress,
 	deserializeSeatManagerData,
+	getLimitOrderPacket,
+	Side,
+	confirmOrCreateClaimSeatIxs,
 	createPlaceLimitOrderInstruction,
-	PROGRAM_ID as PHOENIX_PROGRAM_ID,
 	getLogAuthority,
 	getSeatAddress,
-	confirmOrCreateClaimSeatIxs,
-	createRequestSeatInstruction,
-} from '@ellipsis-labs/phoenix-sdk';
+} from '@cosmic-lab/phoenix-sdk';
 
 const MARKET_CONFIG: RawMarketConfig = {
 	['localhost']: {
@@ -120,7 +120,7 @@ describe('phoenixVaults', () => {
 	anchor.setProvider(provider);
 	const conn = provider.connection;
 	// @ts-ignore
-	const payer: any = provider.wallet.payer as any as Keypair;
+	const payer: Keypair = provider.wallet.payer as any as Keypair;
 	// const payer = _payer as Keypair;
 	const program = anchor.workspace
 		.PhoenixVaults as anchor.Program<PhoenixVaults>;
@@ -385,186 +385,204 @@ describe('phoenixVaults', () => {
 		await sendAndConfirm(conn, payer, [...createAtaIxs, mintSolIx], [mintAuth]);
 		console.log('setup maker tokens');
 
-		const claimMakerSeatIxs = await confirmOrCreateClaimSeatIxs(
-			conn,
-			marketState,
-			maker.publicKey
-		);
-		console.log('maker:', maker.publicKey.toString());
-		for (const ix of claimMakerSeatIxs) {
-			for (const acct of ix.keys) {
-				console.log(`${acct.pubkey.toString()}, signer: ${acct.isSigner}`);
-			}
-		}
-		// const sig = await sendAndConfirm(conn, payer, claimMakerSeatIxs, [maker]);
-		// console.log('claim maker seat:', signatureLink(sig, conn));
-
 		try {
+			const claimMakerSeatIxs = await confirmOrCreateClaimSeatIxs(
+				conn,
+				marketState,
+				maker.publicKey,
+				payer.publicKey
+			);
 			const claimSeatIxs: TransactionInstruction[] = [];
 			for (const ix of claimMakerSeatIxs) {
+				const phoenix = ix.programId.equals(PHOENIX_PROGRAM_ID)
+					? ix.programId
+					: null;
+				const phoenixSeatManager = ix.programId.equals(
+					PHOENIX_SEAT_MANAGER_PROGRAM_ID
+				)
+					? ix.programId
+					: null;
+
+				const params: PhoenixParams = {
+					cpiIxData: ix.data,
+				};
 				claimSeatIxs.push(
 					await program.methods
-						.phoenix({
-							phoenixIxData: ix.data,
-						})
+						.phoenix(params)
 						.accounts({
 							vault: vaultKey,
 							delegate: manager.publicKey,
-							phoenix: PHOENIX_PROGRAM_ID,
-							phoenixVaults: program.programId,
+							phoenix,
+							phoenixSeatManager,
 						})
 						.remainingAccounts(ix.keys)
-						.signers([payer, maker])
 						.instruction()
 				);
 			}
-			await simulate(conn, payer, claimSeatIxs, [maker, manager]);
+			await simulate(conn, payer, claimSeatIxs, [maker]);
 			const sig = await sendAndConfirm(conn, payer, claimSeatIxs, [maker]);
 			console.log('claim maker seat:', signatureLink(sig, conn));
 		} catch (e: any) {
 			throw new Error(e);
 		}
 
-		const priceInTicks = phoenix.floatPriceToTicks(
-			startSolUsdcPrice,
-			solUsdcMarket.toBase58()
-		);
-		const numBaseLots = phoenix.rawBaseUnitsToBaseLotsRoundedDown(
-			solUiAmount,
-			solUsdcMarket.toBase58()
-		);
-		const makerOrderPacket = getLimitOrderPacket({
-			side: Side.Ask,
-			priceInTicks,
-			numBaseLots,
-		});
-		const makerOrderIx = phoenix.createPlaceLimitOrderInstruction(
-			makerOrderPacket,
-			solUsdcMarket.toString(),
-			maker.publicKey
-		);
-		await sendAndConfirm(conn, payer, [makerOrderIx], [maker]);
-		console.log('placed maker ask');
+		// const priceInTicks = phoenix.floatPriceToTicks(
+		// 	startSolUsdcPrice,
+		// 	solUsdcMarket.toBase58()
+		// );
+		// const numBaseLots = phoenix.rawBaseUnitsToBaseLotsRoundedDown(
+		// 	solUiAmount,
+		// 	solUsdcMarket.toBase58()
+		// );
+		// const makerOrderPacket = getLimitOrderPacket({
+		// 	side: Side.Ask,
+		// 	priceInTicks,
+		// 	numBaseLots,
+		// });
+		// const makerOrderIx = phoenix.createPlaceLimitOrderInstruction(
+		// 	makerOrderPacket,
+		// 	solUsdcMarket.toString(),
+		// 	maker.publicKey
+		// );
+		// await sendAndConfirm(conn, payer, [makerOrderIx], [maker]);
+		// console.log('placed maker ask');
 	});
 
-	// it('Taker Long SOL/USDC', async () => {
-	// 	const marketState = phoenix.marketStates.get(solUsdcMarket.toString());
-	// 	if (marketState === undefined) {
-	// 		throw Error('SOL/USDC market not found');
-	// 	}
-	//
-	// 	// taker is buying SOL
-	// 	const createAtaIxs = await createMarketTokenAccountIxs(
-	// 		conn,
-	// 		marketState,
-	// 		vaultKey,
-	// 		payer
-	// 	);
-	// 	const usdcAta = getAssociatedTokenAddressSync(usdcMint, vaultKey, true);
-	// 	const mintUsdcIx = createMintToInstruction(
-	// 		usdcMint,
-	// 		usdcAta,
-	// 		mintAuth.publicKey,
-	// 		usdcAmount.toNumber()
-	// 	);
-	//
-	// 	await sendAndConfirm(
-	// 		conn,
-	// 		payer,
-	// 		[...createAtaIxs, mintUsdcIx],
-	// 		[mintAuth]
-	// 	);
-	// 	console.log('setup taker tokens');
-	//
-	// 	const claimTakerSeatIxs = await confirmOrCreateClaimSeatIxs(
-	// 		conn,
-	// 		marketState,
-	// 		vaultKey
-	// 	);
-	// 	try {
-	// 		const claimSeatIxs: TransactionInstruction[] = [];
-	// 		for (const ix of claimTakerSeatIxs) {
-	// 			claimSeatIxs.push(
-	// 				await program.methods
-	// 					.phoenix({
-	// 						phoenixIxData: ix.data,
-	// 					})
-	// 					.accounts({
-	// 						vault: vaultKey,
-	// 						phoenix: PHOENIX_PROGRAM_ID,
-	// 					})
-	// 					.remainingAccounts(ix.keys)
-	// 					.instruction()
-	// 			);
-	// 		}
-	// 		await simulate(conn, payer, claimSeatIxs);
-	// 		const sig = await sendAndConfirm(conn, payer, claimSeatIxs);
-	// 		console.log('claim taker seat:', signatureLink(sig, conn));
-	// 	} catch (e: any) {
-	// 		throw new Error(e);
-	// 	}
-	//
-	// 	const priceInTicks = phoenix.floatPriceToTicks(
-	// 		startSolUsdcPrice,
-	// 		solUsdcMarket.toBase58()
-	// 	);
-	// 	const numBaseLots = phoenix.rawBaseUnitsToBaseLotsRoundedDown(
-	// 		solUiAmount,
-	// 		solUsdcMarket.toBase58()
-	// 	);
-	// 	const takerOrderPacket = getLimitOrderPacket({
-	// 		side: Side.Bid,
-	// 		priceInTicks,
-	// 		numBaseLots,
-	// 	});
-	// 	const takerOrderIx = createPlaceLimitOrderInstruction(
-	// 		{
-	// 			phoenixProgram: PHOENIX_PROGRAM_ID,
-	// 			logAuthority: getLogAuthority(),
-	// 			market: solUsdcMarket,
-	// 			trader: vaultKey,
-	// 			seat: getSeatAddress(solUsdcMarket, vaultKey),
-	// 			baseAccount: phoenix.getBaseAccountKey(
-	// 				vaultKey,
-	// 				solUsdcMarket.toString()
-	// 			),
-	// 			quoteAccount: phoenix.getQuoteAccountKey(
-	// 				vaultKey,
-	// 				solUsdcMarket.toString()
-	// 			),
-	// 			baseVault: phoenix.getBaseVaultKey(solUsdcMarket.toString()),
-	// 			quoteVault: phoenix.getQuoteVaultKey(solUsdcMarket.toString()),
-	// 		},
-	// 		{
-	// 			orderPacket: takerOrderPacket,
-	// 		}
-	// 	);
-	// 	try {
-	// 		const ix = await program.methods
-	// 			.phoenix({
-	// 				phoenixIxData: takerOrderIx.data,
-	// 			})
-	// 			.accounts({
-	// 				vault: vaultKey,
-	// 				phoenix: PHOENIX_PROGRAM_ID,
-	// 			})
-	// 			.remainingAccounts(takerOrderIx.keys)
-	// 			.instruction();
-	// 		await simulate(conn, payer, [ix]);
-	//
-	// 		const sig = await program.methods
-	// 			.phoenix({
-	// 				phoenixIxData: takerOrderIx.data,
-	// 			})
-	// 			.accounts({
-	// 				vault: vaultKey,
-	// 				phoenix: PHOENIX_PROGRAM_ID,
-	// 			})
-	// 			.remainingAccounts(takerOrderIx.keys)
-	// 			.rpc();
-	// 		console.log('placed taker bid:', signatureLink(sig, conn));
-	// 	} catch (e: any) {
-	// 		throw new Error(e);
-	// 	}
-	// });
+	it('Taker Long SOL/USDC', async () => {
+		const marketState = phoenix.marketStates.get(solUsdcMarket.toString());
+		if (marketState === undefined) {
+			throw Error('SOL/USDC market not found');
+		}
+
+		// taker is buying SOL
+		const createAtaIxs = await createMarketTokenAccountIxs(
+			conn,
+			marketState,
+			vaultKey,
+			payer
+		);
+		const usdcAta = getAssociatedTokenAddressSync(usdcMint, vaultKey, true);
+		const mintUsdcIx = createMintToInstruction(
+			usdcMint,
+			usdcAta,
+			mintAuth.publicKey,
+			usdcAmount.toNumber()
+		);
+
+		await sendAndConfirm(
+			conn,
+			payer,
+			[...createAtaIxs, mintUsdcIx],
+			[mintAuth]
+		);
+		console.log('setup taker tokens');
+
+		try {
+			console.log('vault:', vaultKey.toString());
+			const claimTakerSeatIxs = await confirmOrCreateClaimSeatIxs(
+				conn,
+				marketState,
+				vaultKey,
+				payer.publicKey
+			);
+			const claimSeatIxs: TransactionInstruction[] = [];
+			for (const ix of claimTakerSeatIxs) {
+				const phoenix = ix.programId.equals(PHOENIX_PROGRAM_ID)
+					? ix.programId
+					: null;
+				const phoenixSeatManager = ix.programId.equals(
+					PHOENIX_SEAT_MANAGER_PROGRAM_ID
+				)
+					? ix.programId
+					: null;
+
+				const params: PhoenixParams = {
+					cpiIxData: ix.data,
+				};
+				claimSeatIxs.push(
+					await program.methods
+						.phoenix(params)
+						.accounts({
+							vault: vaultKey,
+							delegate: manager.publicKey,
+							phoenix,
+							phoenixSeatManager,
+						})
+						.remainingAccounts(ix.keys)
+						.instruction()
+				);
+			}
+			await simulate(conn, payer, claimSeatIxs, [payer, manager]);
+			const sig = await sendAndConfirm(conn, payer, claimSeatIxs);
+			console.log('claim taker seat:', signatureLink(sig, conn));
+		} catch (e: any) {
+			throw new Error(e);
+		}
+
+		// const priceInTicks = phoenix.floatPriceToTicks(
+		// 	startSolUsdcPrice,
+		// 	solUsdcMarket.toBase58()
+		// );
+		// const numBaseLots = phoenix.rawBaseUnitsToBaseLotsRoundedDown(
+		// 	solUiAmount,
+		// 	solUsdcMarket.toBase58()
+		// );
+		// const takerOrderPacket = getLimitOrderPacket({
+		// 	side: Side.Bid,
+		// 	priceInTicks,
+		// 	numBaseLots,
+		// });
+		// const takerOrderIx = createPlaceLimitOrderInstruction(
+		// 	{
+		// 		phoenixProgram: PHOENIX_PROGRAM_ID,
+		// 		logAuthority: getLogAuthority(),
+		// 		market: solUsdcMarket,
+		// 		trader: vaultKey,
+		// 		seat: getSeatAddress(solUsdcMarket, vaultKey),
+		// 		baseAccount: phoenix.getBaseAccountKey(
+		// 			vaultKey,
+		// 			solUsdcMarket.toString()
+		// 		),
+		// 		quoteAccount: phoenix.getQuoteAccountKey(
+		// 			vaultKey,
+		// 			solUsdcMarket.toString()
+		// 		),
+		// 		baseVault: phoenix.getBaseVaultKey(solUsdcMarket.toString()),
+		// 		quoteVault: phoenix.getQuoteVaultKey(solUsdcMarket.toString()),
+		// 	},
+		// 	{
+		// 		orderPacket: takerOrderPacket,
+		// 	}
+		// );
+		// try {
+		// 	const phoenix = takerOrderIx.programId.equals(PHOENIX_PROGRAM_ID)
+		// 		? takerOrderIx.programId
+		// 		: null;
+		// 	const phoenixSeatManager = takerOrderIx.programId.equals(
+		// 		PHOENIX_SEAT_MANAGER_PROGRAM_ID
+		// 	)
+		// 		? takerOrderIx.programId
+		// 		: null;
+		//
+		// 	const params: PhoenixParams = {
+		// 		cpiIxData: takerOrderIx.data,
+		// 	};
+		// 	const ix = await program.methods
+		// 		.phoenix(params)
+		// 		.accounts({
+		// 			vault: vaultKey,
+		// 			delegate: manager.publicKey,
+		// 			phoenix,
+		// 			phoenixSeatManager,
+		// 		})
+		// 		.remainingAccounts(takerOrderIx.keys)
+		// 		.instruction();
+		//
+		// 	await simulate(conn, payer, [ix]);
+		// 	const sig = await sendAndConfirm(conn, payer, [ix]);
+		// 	console.log('place taker bid:', signatureLink(sig, conn));
+		// } catch (e: any) {
+		// 	throw new Error(e);
+		// }
+	});
 });

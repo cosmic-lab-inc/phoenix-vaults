@@ -9,10 +9,10 @@ impl Id for PhoenixProgram {
 }
 
 #[derive(Clone)]
-pub struct PhoenixVaultsProgram;
+pub struct PhoenixSeatManagerProgram;
 
-impl Id for PhoenixVaultsProgram {
+impl Id for PhoenixSeatManagerProgram {
     fn id() -> Pubkey {
-        crate::ID
+        phoenix_seat_manager::ID
     }
 }

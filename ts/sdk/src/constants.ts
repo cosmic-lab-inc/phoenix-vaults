@@ -1,5 +1,5 @@
 import { BN } from '@coral-xyz/anchor';
-import { Keypair } from '@solana/web3.js';
+import { Keypair, PublicKey } from '@solana/web3.js';
 
 export const QUOTE_PRECISION_EXP = new BN(6);
 export const PRICE_PRECISION_EXP = new BN(6);
@@ -74,4 +74,11 @@ export const MOCK_JUP_USDC_MARKET = Keypair.fromSecretKey(
 		155, 77, 41, 195, 245, 43, 240, 189, 119, 112, 171, 181, 73, 151, 234, 158,
 		154, 244, 252, 42, 218, 124, 117, 43, 55, 204, 36, 167, 160, 42, 233,
 	])
+);
+
+export const PHOENIX_PROGRAM_ID = new PublicKey(
+	'PhoeNiXZ8ByJGLkxNfZRnkUfjvmuYqLR89jjFHGqdXY'
+);
+export const PHOENIX_SEAT_MANAGER_PROGRAM_ID = new PublicKey(
+	'PSMxQbAoDWDbvd9ezQJgARyq6R9L5kJAasaLDVcZwf1'
 );

@@ -10,12 +10,6 @@
 # if you don't have avm, install it here: 
 # https://book.anchor-lang.com/getting_started/installation.html
 avm use 0.29.0
-
-# if on Apple Silicon:
-# rustup override set 1.75.0-x86_64-apple-darwin
-rustup override set 1.75.0
-
-agave-install init 1.18.8
 ```
 
 If on Mac and getting this error: 
@@ -29,7 +23,12 @@ brew install gnu-tar
 export PATH="/opt/homebrew/opt/gnu-tar/libexec/gnubin:$PATH"
 ```
 
+## Build
+```shell
+chmod +x ./build.sh && ./build.sh
+```
+
 ## Run tests
 ```shell
-yarn test
+chmod +x ./test.sh && ./test.sh
 ```

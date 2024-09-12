@@ -60,17 +60,10 @@
     bn.js "^5.1.2"
     buffer-layout "^1.2.0"
 
-"@cspotcode/source-map-support@^0.8.0":
-  version "0.8.1"
-  resolved "https://registry.yarnpkg.com/@cspotcode/source-map-support/-/source-map-support-0.8.1.tgz#00629c35a688e05a88b1cda684fb9d5e73f000a1"
-  integrity sha512-IchNf6dN4tHoMFIn/7OE8LWZ19Y6q/67Bmf6vnGREv8RSbBVb9LPJxEcnwrcwX6ixSvaiGoomAUvu4YSxXrVgw==
-  dependencies:
-    "@jridgewell/trace-mapping" "0.3.9"
-
-"@ellipsis-labs/phoenix-sdk@^2.0.3":
-  version "2.0.3"
-  resolved "https://registry.yarnpkg.com/@ellipsis-labs/phoenix-sdk/-/phoenix-sdk-2.0.3.tgz#eea052c6571b546d9d2b3ff296061e2623c44051"
-  integrity sha512-XjVApyLAYFeJwbYUySTb2n1oKOjNpih6de6jWj5mYiUjXIqK0rFvf0plXHrxpTF5YfUP/rnJ11yrVbvgOKKhGw==
+"@cosmic-lab/phoenix-sdk@^2.0.7":
+  version "2.0.7"
+  resolved "https://registry.yarnpkg.com/@cosmic-lab/phoenix-sdk/-/phoenix-sdk-2.0.7.tgz#00c012decf75e12d218e914824edbc6f861696da"
+  integrity sha512-nCWMB1sXSSZxNzUw5W7k07guN4Pcge+apBet7B5gYnDfH5cb8nN5DhG3+fQihx5nuJWcdJmmTMginOW0FoAxvA==
   dependencies:
     "@metaplex-foundation/beet" "^0.7.1"
     "@metaplex-foundation/rustbin" "^0.3.1"
@@ -80,6 +73,13 @@
     borsh "^0.7.0"
     bs58 "^5.0.0"
     zstddec "^0.0.2"
+
+"@cspotcode/source-map-support@^0.8.0":
+  version "0.8.1"
+  resolved "https://registry.yarnpkg.com/@cspotcode/source-map-support/-/source-map-support-0.8.1.tgz#00629c35a688e05a88b1cda684fb9d5e73f000a1"
+  integrity sha512-IchNf6dN4tHoMFIn/7OE8LWZ19Y6q/67Bmf6vnGREv8RSbBVb9LPJxEcnwrcwX6ixSvaiGoomAUvu4YSxXrVgw==
+  dependencies:
+    "@jridgewell/trace-mapping" "0.3.9"
 
 "@eslint/eslintrc@^0.4.3":
   version "0.4.3"

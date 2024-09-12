@@ -230,11 +230,13 @@ export type PhoenixVaults = {
 					name: 'phoenix';
 					isMut: false;
 					isSigner: false;
+					isOptional: true;
 				},
 				{
-					name: 'phoenixVaults';
+					name: 'phoenixSeatManager';
 					isMut: false;
 					isSigner: false;
+					isOptional: true;
 				}
 			];
 			args: [
@@ -708,7 +710,7 @@ export type PhoenixVaults = {
 				kind: 'struct';
 				fields: [
 					{
-						name: 'phoenixIxData';
+						name: 'cpiIxData';
 						type: 'bytes';
 					}
 				];
@@ -1084,6 +1086,16 @@ export type PhoenixVaults = {
 			code: 6035;
 			name: 'MarketRegistryMismatch';
 			msg: 'MarketRegistryMismatch';
+		},
+		{
+			code: 6036;
+			name: 'MissingBothPhoenixPrograms';
+			msg: 'MissingBothPhoenixPrograms';
+		},
+		{
+			code: 6037;
+			name: 'BothPhoenixProgramsProvided';
+			msg: 'BothPhoenixProgramsProvided';
 		}
 	];
 };
@@ -1320,11 +1332,13 @@ export const IDL: PhoenixVaults = {
 					name: 'phoenix',
 					isMut: false,
 					isSigner: false,
+					isOptional: true,
 				},
 				{
-					name: 'phoenixVaults',
+					name: 'phoenixSeatManager',
 					isMut: false,
 					isSigner: false,
+					isOptional: true,
 				},
 			],
 			args: [
@@ -1798,7 +1812,7 @@ export const IDL: PhoenixVaults = {
 				kind: 'struct',
 				fields: [
 					{
-						name: 'phoenixIxData',
+						name: 'cpiIxData',
 						type: 'bytes',
 					},
 				],
@@ -2174,6 +2188,16 @@ export const IDL: PhoenixVaults = {
 			code: 6035,
 			name: 'MarketRegistryMismatch',
 			msg: 'MarketRegistryMismatch',
+		},
+		{
+			code: 6036,
+			name: 'MissingBothPhoenixPrograms',
+			msg: 'MissingBothPhoenixPrograms',
+		},
+		{
+			code: 6037,
+			name: 'BothPhoenixProgramsProvided',
+			msg: 'BothPhoenixProgramsProvided',
 		},
 	],
 };
