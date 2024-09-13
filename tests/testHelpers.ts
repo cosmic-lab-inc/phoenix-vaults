@@ -17,6 +17,7 @@ import {
 	ComputeBudgetProgram,
 	Connection,
 	Keypair,
+	MessageV0,
 	PublicKey,
 	sendAndConfirmTransaction,
 	Signer,
@@ -632,15 +633,22 @@ export async function simulate(
 	const tx = new anchor.web3.VersionedTransaction(msg);
 	tx.sign([payer, ...signers]);
 
+	console.log(
+		'signers:',
+		expectedSigners(tx).map((k) => k.toString())
+	);
 	try {
 		const sim = await connection.simulateTransaction(tx, {
-			sigVerify: true,
+			sigVerify: false,
 		});
 		console.log('simulation:', sim.value.err, sim.value.logs);
 	} catch (e: any) {
-		const requiredSigs = msg.header.numRequiredSignatures;
-		const sigs = tx.signatures.length;
-		throw new Error(`tx sigs: ${sigs}/${requiredSigs}, error: ${e}`);
+		const missingSigners = checkMissingSigners(tx);
+		console.log(
+			'missing signers:',
+			missingSigners.map((k) => k.toString())
+		);
+		throw new Error(e);
 	}
 }
 
@@ -688,6 +696,40 @@ export async function sendAndConfirm(
 		throw new Error(e);
 	}
 }
+
+function expectedSigners(tx: VersionedTransaction): PublicKey[] {
+	const msg = tx.message as MessageV0;
+	const signers = [];
+	for (let i = 0; i < msg.staticAccountKeys.length; i++) {
+		if (msg.isAccountSigner(i)) {
+			signers.push(msg.staticAccountKeys[i]);
+		}
+	}
+	return signers;
+}
+
+function checkMissingSigners(tx: VersionedTransaction): PublicKey[] {
+	const msg = tx.message as MessageV0;
+	const sigs = tx.signatures;
+	let sigIndex = 0;
+	const missingSigners = [];
+	for (let i = 0; i < msg.staticAccountKeys.length; i++) {
+		if (msg.isAccountSigner(i)) {
+			const sig = sigs[sigIndex];
+			if (sig.toString() === EMPTY_SIGNATURE.toString()) {
+				missingSigners.push(msg.staticAccountKeys[i]);
+			}
+			sigIndex++;
+		}
+	}
+	return missingSigners;
+}
+
+const EMPTY_SIGNATURE = Uint8Array.from([
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+]);
 
 export async function createAtaIdempotent(
 	connection: Connection,

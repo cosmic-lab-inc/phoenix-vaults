@@ -1,4 +1,5 @@
 use anchor_lang::prelude::*;
+use anchor_spl::token::{Token, Transfer};
 use solana_program::instruction::Instruction;
 use solana_program::program::{invoke, invoke_signed};
 
@@ -47,10 +48,9 @@ impl<'info> PhoenixCPI for Context<'_, '_, '_, 'info, Phoenix<'info>> {
 
         declare_vault_seeds!(self.accounts.vault, seeds);
 
-        // let metas: Vec<AccountMeta> = self.remaining_accounts.to_owned().to_account_metas(None);
-        //
-        // let ix = Instruction::new_with_bytes(cpi_program_id, ix_data, metas);
-        // invoke_signed(&ix, self.remaining_accounts, seeds)?;
+        let metas: Vec<AccountMeta> = self.remaining_accounts.to_owned().to_account_metas(None);
+        let ix = Instruction::new_with_bytes(cpi_program_id, ix_data, metas);
+        invoke_signed(&ix, self.remaining_accounts, seeds)?;
 
         Ok(())
     }

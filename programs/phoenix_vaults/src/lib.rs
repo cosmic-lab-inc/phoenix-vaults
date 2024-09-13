@@ -49,4 +49,17 @@ pub mod phoenix_vaults {
     ) -> Result<()> {
         instructions::phoenix(ctx, params)
     }
+
+    pub fn token_transfer<'c: 'info, 'info>(
+        ctx: Context<'_, '_, 'c, 'info, TokenTransfer<'info>>,
+        params: TransferParams,
+    ) -> Result<()> {
+        instructions::token_transfer(ctx, params)
+    }
+
+    pub fn claim_seat<'c: 'info, 'info>(
+        ctx: Context<'_, '_, 'c, 'info, ClaimSeat<'info>>,
+    ) -> Result<()> {
+        instructions::claim_seat(ctx)
+    }
 }

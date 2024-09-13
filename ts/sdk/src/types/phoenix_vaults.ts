@@ -247,6 +247,121 @@ export type PhoenixVaults = {
 					};
 				}
 			];
+		},
+		{
+			name: 'tokenTransfer';
+			accounts: [
+				{
+					name: 'vault';
+					isMut: false;
+					isSigner: false;
+					docs: [
+						'If delegate has authority to sign for vault, then any Phoenix CPI is valid.',
+						'Phoenix CPI validates that opaque instruction data is a [`PhoenixInstruction`],',
+						'so this is safe since any Phoenix CPI is secure.'
+					];
+				},
+				{
+					name: 'delegate';
+					isMut: false;
+					isSigner: true;
+					docs: [
+						'Is manager by default, but can be delegated to another pubkey using `update_delegate`'
+					];
+				},
+				{
+					name: 'from';
+					isMut: true;
+					isSigner: false;
+				},
+				{
+					name: 'to';
+					isMut: true;
+					isSigner: false;
+				},
+				{
+					name: 'tokenProgram';
+					isMut: false;
+					isSigner: false;
+				}
+			];
+			args: [
+				{
+					name: 'params';
+					type: {
+						defined: 'TransferParams';
+					};
+				}
+			];
+		},
+		{
+			name: 'claimSeat';
+			accounts: [
+				{
+					name: 'vault';
+					isMut: false;
+					isSigner: false;
+					docs: [
+						'If delegate has authority to sign for vault, then any Phoenix CPI is valid.',
+						'Phoenix CPI validates that opaque instruction data is a [`PhoenixInstruction`],',
+						'so this is safe since any Phoenix CPI is secure.'
+					];
+				},
+				{
+					name: 'delegate';
+					isMut: false;
+					isSigner: true;
+					docs: [
+						'Is manager by default, but can be delegated to another pubkey using `update_delegate`'
+					];
+				},
+				{
+					name: 'phoenix';
+					isMut: false;
+					isSigner: false;
+				},
+				{
+					name: 'logAuthority';
+					isMut: false;
+					isSigner: false;
+				},
+				{
+					name: 'market';
+					isMut: true;
+					isSigner: false;
+				},
+				{
+					name: 'seatManager';
+					isMut: true;
+					isSigner: false;
+				},
+				{
+					name: 'seatDepositCollector';
+					isMut: true;
+					isSigner: false;
+				},
+				{
+					name: 'payer';
+					isMut: true;
+					isSigner: true;
+				},
+				{
+					name: 'seat';
+					isMut: true;
+					isSigner: false;
+				},
+				{
+					name: 'systemProgram';
+					isMut: false;
+					isSigner: false;
+				},
+				{
+					name: 'phoenixSeatManager';
+					isMut: false;
+					isSigner: false;
+				}
+			];
+			args: [];
 		}
 	];
 	accounts: [
@@ -712,6 +827,18 @@ export type PhoenixVaults = {
 					{
 						name: 'cpiIxData';
 						type: 'bytes';
+					}
+				];
+			};
+		},
+		{
+			name: 'TransferParams';
+			type: {
+				kind: 'struct';
+				fields: [
+					{
+						name: 'amount';
+						type: 'u64';
 					}
 				];
 			};
@@ -1350,6 +1477,121 @@ export const IDL: PhoenixVaults = {
 				},
 			],
 		},
+		{
+			name: 'tokenTransfer',
+			accounts: [
+				{
+					name: 'vault',
+					isMut: false,
+					isSigner: false,
+					docs: [
+						'If delegate has authority to sign for vault, then any Phoenix CPI is valid.',
+						'Phoenix CPI validates that opaque instruction data is a [`PhoenixInstruction`],',
+						'so this is safe since any Phoenix CPI is secure.',
+					],
+				},
+				{
+					name: 'delegate',
+					isMut: false,
+					isSigner: true,
+					docs: [
+						'Is manager by default, but can be delegated to another pubkey using `update_delegate`',
+					],
+				},
+				{
+					name: 'from',
+					isMut: true,
+					isSigner: false,
+				},
+				{
+					name: 'to',
+					isMut: true,
+					isSigner: false,
+				},
+				{
+					name: 'tokenProgram',
+					isMut: false,
+					isSigner: false,
+				},
+			],
+			args: [
+				{
+					name: 'params',
+					type: {
+						defined: 'TransferParams',
+					},
+				},
+			],
+		},
+		{
+			name: 'claimSeat',
+			accounts: [
+				{
+					name: 'vault',
+					isMut: false,
+					isSigner: false,
+					docs: [
+						'If delegate has authority to sign for vault, then any Phoenix CPI is valid.',
+						'Phoenix CPI validates that opaque instruction data is a [`PhoenixInstruction`],',
+						'so this is safe since any Phoenix CPI is secure.',
+					],
+				},
+				{
+					name: 'delegate',
+					isMut: false,
+					isSigner: true,
+					docs: [
+						'Is manager by default, but can be delegated to another pubkey using `update_delegate`',
+					],
+				},
+				{
+					name: 'phoenix',
+					isMut: false,
+					isSigner: false,
+				},
+				{
+					name: 'logAuthority',
+					isMut: false,
+					isSigner: false,
+				},
+				{
+					name: 'market',
+					isMut: true,
+					isSigner: false,
+				},
+				{
+					name: 'seatManager',
+					isMut: true,
+					isSigner: false,
+				},
+				{
+					name: 'seatDepositCollector',
+					isMut: true,
+					isSigner: false,
+				},
+				{
+					name: 'payer',
+					isMut: true,
+					isSigner: true,
+				},
+				{
+					name: 'seat',
+					isMut: true,
+					isSigner: false,
+				},
+				{
+					name: 'systemProgram',
+					isMut: false,
+					isSigner: false,
+				},
+				{
+					name: 'phoenixSeatManager',
+					isMut: false,
+					isSigner: false,
+				},
+			],
+			args: [],
+		},
 	],
 	accounts: [
 		{
@@ -1814,6 +2056,18 @@ export const IDL: PhoenixVaults = {
 					{
 						name: 'cpiIxData',
 						type: 'bytes',
+					},
+				],
+			},
+		},
+		{
+			name: 'TransferParams',
+			type: {
+				kind: 'struct',
+				fields: [
+					{
+						name: 'amount',
+						type: 'u64',
 					},
 				],
 			},
