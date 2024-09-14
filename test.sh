@@ -78,6 +78,7 @@ chmod +x ./bootstrap.sh
 ./bootstrap.sh
 
 if [[ $no_test == false ]]; then
+  export ANCHOR_WALLET=~/.config/solana/id.json
   yarn anchor-tests
 fi
 
