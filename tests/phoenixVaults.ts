@@ -46,8 +46,6 @@ import {
 	simulate,
 	MARKET_CONFIG,
 	tokenBalance,
-	account,
-	tokenAccount,
 } from './testHelpers';
 import {
 	Client as PhoenixClient,
