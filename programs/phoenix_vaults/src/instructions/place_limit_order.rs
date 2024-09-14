@@ -60,8 +60,8 @@ pub fn place_limit_order<'c: 'info, 'info>(
         ctx.accounts.market_quote_token_account.to_account_info(),
         ctx.accounts.token_program.to_account_info(),
     ];
-
     invoke_signed(&ix, &accounts, seeds)?;
+
     Ok(())
 }
 

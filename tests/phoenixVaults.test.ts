@@ -10,7 +10,7 @@ import {
 	SystemProgram,
 } from '@solana/web3.js';
 import { assert } from 'chai';
-import { beforeAll, describe, it } from '@jest/globals';
+import { afterEach, beforeAll, describe, it } from '@jest/globals';
 import {
 	getVaultAddressSync,
 	PhoenixVaults,
@@ -65,14 +65,12 @@ describe('phoenixVaults', () => {
 		skipPreflight: false,
 		commitment: 'confirmed',
 	};
-
 	// Configure the client to use the local cluster.
 	const provider = anchor.AnchorProvider.local(undefined, opts);
 	anchor.setProvider(provider);
 	const conn = provider.connection;
 	// @ts-ignore
 	const payer: Keypair = provider.wallet.payer as any as Keypair;
-	// const payer = _payer as Keypair;
 	const program = anchor.workspace
 		.PhoenixVaults as anchor.Program<PhoenixVaults>;
 
@@ -133,6 +131,20 @@ describe('phoenixVaults', () => {
 			lutSeeds,
 			AddressLookupTableProgram.programId
 		)[0];
+	});
+
+	afterEach(() => {
+		// log jest test memory usage
+		const used = process.memoryUsage();
+		const rss = Math.round((used.rss / 1024 / 1024) * 100) / 100;
+		const heapUsed = Math.round((used.rss / 1024 / 1024) * 100) / 100;
+		const heapTotal = Math.round((used.rss / 1024 / 1024) * 100) / 100;
+		const arrayBuffers =
+			Math.round((used.arrayBuffers / 1024 / 1024) * 100) / 100;
+		const external = Math.round((used.external / 1024 / 1024) * 100) / 100;
+		console.log(
+			`rss: ${rss}MB, heapUsed: ${heapUsed}MB, heapTotal: ${heapTotal}MB, arrayBuffers: ${arrayBuffers}MB, external: ${external}MB`
+		);
 	});
 
 	it('Create Address Lookup Table', async () => {
@@ -349,7 +361,7 @@ describe('phoenixVaults', () => {
 				maker.publicKey,
 				payer.publicKey
 			);
-			// await simulate(conn, payer, claimMakerSeatIxs, [maker]);
+			await simulate(conn, payer, claimMakerSeatIxs, [maker]);
 			const sig = await sendAndConfirm(conn, payer, claimMakerSeatIxs, [maker]);
 			console.log('claim maker seat:', signatureLink(sig, conn));
 		} catch (e: any) {
@@ -435,7 +447,6 @@ describe('phoenixVaults', () => {
 			console.log('claim taker seat:', signatureLink(sig, conn));
 		} catch (e: any) {
 			throw new Error(e);
-			assert(false);
 		}
 
 		const priceInTicks = phoenix.floatPriceToTicks(
@@ -505,7 +516,6 @@ describe('phoenixVaults', () => {
 			console.log('taker buy:', signatureLink(sig, conn));
 		} catch (e: any) {
 			throw new Error(e);
-			assert(false);
 		}
 
 		const vaultSolAfter = await tokenBalance(conn, vaultBaseTokenAccount);
@@ -537,151 +547,145 @@ describe('phoenixVaults', () => {
 	});
 
 	it('Maker Buy SOL/USDC @ $125', async () => {
-		console.log('refreshing market...');
-		try {
-			await phoenix.refreshMarket(solUsdcMarket.toString());
-		} catch (e: any) {
-			console.log('error:', e);
+		await phoenix.refreshMarket(solUsdcMarket.toString());
+		const marketState = phoenix.marketStates.get(solUsdcMarket.toString());
+		if (marketState === undefined) {
+			throw Error('SOL/USDC market not found');
 		}
-		console.log('refreshed market');
-		assert(true);
-		// const marketState = phoenix.marketStates.get(solUsdcMarket.toString());
-		// if (marketState === undefined) {
-		// 	throw Error('SOL/USDC market not found');
-		// }
-		//
-		// // maker lost 25% on trade, so only has $1000 @ $125/SOL or 8 SOL to buy back (not accounting 0.01% fee)
-		// const priceInTicks = phoenix.floatPriceToTicks(
-		// 	endSolUsdcPrice,
-		// 	solUsdcMarket.toBase58()
-		// );
-		//
-		// const traderState = marketState.data.traders.get(
-		// 	maker.publicKey.toString()
-		// );
-		// console.log('maker trader state:', traderState);
-		// const quoteLotsBigNum = traderState.quoteLotsFree;
-		// let quoteLots: number;
-		// // if quoteLots is BN, convert to number, else use as is
-		// if (quoteLotsBigNum instanceof BN) {
-		// 	quoteLots = quoteLotsBigNum.toNumber();
-		// } else {
-		// 	quoteLots = quoteLotsBigNum as number;
-		// }
-		//
-		// const quoteUnitsFree = marketState.quoteLotsToQuoteUnits(quoteLots);
-		// console.log('maker free quote units:', quoteUnitsFree);
-		// const baseUnitsToBuy = quoteUnitsFree / endSolUsdcPrice;
-		//
-		// const numBaseLots = phoenix.rawBaseUnitsToBaseLotsRoundedDown(
-		// 	baseUnitsToBuy,
-		// 	solUsdcMarket.toBase58()
-		// );
-		// const makerOrderPacket = getLimitOrderPacket({
-		// 	side: Side.Bid,
-		// 	priceInTicks,
-		// 	numBaseLots,
-		// });
-		// const makerOrderIx = phoenix.createPlaceLimitOrderInstruction(
-		// 	makerOrderPacket,
-		// 	solUsdcMarket.toString(),
-		// 	maker.publicKey
-		// );
-		// const sig = await sendAndConfirm(conn, payer, [makerOrderIx], [maker]);
-		// console.log('maker buy:', signatureLink(sig, conn));
+
+		// maker lost 25% on trade, so only has $1000 @ $125/SOL or 8 SOL to buy back (not accounting 0.01% fee)
+		const priceInTicks = phoenix.floatPriceToTicks(
+			endSolUsdcPrice,
+			solUsdcMarket.toBase58()
+		);
+
+		const traderState = marketState.data.traders.get(
+			maker.publicKey.toString()
+		);
+		console.log('maker trader state:', traderState);
+		const quoteLotsBigNum = traderState.quoteLotsFree;
+		let quoteLots: number;
+		// if quoteLots is BN, convert to number, else use as is
+		if (quoteLotsBigNum instanceof BN) {
+			quoteLots = quoteLotsBigNum.toNumber();
+		} else {
+			quoteLots = quoteLotsBigNum as number;
+		}
+
+		const quoteUnitsFree = marketState.quoteLotsToQuoteUnits(quoteLots);
+		console.log('maker free quote units:', quoteUnitsFree);
+		const baseUnitsToBuy = quoteUnitsFree / endSolUsdcPrice;
+
+		const numBaseLots = phoenix.rawBaseUnitsToBaseLotsRoundedDown(
+			baseUnitsToBuy,
+			solUsdcMarket.toBase58()
+		);
+		const makerOrderPacket = getLimitOrderPacket({
+			side: Side.Bid,
+			priceInTicks,
+			numBaseLots,
+		});
+		const makerOrderIx = phoenix.createPlaceLimitOrderInstruction(
+			makerOrderPacket,
+			solUsdcMarket.toString(),
+			maker.publicKey
+		);
+		await simulate(conn, payer, [makerOrderIx], [maker]);
+		const sig = await sendAndConfirm(conn, payer, [makerOrderIx], [maker]);
+		console.log('maker buy:', signatureLink(sig, conn));
 	});
 
-	// it('Taker Sell SOL/USDC @ $125', async () => {
-	// 	const marketState = phoenix.marketStates.get(solUsdcMarket.toString());
-	// 	if (marketState === undefined) {
-	// 		throw Error('SOL/USDC market not found');
-	// 	}
-	//
-	// 	const vaultBaseTokenAccount = getAssociatedTokenAddressSync(
-	// 		solMint,
-	// 		vaultKey,
-	// 		true
-	// 	);
-	// 	const vaultQuoteTokenAccount = getAssociatedTokenAddressSync(
-	// 		usdcMint,
-	// 		vaultKey,
-	// 		true
-	// 	);
-	// 	const marketBaseTokenAccount = phoenix.getBaseVaultKey(
-	// 		solUsdcMarket.toString()
-	// 	);
-	// 	const marketQuoteTokenAccount = phoenix.getQuoteVaultKey(
-	// 		solUsdcMarket.toString()
-	// 	);
-	//
-	// 	const priceInTicks = phoenix.floatPriceToTicks(
-	// 		startSolUsdcPrice,
-	// 		solUsdcMarket.toBase58()
-	// 	);
-	//
-	// 	const vaultSolAmount = await tokenBalance(conn, vaultBaseTokenAccount);
-	// 	const solAmountAfterFee = vaultSolAmount * (1 - 0.01 / 100);
-	// 	const numBaseLots = phoenix.rawBaseUnitsToBaseLotsRoundedDown(
-	// 		solAmountAfterFee,
-	// 		solUsdcMarket.toBase58()
-	// 	);
-	// 	const takerOrderPacket = getLimitOrderPacket({
-	// 		side: Side.Ask,
-	// 		priceInTicks,
-	// 		numBaseLots,
-	// 	});
-	// 	const order = encodeLimitOrderPacket(takerOrderPacket);
-	//
-	// 	try {
-	// 		const ix = await program.methods
-	// 			.placeLimitOrder({
-	// 				order,
-	// 			})
-	// 			.accounts({
-	// 				vault: vaultKey,
-	// 				delegate: manager.publicKey,
-	// 				phoenix: PHOENIX_PROGRAM_ID,
-	// 				logAuthority: getLogAuthority(),
-	// 				market: solUsdcMarket,
-	// 				seat: getSeatAddress(solUsdcMarket, vaultKey),
-	// 				baseMint: solMint,
-	// 				quoteMint: usdcMint,
-	// 				vaultBaseTokenAccount,
-	// 				vaultQuoteTokenAccount,
-	// 				marketBaseTokenAccount,
-	// 				marketQuoteTokenAccount,
-	// 				tokenProgram: TOKEN_PROGRAM_ID,
-	// 			})
-	// 			.instruction();
-	//
-	// 		await simulate(conn, payer, [ix], [manager]);
-	// 		const sig = await sendAndConfirm(conn, payer, [ix], [manager]);
-	// 		console.log('taker sell:', signatureLink(sig, conn));
-	// 	} catch (e: any) {
-	// 		throw new Error(e);
-	// 	}
-	//
-	// 	const vaultSolAfter = await tokenBalance(conn, vaultBaseTokenAccount);
-	// 	const vaultUsdcAfter = await tokenBalance(conn, vaultQuoteTokenAccount);
-	// 	console.log('vault sol after sell:', vaultSolAfter);
-	// 	console.log('vault usdc after sell:', vaultUsdcAfter);
-	//
-	// 	const makerBaseTokenAccount = getAssociatedTokenAddressSync(
-	// 		solMint,
-	// 		maker.publicKey
-	// 	);
-	// 	const makerQuoteTokenAccount = getAssociatedTokenAddressSync(
-	// 		usdcMint,
-	// 		maker.publicKey
-	// 	);
-	// 	const makerSolAfter = await tokenBalance(conn, makerBaseTokenAccount);
-	// 	const makerUsdcAfter = await tokenBalance(conn, makerQuoteTokenAccount);
-	// 	console.log('maker sol after buy:', makerSolAfter);
-	// 	console.log('maker usdc after buy:', makerUsdcAfter);
-	//
-	// 	const marketSolAfter = await tokenBalance(conn, marketBaseTokenAccount);
-	// 	const marketUsdcAfter = await tokenBalance(conn, marketQuoteTokenAccount);
-	// 	console.log('market sol after exit:', marketSolAfter);
-	// 	console.log('market usdc after exit:', marketUsdcAfter);
-	// });
+	it('Taker Sell SOL/USDC @ $125', async () => {
+		const marketState = phoenix.marketStates.get(solUsdcMarket.toString());
+		if (marketState === undefined) {
+			throw Error('SOL/USDC market not found');
+		}
+
+		const vaultBaseTokenAccount = getAssociatedTokenAddressSync(
+			solMint,
+			vaultKey,
+			true
+		);
+		const vaultQuoteTokenAccount = getAssociatedTokenAddressSync(
+			usdcMint,
+			vaultKey,
+			true
+		);
+		const marketBaseTokenAccount = phoenix.getBaseVaultKey(
+			solUsdcMarket.toString()
+		);
+		const marketQuoteTokenAccount = phoenix.getQuoteVaultKey(
+			solUsdcMarket.toString()
+		);
+
+		const priceInTicks = phoenix.floatPriceToTicks(
+			startSolUsdcPrice,
+			solUsdcMarket.toBase58()
+		);
+
+		const vaultSolAmount = await tokenBalance(conn, vaultBaseTokenAccount);
+		const solAmountAfterFee = vaultSolAmount * (1 - 0.01 / 100);
+		const numBaseLots = phoenix.rawBaseUnitsToBaseLotsRoundedDown(
+			solAmountAfterFee,
+			solUsdcMarket.toBase58()
+		);
+		const takerOrderPacket = getLimitOrderPacket({
+			side: Side.Ask,
+			priceInTicks,
+			numBaseLots,
+		});
+		const order = encodeLimitOrderPacket(takerOrderPacket);
+
+		try {
+			const ix = await program.methods
+				.placeLimitOrder({
+					order,
+				})
+				.accounts({
+					vault: vaultKey,
+					delegate: manager.publicKey,
+					phoenix: PHOENIX_PROGRAM_ID,
+					logAuthority: getLogAuthority(),
+					market: solUsdcMarket,
+					seat: getSeatAddress(solUsdcMarket, vaultKey),
+					baseMint: solMint,
+					quoteMint: usdcMint,
+					vaultBaseTokenAccount,
+					vaultQuoteTokenAccount,
+					marketBaseTokenAccount,
+					marketQuoteTokenAccount,
+					tokenProgram: TOKEN_PROGRAM_ID,
+				})
+				.instruction();
+
+			await simulate(conn, payer, [ix], [manager]);
+			// const sig = await sendAndConfirm(conn, payer, [ix], [manager]);
+			// console.log('taker sell:', signatureLink(sig, conn));
+		} catch (e: any) {
+			throw new Error(e);
+		}
+
+		const vaultSolAfter = await tokenBalance(conn, vaultBaseTokenAccount);
+		const vaultUsdcAfter = await tokenBalance(conn, vaultQuoteTokenAccount);
+		console.log('vault sol after sell:', vaultSolAfter);
+		console.log('vault usdc after sell:', vaultUsdcAfter);
+
+		const makerBaseTokenAccount = getAssociatedTokenAddressSync(
+			solMint,
+			maker.publicKey
+		);
+		const makerQuoteTokenAccount = getAssociatedTokenAddressSync(
+			usdcMint,
+			maker.publicKey
+		);
+		const makerSolAfter = await tokenBalance(conn, makerBaseTokenAccount);
+		const makerUsdcAfter = await tokenBalance(conn, makerQuoteTokenAccount);
+		console.log('maker sol after buy:', makerSolAfter);
+		console.log('maker usdc after buy:', makerUsdcAfter);
+
+		const marketSolAfter = await tokenBalance(conn, marketBaseTokenAccount);
+		const marketUsdcAfter = await tokenBalance(conn, marketQuoteTokenAccount);
+		console.log('market sol after exit:', marketSolAfter);
+		console.log('market usdc after exit:', marketUsdcAfter);
+	});
 });

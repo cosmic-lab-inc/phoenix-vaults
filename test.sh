@@ -45,6 +45,7 @@ while [[ -n $1 ]]; do
 done
 
 kill_process() {
+    echo "Shutting down test..."
     # Killing local validator if currently running
     solana_pid=$(pgrep -f solana)
     # # if no value is returned do nothing, else pkill -f solana
@@ -55,7 +56,7 @@ kill_process() {
     # exit shell script with success status
     exit 0
 }
-trap kill_process SIGINT
+trap kill_process SIGINT SIGTERM SIGBUG
 
 # helper function to silence background processes
 bkg() { "$@" >/dev/null & }
