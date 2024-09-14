@@ -27,7 +27,6 @@ pub fn place_limit_order<'c: 'info, 'info>(
 
     let order = decode_order_packet(data).ok_or(ErrorCode::OrderPacketDeserialization)?;
 
-    declare_vault_seeds!(ctx.accounts.vault, seeds);
     let trader_index = 3;
     let mut ix = phoenix::program::instruction_builders::create_new_order_instruction(
         &ctx.accounts.market.key(),
@@ -60,8 +59,9 @@ pub fn place_limit_order<'c: 'info, 'info>(
         ctx.accounts.market_quote_token_account.to_account_info(),
         ctx.accounts.token_program.to_account_info(),
     ];
-
+    declare_vault_seeds!(ctx.accounts.vault, seeds);
     invoke_signed(&ix, &accounts, seeds)?;
+
     Ok(())
 }
 

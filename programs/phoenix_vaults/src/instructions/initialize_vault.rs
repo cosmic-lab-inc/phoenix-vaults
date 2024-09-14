@@ -6,7 +6,7 @@ use anchor_spl::token::{Mint, Token, TokenAccount};
 
 use crate::constants::ONE_DAY;
 use crate::state::Vault;
-use crate::{error::ErrorCode, validate, Size};
+use crate::{declare_vault_seeds, error::ErrorCode, validate, Size};
 
 pub fn initialize_vault<'c: 'info, 'info>(
     ctx: Context<'_, '_, 'c, 'info, InitializeVault<'info>>,
@@ -97,15 +97,20 @@ pub struct InitializeVault<'info> {
         payer = payer
     )]
     pub vault: AccountLoader<'info, Vault>,
+    // #[account(
+    //     mut,
+    //     seeds = [
+    //         vault.key().as_ref(),
+    //         token_program.key().as_ref(),
+    //         mint.key().as_ref(),
+    //     ],
+    //     seeds::program = associated_token_program.key(),
+    //     bump,
+    //     token::mint = mint,
+    //     token::authority = vault
+    // )]
     #[account(
         mut,
-        seeds = [
-            vault.key().as_ref(),
-            token_program.key().as_ref(),
-            mint.key().as_ref(),
-        ],
-        seeds::program = associated_token_program.key(),
-        bump,
         token::mint = mint,
         token::authority = vault
     )]

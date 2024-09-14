@@ -862,15 +862,16 @@ export function messageLink(
 	return `https://explorer.solana.com/tx/inspector?message=${message}&cluster=custom&customUrl=${clusterUrl}`;
 }
 
-export function encodeLimitOrderPacket(orderPacket: OrderPacket) {
+export function encodeLimitOrderPacket(packet: OrderPacket) {
 	const args: PlaceLimitOrderInstructionArgs = {
-		orderPacket,
+		orderPacket: packet,
 	};
 	const [buffer] = PlaceLimitOrderStruct.serialize({
 		instructionDiscriminator: placeLimitOrderInstructionDiscriminator,
 		...args,
 	});
-	return Buffer.from(buffer);
+	const order: Buffer = Buffer.from(buffer);
+	return order;
 }
 
 export function decodeLimitOrderPacket(buffer: Buffer) {

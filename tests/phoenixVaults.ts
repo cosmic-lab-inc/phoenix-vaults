@@ -240,6 +240,24 @@ describe('phoenixVaults', () => {
 		assert(!!acct);
 	});
 
+	it('#1 Fetch Vault Tokens', async () => {
+		const vaultBaseTokenAccount = getAssociatedTokenAddressSync(
+			solMint,
+			vaultKey,
+			true
+		);
+		const vaultQuoteTokenAccount = getAssociatedTokenAddressSync(
+			usdcMint,
+			vaultKey,
+			true
+		);
+		const vaultSolAfter = await tokenBalance(conn, vaultBaseTokenAccount);
+		console.log('#1 vault sol:', vaultSolAfter);
+		// todo: SIGBUS caused by unpacking vault USDC AccountInfo<Buffer> into a TokenAccount
+		const vaultUsdcAfter = await tokenBalance(conn, vaultQuoteTokenAccount);
+		console.log('#1 vault usdc:', vaultUsdcAfter);
+	});
+
 	it('Initialize Investor', async () => {
 		const accounts = {
 			vault: vaultKey,
@@ -298,6 +316,24 @@ describe('phoenixVaults', () => {
 		const vaultAtaBalance = (await conn.getTokenAccountBalance(vaultAta)).value
 			.uiAmount;
 		assert.equal(vaultAtaBalance, 1000);
+	});
+
+	it('#2 Fetch Vault Tokens', async () => {
+		const vaultBaseTokenAccount = getAssociatedTokenAddressSync(
+			solMint,
+			vaultKey,
+			true
+		);
+		const vaultQuoteTokenAccount = getAssociatedTokenAddressSync(
+			usdcMint,
+			vaultKey,
+			true
+		);
+		const vaultSolAfter = await tokenBalance(conn, vaultBaseTokenAccount);
+		console.log('#2 vault sol:', vaultSolAfter);
+		// todo: SIGBUS caused by unpacking vault USDC AccountInfo<Buffer> into a TokenAccount
+		const vaultUsdcAfter = await tokenBalance(conn, vaultQuoteTokenAccount);
+		console.log('#2 vault usdc:', vaultUsdcAfter);
 	});
 
 	it('Check SOL/USDC Seat Manager', async () => {
@@ -395,19 +431,37 @@ describe('phoenixVaults', () => {
 		console.log('placed maker ask');
 	});
 
+	it('#3 Fetch Vault Tokens', async () => {
+		const vaultBaseTokenAccount = getAssociatedTokenAddressSync(
+			solMint,
+			vaultKey,
+			true
+		);
+		const vaultQuoteTokenAccount = getAssociatedTokenAddressSync(
+			usdcMint,
+			vaultKey,
+			true
+		);
+		const vaultSolAfter = await tokenBalance(conn, vaultBaseTokenAccount);
+		console.log('#3 vault sol:', vaultSolAfter);
+		// todo: SIGBUS caused by unpacking vault USDC AccountInfo<Buffer> into a TokenAccount
+		const vaultUsdcAfter = await tokenBalance(conn, vaultQuoteTokenAccount);
+		console.log('#3 vault usdc:', vaultUsdcAfter);
+	});
+
 	it('Taker Buy SOL/USDC', async () => {
 		const marketState = phoenix.marketStates.get(solUsdcMarket.toString());
 		if (marketState === undefined) {
 			throw Error('SOL/USDC market not found');
 		}
-		const createAtaIxs = await createMarketTokenAccountIxs(
-			conn,
-			marketState,
-			vaultKey,
-			payer
-		);
-		await sendAndConfirm(conn, payer, createAtaIxs);
-		console.log('setup taker tokens');
+		// const createAtaIxs = await createMarketTokenAccountIxs(
+		// 	conn,
+		// 	marketState,
+		// 	vaultKey,
+		// 	payer
+		// );
+		// await sendAndConfirm(conn, payer, createAtaIxs);
+		// console.log('setup taker tokens');
 
 		try {
 			const seatManager = getSeatManagerAddress(solUsdcMarket);
@@ -538,6 +592,24 @@ describe('phoenixVaults', () => {
 		console.log('maker usdc after:', makerUsdcAfter);
 	});
 
+	it('#4 Fetch Vault Tokens', async () => {
+		const vaultBaseTokenAccount = getAssociatedTokenAddressSync(
+			solMint,
+			vaultKey,
+			true
+		);
+		const vaultQuoteTokenAccount = getAssociatedTokenAddressSync(
+			usdcMint,
+			vaultKey,
+			true
+		);
+		const vaultSolAfter = await tokenBalance(conn, vaultBaseTokenAccount);
+		console.log('#4 vault sol:', vaultSolAfter);
+		// todo: SIGBUS caused by unpacking vault USDC AccountInfo<Buffer> into a TokenAccount
+		const vaultUsdcAfter = await tokenBalance(conn, vaultQuoteTokenAccount);
+		console.log('#4 vault usdc:', vaultUsdcAfter);
+	});
+
 	it('Maker Buy SOL/USDC @ $125', async () => {
 		await phoenix.refreshMarket(solUsdcMarket.toString());
 		const marketState = phoenix.marketStates.get(solUsdcMarket.toString());
@@ -587,6 +659,24 @@ describe('phoenixVaults', () => {
 		console.log('maker buy:', signatureLink(sig, conn));
 	});
 
+	it('#5 Fetch Vault Tokens', async () => {
+		const vaultBaseTokenAccount = getAssociatedTokenAddressSync(
+			solMint,
+			vaultKey,
+			true
+		);
+		const vaultQuoteTokenAccount = getAssociatedTokenAddressSync(
+			usdcMint,
+			vaultKey,
+			true
+		);
+		const vaultSolAfter = await tokenBalance(conn, vaultBaseTokenAccount);
+		console.log('#5 vault sol:', vaultSolAfter);
+		// todo: SIGBUS caused by unpacking vault USDC AccountInfo<Buffer> into a TokenAccount
+		const vaultUsdcAfter = await tokenBalance(conn, vaultQuoteTokenAccount);
+		console.log('#5 vault usdc:', vaultUsdcAfter);
+	});
+
 	it('Taker Sell SOL/USDC @ $125', async () => {
 		await phoenix.refreshMarket(solUsdcMarket.toString());
 		const marketState = phoenix.marketStates.get(solUsdcMarket.toString());
@@ -630,6 +720,7 @@ describe('phoenixVaults', () => {
 		const order = encodeLimitOrderPacket(takerOrderPacket);
 
 		try {
+			// todo: constructing this instruction seems to cause SIGBUS
 			const ix = await program.methods
 				.placeLimitOrder({
 					order,
@@ -652,40 +743,33 @@ describe('phoenixVaults', () => {
 				.instruction();
 
 			await simulate(conn, payer, [ix], [manager]);
-			const sig = await sendAndConfirm(conn, payer, [ix], [manager]);
-			console.log('taker sell:', signatureLink(sig, conn));
+			// const sig = await sendAndConfirm(conn, payer, [ix], [manager]);
+			// console.log('taker sell:', signatureLink(sig, conn));
 		} catch (e: any) {
 			throw new Error(e);
 		}
 
-		// const vaultSolAfter = await tokenBalance(conn, vaultBaseTokenAccount);
-		// console.log('vault sol after sell:', vaultSolAfter);
+		const vaultSolAfter = await tokenBalance(conn, vaultBaseTokenAccount);
+		console.log('vault sol after sell:', vaultSolAfter);
+		const vaultUsdcAfter = await tokenBalance(conn, vaultQuoteTokenAccount);
+		console.log('vault usdc after sell:', vaultUsdcAfter);
 
-		const vaultBaseAta = await conn.getAccountInfo(vaultBaseTokenAccount);
-		console.log('vaultBaseAta:', vaultBaseAta);
-		const vaultQuoteAta = await conn.getAccountInfo(vaultQuoteTokenAccount);
-		console.log('vaultQuoteAta:', vaultQuoteAta);
+		const makerBaseTokenAccount = getAssociatedTokenAddressSync(
+			solMint,
+			maker.publicKey
+		);
+		const makerQuoteTokenAccount = getAssociatedTokenAddressSync(
+			usdcMint,
+			maker.publicKey
+		);
+		const makerSolAfter = await tokenBalance(conn, makerBaseTokenAccount);
+		const makerUsdcAfter = await tokenBalance(conn, makerQuoteTokenAccount);
+		console.log('maker sol after buy:', makerSolAfter);
+		console.log('maker usdc after buy:', makerUsdcAfter);
 
-		// todo: SIGBUS caused by unpacking vault USDC AccountInfo<Buffer> into a TokenAccount
-		// const vaultUsdcAfter = await tokenBalance(conn, vaultQuoteTokenAccount);
-		// console.log('vault usdc after sell:', vaultUsdcAfter);
-
-		// const makerBaseTokenAccount = getAssociatedTokenAddressSync(
-		// 	solMint,
-		// 	maker.publicKey
-		// );
-		// const makerQuoteTokenAccount = getAssociatedTokenAddressSync(
-		// 	usdcMint,
-		// 	maker.publicKey
-		// );
-		// const makerSolAfter = await tokenBalance(conn, makerBaseTokenAccount);
-		// const makerUsdcAfter = await tokenBalance(conn, makerQuoteTokenAccount);
-		// console.log('maker sol after buy:', makerSolAfter);
-		// console.log('maker usdc after buy:', makerUsdcAfter);
-		//
-		// const marketSolAfter = await tokenBalance(conn, marketBaseTokenAccount);
-		// const marketUsdcAfter = await tokenBalance(conn, marketQuoteTokenAccount);
-		// console.log('market sol after exit:', marketSolAfter);
-		// console.log('market usdc after exit:', marketUsdcAfter);
+		const marketSolAfter = await tokenBalance(conn, marketBaseTokenAccount);
+		const marketUsdcAfter = await tokenBalance(conn, marketQuoteTokenAccount);
+		console.log('market sol after exit:', marketSolAfter);
+		console.log('market usdc after exit:', marketUsdcAfter);
 	});
 });
