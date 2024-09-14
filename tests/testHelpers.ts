@@ -659,13 +659,17 @@ export function sleep(ms) {
 	return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-export async function getTokenAmountAsBN(
-	connection: Connection,
+export async function tokenBalance(
+	conn: Connection,
 	tokenAccount: PublicKey
-): Promise<BN> {
-	return new BN(
-		(await connection.getTokenAccountBalance(tokenAccount)).value.amount
-	);
+): Promise<number> {
+	const value: number | null = (await conn.getTokenAccountBalance(tokenAccount))
+		.value.uiAmount;
+	if (value) {
+		return Number(value);
+	} else {
+		return 0;
+	}
 }
 
 export async function simulate(
@@ -702,7 +706,7 @@ export async function simulate(
 	);
 	try {
 		const sim = await connection.simulateTransaction(tx, {
-			sigVerify: false,
+			sigVerify: true,
 		});
 		console.log('simulation:', sim.value.err, sim.value.logs);
 	} catch (e: any) {
@@ -860,19 +864,20 @@ export function messageLink(
 	return `https://explorer.solana.com/tx/inspector?message=${message}&cluster=custom&customUrl=${clusterUrl}`;
 }
 
-export function encodeLimitOrderPacket(orderPacket: OrderPacket) {
+export function encodeLimitOrderPacket(packet: OrderPacket): Buffer {
 	const args: PlaceLimitOrderInstructionArgs = {
-		orderPacket,
+		orderPacket: packet,
 	};
 	const [buffer] = PlaceLimitOrderStruct.serialize({
 		instructionDiscriminator: placeLimitOrderInstructionDiscriminator,
 		...args,
 	});
-	return buffer;
+	const order = Buffer.from(buffer);
+	return order;
 }
 
-export function decodeLimitOrderPacket(buffer: Buffer) {
-	const serializedOrderPacket = buffer.slice(1, buffer.length);
+export function decodeLimitOrderPacket(buffer: Buffer): OrderPacket {
+	const serializedOrderPacket = buffer.subarray(1, buffer.length);
 	const orderPacket = orderPacketBeet.toFixedFromData(serializedOrderPacket, 0);
 	return orderPacket.read(serializedOrderPacket, 0);
 }
