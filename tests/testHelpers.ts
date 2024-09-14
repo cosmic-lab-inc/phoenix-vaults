@@ -33,8 +33,12 @@ import buffer from 'buffer';
 import { BN } from '@coral-xyz/anchor';
 import { PRICE_PRECISION } from '../ts/sdk';
 import {
-	confirmOrCreateClaimSeatIxs,
 	MarketState,
+	OrderPacket,
+	orderPacketBeet,
+	PlaceLimitOrderInstructionArgs,
+	placeLimitOrderInstructionDiscriminator,
+	PlaceLimitOrderStruct,
 } from '@cosmic-lab/phoenix-sdk';
 
 export type OraclePriceData = {
@@ -795,4 +799,21 @@ export function messageLink(
 	const serializedMessage: Buffer = Buffer.from(tx.message.serialize());
 	const message = encodeURIComponent(serializedMessage.toString('base64'));
 	return `https://explorer.solana.com/tx/inspector?message=${message}&cluster=custom&customUrl=${clusterUrl}`;
+}
+
+export function encodeLimitOrderPacket(orderPacket: OrderPacket) {
+	const args: PlaceLimitOrderInstructionArgs = {
+		orderPacket,
+	};
+	const [buffer] = PlaceLimitOrderStruct.serialize({
+		instructionDiscriminator: placeLimitOrderInstructionDiscriminator,
+		...args,
+	});
+	return buffer;
+}
+
+export function decodeLimitOrderPacket(buffer: Buffer) {
+	const serializedOrderPacket = buffer.slice(1, buffer.length);
+	const orderPacket = orderPacketBeet.toFixedFromData(serializedOrderPacket, 0);
+	return orderPacket.read(serializedOrderPacket, 0);
 }

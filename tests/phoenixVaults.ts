@@ -8,7 +8,6 @@ import {
 	LAMPORTS_PER_SOL,
 	PublicKey,
 	SystemProgram,
-	TransactionInstruction,
 } from '@solana/web3.js';
 import { assert } from 'chai';
 import { before } from 'mocha';
@@ -29,7 +28,6 @@ import {
 	QUOTE_PRECISION,
 	MOCK_USDC_PRECISION,
 	MOCK_SOL_PRECISION,
-	PhoenixParams,
 	PHOENIX_PROGRAM_ID,
 	PHOENIX_SEAT_MANAGER_PROGRAM_ID,
 } from '../ts/sdk';
@@ -37,12 +35,12 @@ import { BN } from '@coral-xyz/anchor';
 import {
 	createAssociatedTokenAccountInstruction,
 	createMintToInstruction,
-	createTransferInstruction,
 	getAssociatedTokenAddressSync,
 	TOKEN_PROGRAM_ID,
 } from '@solana/spl-token';
 import {
 	createMarketTokenAccountIxs,
+	encodeLimitOrderPacket,
 	sendAndConfirm,
 	signatureLink,
 	simulate,
@@ -55,10 +53,8 @@ import {
 	getLimitOrderPacket,
 	Side,
 	confirmOrCreateClaimSeatIxs,
-	createPlaceLimitOrderInstruction,
 	getLogAuthority,
 	getSeatAddress,
-	getClaimSeatIx,
 	getSeatDepositCollectorAddress,
 } from '@cosmic-lab/phoenix-sdk';
 
@@ -253,13 +249,18 @@ describe('phoenixVaults', () => {
 	});
 
 	it('Initialize Vault', async () => {
-		const createAtaIx = createAssociatedTokenAccountInstruction(
-			payer.publicKey,
-			vaultAta,
+		const marketState = phoenix.marketStates.get(solUsdcMarket.toString());
+		if (marketState === undefined) {
+			throw Error('SOL/USDC market not found');
+		}
+		const createAtaIxs = await createMarketTokenAccountIxs(
+			conn,
+			marketState,
 			vaultKey,
-			usdcMint
+			payer
 		);
-		await sendAndConfirm(conn, payer, [createAtaIx]);
+		await sendAndConfirm(conn, payer, createAtaIxs);
+		console.log('setup vault market tokens');
 
 		const config: VaultParams = {
 			name: encodeName(name),
@@ -453,147 +454,111 @@ describe('phoenixVaults', () => {
 		console.log('setup taker tokens');
 
 		try {
-			console.log('vault:', vaultKey.toString());
-			const claimTakerSeatIxs = [
-				getClaimSeatIx(solUsdcMarket, vaultKey, payer.publicKey),
-			];
-			// const claimTakerSeatIxs = await confirmOrCreateClaimSeatIxs(
-			// 	conn,
-			// 	marketState,
-			// 	vaultKey,
-			// 	payer.publicKey
-			// );
-			const claimSeatIxs: TransactionInstruction[] = [];
-			for (const ix of claimTakerSeatIxs) {
-				// const phoenix = ix.programId.equals(PHOENIX_PROGRAM_ID)
-				// 	? ix.programId
-				// 	: null;
-				// const phoenixSeatManager = ix.programId.equals(
-				// 	PHOENIX_SEAT_MANAGER_PROGRAM_ID
-				// )
-				// 	? ix.programId
-				// 	: null;
-				// const cpiAcctMetas = ix.keys;
-				// const vaultAcctMeta = cpiAcctMetas.find((meta) =>
-				// 	meta.pubkey.equals(vaultKey)
-				// );
-				// vaultAcctMeta.isSigner = true;
-				//
-				// for (const meta of cpiAcctMetas) {
-				// 	console.log(`${meta.pubkey.toString()}, signer: ${meta.isSigner}`);
-				// }
-				//
-				// const params: PhoenixParams = {
-				// 	cpiIxData: ix.data,
-				// };
-				// claimSeatIxs.push(
-				// 	await program.methods
-				// 		.phoenix(params)
-				// 		.accounts({
-				// 			vault: vaultKey,
-				// 			delegate: manager.publicKey,
-				// 			phoenix,
-				// 			phoenixSeatManager,
-				// 		})
-				// 		.remainingAccounts(cpiAcctMetas)
-				// 		.instruction()
-				// );
+			const seatManager = getSeatManagerAddress(solUsdcMarket);
+			const seatDepositCollector =
+				getSeatDepositCollectorAddress(solUsdcMarket);
+			const seat = getSeatAddress(solUsdcMarket, vaultKey);
+			const logAuthority = getLogAuthority();
+			const claimSeatIx = await program.methods
+				.claimSeat()
+				.accounts({
+					vault: vaultKey,
+					delegate: manager.publicKey,
+					phoenix: PHOENIX_PROGRAM_ID,
+					logAuthority,
+					market: solUsdcMarket,
+					seatManager,
+					seatDepositCollector,
+					payer: payer.publicKey,
+					seat,
+					systemProgram: SystemProgram.programId,
+					phoenixSeatManager: PHOENIX_SEAT_MANAGER_PROGRAM_ID,
+				})
+				.instruction();
 
-				const seatManager = getSeatManagerAddress(solUsdcMarket);
-				const seatDepositCollector =
-					getSeatDepositCollectorAddress(solUsdcMarket);
-				const seat = getSeatAddress(solUsdcMarket, vaultKey);
-				const logAuthority = getLogAuthority();
-				claimSeatIxs.push(
-					await program.methods
-						.claimSeat()
-						.accounts({
-							vault: vaultKey,
-							delegate: manager.publicKey,
-							phoenix: PHOENIX_PROGRAM_ID,
-							logAuthority,
-							market: solUsdcMarket,
-							seatManager,
-							seatDepositCollector,
-							payer: payer.publicKey,
-							seat,
-							systemProgram: SystemProgram.programId,
-							phoenixSeatManager: PHOENIX_SEAT_MANAGER_PROGRAM_ID,
-						})
-						.instruction()
-				);
-			}
-			await simulate(conn, payer, claimSeatIxs, [manager]);
-			const sig = await sendAndConfirm(conn, payer, claimSeatIxs, [manager]);
+			await simulate(conn, payer, [claimSeatIx], [manager]);
+			const sig = await sendAndConfirm(conn, payer, [claimSeatIx], [manager]);
 			console.log('claim taker seat:', signatureLink(sig, conn));
 		} catch (e: any) {
 			throw new Error(e);
 		}
 
-		// const priceInTicks = phoenix.floatPriceToTicks(
-		// 	startSolUsdcPrice,
-		// 	solUsdcMarket.toBase58()
-		// );
-		// const numBaseLots = phoenix.rawBaseUnitsToBaseLotsRoundedDown(
-		// 	solUiAmount,
-		// 	solUsdcMarket.toBase58()
-		// );
-		// const takerOrderPacket = getLimitOrderPacket({
-		// 	side: Side.Bid,
-		// 	priceInTicks,
-		// 	numBaseLots,
-		// });
-		// const takerOrderIx = createPlaceLimitOrderInstruction(
-		// 	{
-		// 		phoenixProgram: PHOENIX_PROGRAM_ID,
-		// 		logAuthority: getLogAuthority(),
-		// 		market: solUsdcMarket,
-		// 		trader: manager.publicKey,
-		// 		seat: getSeatAddress(solUsdcMarket, manager.publicKey),
-		// 		baseAccount: phoenix.getBaseAccountKey(
-		// 			vaultKey,
-		// 			solUsdcMarket.toString()
-		// 		),
-		// 		quoteAccount: phoenix.getQuoteAccountKey(
-		// 			vaultKey,
-		// 			solUsdcMarket.toString()
-		// 		),
-		// 		baseVault: phoenix.getBaseVaultKey(solUsdcMarket.toString()),
-		// 		quoteVault: phoenix.getQuoteVaultKey(solUsdcMarket.toString()),
-		// 	},
-		// 	{
-		// 		orderPacket: takerOrderPacket,
-		// 	}
-		// );
-		// try {
-		// 	const phoenix = takerOrderIx.programId.equals(PHOENIX_PROGRAM_ID)
-		// 		? takerOrderIx.programId
-		// 		: null;
-		// 	const phoenixSeatManager = takerOrderIx.programId.equals(
-		// 		PHOENIX_SEAT_MANAGER_PROGRAM_ID
-		// 	)
-		// 		? takerOrderIx.programId
-		// 		: null;
-		//
-		// 	const params: PhoenixParams = {
-		// 		cpiIxData: takerOrderIx.data,
-		// 	};
-		// 	const ix = await program.methods
-		// 		.phoenix(params)
-		// 		.accounts({
-		// 			vault: vaultKey,
-		// 			delegate: manager.publicKey,
-		// 			phoenix,
-		// 			phoenixSeatManager,
-		// 		})
-		// 		.remainingAccounts(takerOrderIx.keys)
-		// 		.instruction();
-		//
-		// 	await simulate(conn, payer, [ix], [manager]);
-		// 	const sig = await sendAndConfirm(conn, payer, [ix], [manager]);
-		// 	console.log('place taker bid:', signatureLink(sig, conn));
-		// } catch (e: any) {
-		// 	throw new Error(e);
-		// }
+		const priceInTicks = phoenix.floatPriceToTicks(
+			startSolUsdcPrice,
+			solUsdcMarket.toBase58()
+		);
+		const numBaseLots = phoenix.rawBaseUnitsToBaseLotsRoundedDown(
+			solUiAmount,
+			solUsdcMarket.toBase58()
+		);
+		const takerOrderPacket = getLimitOrderPacket({
+			side: Side.Bid,
+			priceInTicks,
+			numBaseLots,
+		});
+		const order = encodeLimitOrderPacket(takerOrderPacket);
+
+		const vaultBaseTokenAccount = getAssociatedTokenAddressSync(
+			solMint,
+			vaultKey,
+			true
+		);
+		const vaultQuoteTokenAccount = getAssociatedTokenAddressSync(
+			usdcMint,
+			vaultKey,
+			true
+		);
+		const marketBaseTokenAccount = phoenix.getBaseVaultKey(
+			solUsdcMarket.toString()
+		);
+		const marketQuoteTokenAccount = phoenix.getQuoteVaultKey(
+			solUsdcMarket.toString()
+		);
+
+		const vaultSolBefore = (
+			await conn.getTokenAccountBalance(vaultBaseTokenAccount)
+		).value.uiAmount;
+		const vaultUsdcBefore = (
+			await conn.getTokenAccountBalance(vaultQuoteTokenAccount)
+		).value.uiAmount;
+		console.log('vault sol before:', vaultSolBefore);
+		console.log('vault usdc before:', vaultUsdcBefore);
+
+		try {
+			const ix = await program.methods
+				.placeLimitOrder({
+					order,
+				})
+				.accounts({
+					vault: vaultKey,
+					delegate: manager.publicKey,
+					phoenix: PHOENIX_PROGRAM_ID,
+					logAuthority: getLogAuthority(),
+					market: solUsdcMarket,
+					seat: getSeatAddress(solUsdcMarket, vaultKey),
+					baseMint: solMint,
+					quoteMint: usdcMint,
+					vaultBaseTokenAccount,
+					vaultQuoteTokenAccount,
+					marketBaseTokenAccount,
+					marketQuoteTokenAccount,
+					tokenProgram: TOKEN_PROGRAM_ID,
+				})
+				.instruction();
+
+			await simulate(conn, payer, [ix], [manager]);
+			const sig = await sendAndConfirm(conn, payer, [ix], [manager]);
+			console.log('place taker bid:', signatureLink(sig, conn));
+		} catch (e: any) {
+			throw new Error(e);
+		}
+
+		const vaultSol = (await conn.getTokenAccountBalance(vaultBaseTokenAccount))
+			.value.uiAmount;
+		const vaultUsdc = (
+			await conn.getTokenAccountBalance(vaultQuoteTokenAccount)
+		).value.uiAmount;
+		console.log('vault sol after:', vaultSol);
+		console.log('vault usdc after:', vaultUsdc);
 	});
 });

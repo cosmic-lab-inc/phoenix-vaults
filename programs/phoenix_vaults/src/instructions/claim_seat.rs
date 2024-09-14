@@ -10,23 +10,13 @@ pub fn claim_seat<'c: 'info, 'info>(
 ) -> Result<()> {
     declare_vault_seeds!(ctx.accounts.vault, seeds);
 
+    let trader_index = 5;
     let mut ix = phoenix_seat_manager::instruction_builders::create_claim_seat_instruction(
         &ctx.accounts.vault.key(),
         &ctx.accounts.market.key(),
     );
-    ix.accounts[5].is_signer = true;
+    ix.accounts[trader_index].is_signer = true;
     ix.accounts[6].pubkey = ctx.accounts.payer.key();
-
-    msg!(
-        "cpi trader: {:?}, signer: {}",
-        ix.accounts[5].pubkey,
-        ix.accounts[5].is_signer
-    );
-    msg!(
-        "cpi payer: {:?}, signer: {}",
-        ix.accounts[6].pubkey,
-        ix.accounts[6].is_signer
-    );
 
     // #[account(0, name = "phoenix_program", desc = "Phoenix program")]
     // #[account(1, name = "log_authority", desc = "Phoenix log authority")]

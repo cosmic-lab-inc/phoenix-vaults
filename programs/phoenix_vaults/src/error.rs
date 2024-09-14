@@ -77,10 +77,10 @@ pub enum ErrorCode {
     MarketRegistryLength,
     #[msg("MarketRegistryMismatch")]
     MarketRegistryMismatch,
-    #[msg("MissingBothPhoenixPrograms")]
-    MissingBothPhoenixPrograms,
-    #[msg("BothPhoenixProgramsProvided")]
-    BothPhoenixProgramsProvided,
+    #[msg("OrderPacketDeserialization")]
+    OrderPacketDeserialization,
+    #[msg("InvalidPhoenixInstruction")]
+    InvalidPhoenixInstruction,
 }
 
 #[macro_export]
