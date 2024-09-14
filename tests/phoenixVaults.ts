@@ -536,55 +536,55 @@ describe('phoenixVaults', () => {
 		console.log('maker usdc after:', makerUsdcAfter);
 	});
 
-	// it('Maker Buy SOL/USDC @ $125', async () => {
-	// 	await phoenix.refreshMarket(solUsdcMarket.toString());
-	// 	const marketState = phoenix.marketStates.get(solUsdcMarket.toString());
-	// 	if (marketState === undefined) {
-	// 		throw Error('SOL/USDC market not found');
-	// 	}
-	//
-	// 	// maker lost 25% on trade, so only has $1000 @ $125/SOL or 8 SOL to buy back (not accounting 0.01% fee)
-	// 	const priceInTicks = phoenix.floatPriceToTicks(
-	// 		endSolUsdcPrice,
-	// 		solUsdcMarket.toBase58()
-	// 	);
-	//
-	// 	const traderState = marketState.data.traders.get(
-	// 		maker.publicKey.toString()
-	// 	);
-	// 	console.log('maker trader state:', traderState);
-	// 	const quoteLotsBigNum = traderState.quoteLotsFree;
-	// 	let quoteLots: number;
-	// 	// if quoteLots is BN, convert to number, else use as is
-	// 	if (quoteLotsBigNum instanceof BN) {
-	// 		quoteLots = quoteLotsBigNum.toNumber();
-	// 	} else {
-	// 		quoteLots = quoteLotsBigNum as number;
-	// 	}
-	//
-	// 	const quoteUnitsFree = marketState.quoteLotsToQuoteUnits(quoteLots);
-	// 	console.log('maker free quote units:', quoteUnitsFree);
-	// 	const baseUnitsToBuy = quoteUnitsFree / endSolUsdcPrice;
-	//
-	// 	const numBaseLots = phoenix.rawBaseUnitsToBaseLotsRoundedDown(
-	// 		baseUnitsToBuy,
-	// 		solUsdcMarket.toBase58()
-	// 	);
-	// 	const makerOrderPacket = getLimitOrderPacket({
-	// 		side: Side.Bid,
-	// 		priceInTicks,
-	// 		numBaseLots,
-	// 	});
-	// 	const makerOrderIx = phoenix.createPlaceLimitOrderInstruction(
-	// 		makerOrderPacket,
-	// 		solUsdcMarket.toString(),
-	// 		maker.publicKey
-	// 	);
-	// 	await simulate(conn, payer, [makerOrderIx], [maker]);
-	// 	const sig = await sendAndConfirm(conn, payer, [makerOrderIx], [maker]);
-	// 	console.log('maker buy:', signatureLink(sig, conn));
-	// });
-	//
+	it('Maker Buy SOL/USDC @ $125', async () => {
+		await phoenix.refreshMarket(solUsdcMarket.toString());
+		const marketState = phoenix.marketStates.get(solUsdcMarket.toString());
+		if (marketState === undefined) {
+			throw Error('SOL/USDC market not found');
+		}
+
+		// maker lost 25% on trade, so only has $1000 @ $125/SOL or 8 SOL to buy back (not accounting 0.01% fee)
+		const priceInTicks = phoenix.floatPriceToTicks(
+			endSolUsdcPrice,
+			solUsdcMarket.toBase58()
+		);
+
+		const traderState = marketState.data.traders.get(
+			maker.publicKey.toString()
+		);
+		console.log('maker trader state:', traderState);
+		const quoteLotsBigNum = traderState.quoteLotsFree;
+		let quoteLots: number;
+		// if quoteLots is BN, convert to number, else use as is
+		if (quoteLotsBigNum instanceof BN) {
+			quoteLots = quoteLotsBigNum.toNumber();
+		} else {
+			quoteLots = quoteLotsBigNum as number;
+		}
+
+		const quoteUnitsFree = marketState.quoteLotsToQuoteUnits(quoteLots);
+		console.log('maker free quote units:', quoteUnitsFree);
+		const baseUnitsToBuy = quoteUnitsFree / endSolUsdcPrice;
+
+		const numBaseLots = phoenix.rawBaseUnitsToBaseLotsRoundedDown(
+			baseUnitsToBuy,
+			solUsdcMarket.toBase58()
+		);
+		const makerOrderPacket = getLimitOrderPacket({
+			side: Side.Bid,
+			priceInTicks,
+			numBaseLots,
+		});
+		const makerOrderIx = phoenix.createPlaceLimitOrderInstruction(
+			makerOrderPacket,
+			solUsdcMarket.toString(),
+			maker.publicKey
+		);
+		await simulate(conn, payer, [makerOrderIx], [maker]);
+		const sig = await sendAndConfirm(conn, payer, [makerOrderIx], [maker]);
+		console.log('maker buy:', signatureLink(sig, conn));
+	});
+
 	// it('Taker Sell SOL/USDC @ $125', async () => {
 	// 	const marketState = phoenix.marketStates.get(solUsdcMarket.toString());
 	// 	if (marketState === undefined) {
