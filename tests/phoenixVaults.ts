@@ -45,6 +45,7 @@ import {
 	signatureLink,
 	simulate,
 	MARKET_CONFIG,
+	tokenBalance,
 } from './testHelpers';
 import {
 	Client as PhoenixClient,
@@ -106,7 +107,7 @@ describe('phoenixVaults', () => {
 	const marketKeys: PublicKey[] = [solUsdcMarket, jupSolMarket, jupUsdcMarket];
 	const solUsdcMarketIndex = 0;
 	const startSolUsdcPrice = 100;
-	const _endSolUsdcPrice = 110;
+	const endSolUsdcPrice = 110;
 	const usdcUiAmount = 1_000;
 	const usdcAmount = new BN(usdcUiAmount).mul(MOCK_USDC_PRECISION);
 	const solUiAmount = usdcUiAmount / startSolUsdcPrice; // 10 SOL
@@ -314,7 +315,7 @@ describe('phoenixVaults', () => {
 		assert.equal(sm.market.toBase58(), solUsdcMarket.toBase58());
 	});
 
-	it('Maker Short SOL/USDC', async () => {
+	it('Maker Sell SOL/USDC', async () => {
 		const marketState = phoenix.marketStates.get(solUsdcMarket.toString());
 		if (marketState === undefined) {
 			throw Error('SOL/USDC market not found');
@@ -392,7 +393,7 @@ describe('phoenixVaults', () => {
 		console.log('placed maker ask');
 	});
 
-	it('Taker Long SOL/USDC', async () => {
+	it('Taker Buy SOL/USDC', async () => {
 		const marketState = phoenix.marketStates.get(solUsdcMarket.toString());
 		if (marketState === undefined) {
 			throw Error('SOL/USDC market not found');
@@ -534,4 +535,147 @@ describe('phoenixVaults', () => {
 		console.log('maker sol after:', makerSolAfter);
 		console.log('maker usdc after:', makerUsdcAfter);
 	});
+
+	// it('Maker Buy SOL/USDC @ $125', async () => {
+	// 	await phoenix.refreshMarket(solUsdcMarket.toString());
+	// 	const marketState = phoenix.marketStates.get(solUsdcMarket.toString());
+	// 	if (marketState === undefined) {
+	// 		throw Error('SOL/USDC market not found');
+	// 	}
+	//
+	// 	// maker lost 25% on trade, so only has $1000 @ $125/SOL or 8 SOL to buy back (not accounting 0.01% fee)
+	// 	const priceInTicks = phoenix.floatPriceToTicks(
+	// 		endSolUsdcPrice,
+	// 		solUsdcMarket.toBase58()
+	// 	);
+	//
+	// 	const traderState = marketState.data.traders.get(
+	// 		maker.publicKey.toString()
+	// 	);
+	// 	console.log('maker trader state:', traderState);
+	// 	const quoteLotsBigNum = traderState.quoteLotsFree;
+	// 	let quoteLots: number;
+	// 	// if quoteLots is BN, convert to number, else use as is
+	// 	if (quoteLotsBigNum instanceof BN) {
+	// 		quoteLots = quoteLotsBigNum.toNumber();
+	// 	} else {
+	// 		quoteLots = quoteLotsBigNum as number;
+	// 	}
+	//
+	// 	const quoteUnitsFree = marketState.quoteLotsToQuoteUnits(quoteLots);
+	// 	console.log('maker free quote units:', quoteUnitsFree);
+	// 	const baseUnitsToBuy = quoteUnitsFree / endSolUsdcPrice;
+	//
+	// 	const numBaseLots = phoenix.rawBaseUnitsToBaseLotsRoundedDown(
+	// 		baseUnitsToBuy,
+	// 		solUsdcMarket.toBase58()
+	// 	);
+	// 	const makerOrderPacket = getLimitOrderPacket({
+	// 		side: Side.Bid,
+	// 		priceInTicks,
+	// 		numBaseLots,
+	// 	});
+	// 	const makerOrderIx = phoenix.createPlaceLimitOrderInstruction(
+	// 		makerOrderPacket,
+	// 		solUsdcMarket.toString(),
+	// 		maker.publicKey
+	// 	);
+	// 	await simulate(conn, payer, [makerOrderIx], [maker]);
+	// 	const sig = await sendAndConfirm(conn, payer, [makerOrderIx], [maker]);
+	// 	console.log('maker buy:', signatureLink(sig, conn));
+	// });
+	//
+	// it('Taker Sell SOL/USDC @ $125', async () => {
+	// 	const marketState = phoenix.marketStates.get(solUsdcMarket.toString());
+	// 	if (marketState === undefined) {
+	// 		throw Error('SOL/USDC market not found');
+	// 	}
+	//
+	// 	const vaultBaseTokenAccount = getAssociatedTokenAddressSync(
+	// 		solMint,
+	// 		vaultKey,
+	// 		true
+	// 	);
+	// 	const vaultQuoteTokenAccount = getAssociatedTokenAddressSync(
+	// 		usdcMint,
+	// 		vaultKey,
+	// 		true
+	// 	);
+	// 	const marketBaseTokenAccount = phoenix.getBaseVaultKey(
+	// 		solUsdcMarket.toString()
+	// 	);
+	// 	const marketQuoteTokenAccount = phoenix.getQuoteVaultKey(
+	// 		solUsdcMarket.toString()
+	// 	);
+	//
+	// 	const priceInTicks = phoenix.floatPriceToTicks(
+	// 		startSolUsdcPrice,
+	// 		solUsdcMarket.toBase58()
+	// 	);
+	//
+	// 	const vaultSolAmount = await tokenBalance(conn, vaultBaseTokenAccount);
+	// 	const solAmountAfterFee = vaultSolAmount * (1 - 0.01 / 100);
+	// 	const numBaseLots = phoenix.rawBaseUnitsToBaseLotsRoundedDown(
+	// 		solAmountAfterFee,
+	// 		solUsdcMarket.toBase58()
+	// 	);
+	// 	const takerOrderPacket = getLimitOrderPacket({
+	// 		side: Side.Ask,
+	// 		priceInTicks,
+	// 		numBaseLots,
+	// 	});
+	// 	const order = encodeLimitOrderPacket(takerOrderPacket);
+	//
+	// 	try {
+	// 		const ix = await program.methods
+	// 			.placeLimitOrder({
+	// 				order,
+	// 			})
+	// 			.accounts({
+	// 				vault: vaultKey,
+	// 				delegate: manager.publicKey,
+	// 				phoenix: PHOENIX_PROGRAM_ID,
+	// 				logAuthority: getLogAuthority(),
+	// 				market: solUsdcMarket,
+	// 				seat: getSeatAddress(solUsdcMarket, vaultKey),
+	// 				baseMint: solMint,
+	// 				quoteMint: usdcMint,
+	// 				vaultBaseTokenAccount,
+	// 				vaultQuoteTokenAccount,
+	// 				marketBaseTokenAccount,
+	// 				marketQuoteTokenAccount,
+	// 				tokenProgram: TOKEN_PROGRAM_ID,
+	// 			})
+	// 			.instruction();
+	//
+	// 		await simulate(conn, payer, [ix], [manager]);
+	// 		// const sig = await sendAndConfirm(conn, payer, [ix], [manager]);
+	// 		// console.log('taker sell:', signatureLink(sig, conn));
+	// 	} catch (e: any) {
+	// 		throw new Error(e);
+	// 	}
+	//
+	// 	const vaultSolAfter = await tokenBalance(conn, vaultBaseTokenAccount);
+	// 	const vaultUsdcAfter = await tokenBalance(conn, vaultQuoteTokenAccount);
+	// 	console.log('vault sol after sell:', vaultSolAfter);
+	// 	console.log('vault usdc after sell:', vaultUsdcAfter);
+	//
+	// 	const makerBaseTokenAccount = getAssociatedTokenAddressSync(
+	// 		solMint,
+	// 		maker.publicKey
+	// 	);
+	// 	const makerQuoteTokenAccount = getAssociatedTokenAddressSync(
+	// 		usdcMint,
+	// 		maker.publicKey
+	// 	);
+	// 	const makerSolAfter = await tokenBalance(conn, makerBaseTokenAccount);
+	// 	const makerUsdcAfter = await tokenBalance(conn, makerQuoteTokenAccount);
+	// 	console.log('maker sol after buy:', makerSolAfter);
+	// 	console.log('maker usdc after buy:', makerUsdcAfter);
+	//
+	// 	const marketSolAfter = await tokenBalance(conn, marketBaseTokenAccount);
+	// 	const marketUsdcAfter = await tokenBalance(conn, marketQuoteTokenAccount);
+	// 	console.log('market sol after exit:', marketSolAfter);
+	// 	console.log('market usdc after exit:', marketUsdcAfter);
+	// });
 });

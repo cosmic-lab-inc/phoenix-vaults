@@ -868,11 +868,24 @@ export function encodeLimitOrderPacket(orderPacket: OrderPacket) {
 		instructionDiscriminator: placeLimitOrderInstructionDiscriminator,
 		...args,
 	});
-	return buffer;
+	return Buffer.from(buffer);
 }
 
 export function decodeLimitOrderPacket(buffer: Buffer) {
 	const serializedOrderPacket = buffer.slice(1, buffer.length);
 	const orderPacket = orderPacketBeet.toFixedFromData(serializedOrderPacket, 0);
 	return orderPacket.read(serializedOrderPacket, 0);
+}
+
+export async function tokenBalance(
+	conn: Connection,
+	tokenAccount: PublicKey
+): Promise<number> {
+	const value: number | null = (await conn.getTokenAccountBalance(tokenAccount))
+		.value.uiAmount;
+	if (value) {
+		return Number(value);
+	} else {
+		return 0;
+	}
 }
