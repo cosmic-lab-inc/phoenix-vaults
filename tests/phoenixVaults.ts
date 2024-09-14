@@ -46,6 +46,8 @@ import {
 	simulate,
 	MARKET_CONFIG,
 	tokenBalance,
+	account,
+	tokenAccount,
 } from './testHelpers';
 import {
 	Client as PhoenixClient,
@@ -657,10 +659,17 @@ describe('phoenixVaults', () => {
 		}
 
 		// const vaultSolAfter = await tokenBalance(conn, vaultBaseTokenAccount);
-		// const vaultUsdcAfter = await tokenBalance(conn, vaultQuoteTokenAccount);
 		// console.log('vault sol after sell:', vaultSolAfter);
+
+		const vaultBaseAta = await conn.getAccountInfo(vaultBaseTokenAccount);
+		console.log('vaultBaseAta:', vaultBaseAta);
+		const vaultQuoteAta = await conn.getAccountInfo(vaultQuoteTokenAccount);
+		console.log('vaultQuoteAta:', vaultQuoteAta);
+
+		// todo: SIGBUS caused by unpacking vault USDC AccountInfo<Buffer> into a TokenAccount
+		// const vaultUsdcAfter = await tokenBalance(conn, vaultQuoteTokenAccount);
 		// console.log('vault usdc after sell:', vaultUsdcAfter);
-		//
+
 		// const makerBaseTokenAccount = getAssociatedTokenAddressSync(
 		// 	solMint,
 		// 	maker.publicKey

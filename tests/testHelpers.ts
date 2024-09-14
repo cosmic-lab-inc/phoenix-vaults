@@ -12,6 +12,8 @@ import {
 	createWrappedNativeAccount,
 	getAssociatedTokenAddress,
 	createAssociatedTokenAccountInstruction,
+	unpackAccount,
+	Account as TokenAccount,
 } from '@solana/spl-token';
 import {
 	ComputeBudgetProgram,
@@ -875,6 +877,14 @@ export function decodeLimitOrderPacket(buffer: Buffer) {
 	const serializedOrderPacket = buffer.slice(1, buffer.length);
 	const orderPacket = orderPacketBeet.toFixedFromData(serializedOrderPacket, 0);
 	return orderPacket.read(serializedOrderPacket, 0);
+}
+
+export async function tokenAccount(
+	conn: Connection,
+	key: PublicKey
+): Promise<TokenAccount> {
+	const acct = await conn.getAccountInfo(key);
+	return unpackAccount(key, acct);
 }
 
 export async function tokenBalance(
