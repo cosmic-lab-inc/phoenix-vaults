@@ -44,9 +44,9 @@ import {
 	sendAndConfirm,
 	signatureLink,
 	simulate,
+	MARKET_CONFIG,
 } from './testHelpers';
 import {
-	RawMarketConfig,
 	Client as PhoenixClient,
 	getSeatManagerAddress,
 	deserializeSeatManagerData,
@@ -57,56 +57,6 @@ import {
 	getSeatAddress,
 	getSeatDepositCollectorAddress,
 } from '@cosmic-lab/phoenix-sdk';
-
-const MARKET_CONFIG: RawMarketConfig = {
-	['localhost']: {
-		tokens: [
-			{
-				name: 'SOL',
-				symbol: 'SOL',
-				mint: MOCK_SOL_MINT.publicKey.toString(),
-				logoUri: '',
-			},
-			{
-				name: 'USDC',
-				symbol: 'USDC',
-				mint: MOCK_USDC_MINT.publicKey.toString(),
-				logoUri: '',
-			},
-			{
-				name: 'JUP',
-				symbol: 'JUP',
-				mint: MOCK_JUP_MINT.publicKey.toString(),
-				logoUri: '',
-			},
-		],
-		markets: [
-			{
-				market: MOCK_SOL_USDC_MARKET.publicKey.toString(),
-				baseMint: MOCK_SOL_MINT.publicKey.toString(),
-				quoteMint: MOCK_USDC_MINT.publicKey.toString(),
-			},
-			{
-				market: MOCK_JUP_SOL_MARKET.publicKey.toString(),
-				baseMint: MOCK_JUP_MINT.publicKey.toString(),
-				quoteMint: MOCK_SOL_MINT.publicKey.toString(),
-			},
-			{
-				market: MOCK_JUP_USDC_MARKET.publicKey.toString(),
-				baseMint: MOCK_JUP_MINT.publicKey.toString(),
-				quoteMint: MOCK_USDC_MINT.publicKey.toString(),
-			},
-		],
-	},
-	['devnet']: {
-		tokens: [],
-		markets: [],
-	},
-	['mainnet-beta']: {
-		tokens: [],
-		markets: [],
-	},
-};
 
 describe('phoenixVaults', () => {
 	const opts: ConfirmOptions = {
@@ -159,7 +109,7 @@ describe('phoenixVaults', () => {
 	const _endSolUsdcPrice = 110;
 	const usdcUiAmount = 1_000;
 	const usdcAmount = new BN(usdcUiAmount).mul(MOCK_USDC_PRECISION);
-	const solUiAmount = usdcUiAmount / startSolUsdcPrice;
+	const solUiAmount = usdcUiAmount / startSolUsdcPrice; // 10 SOL
 	const solAmount = new BN(solUiAmount).mul(MOCK_SOL_PRECISION);
 
 	before(async () => {
@@ -404,6 +354,22 @@ describe('phoenixVaults', () => {
 			throw new Error(e);
 		}
 
+		const makerBaseTokenAccount = getAssociatedTokenAddressSync(
+			solMint,
+			maker.publicKey
+		);
+		const makerQuoteTokenAccount = getAssociatedTokenAddressSync(
+			usdcMint,
+			maker.publicKey
+		);
+		const makerSolBefore = (
+			await conn.getTokenAccountBalance(makerBaseTokenAccount)
+		).value.uiAmount;
+		const makerUsdcBefore = (
+			await conn.getTokenAccountBalance(makerQuoteTokenAccount)
+		).value.uiAmount;
+		console.log('maker sol before:', makerSolBefore);
+		console.log('maker usdc before:', makerUsdcBefore);
 		const priceInTicks = phoenix.floatPriceToTicks(
 			startSolUsdcPrice,
 			solUsdcMarket.toBase58()
@@ -431,26 +397,13 @@ describe('phoenixVaults', () => {
 		if (marketState === undefined) {
 			throw Error('SOL/USDC market not found');
 		}
-
 		const createAtaIxs = await createMarketTokenAccountIxs(
 			conn,
 			marketState,
 			vaultKey,
 			payer
 		);
-		const usdcAta = getAssociatedTokenAddressSync(usdcMint, vaultKey, true);
-		const mintUsdcIx = createMintToInstruction(
-			usdcMint,
-			usdcAta,
-			mintAuth.publicKey,
-			usdcAmount.toNumber()
-		);
-		await sendAndConfirm(
-			conn,
-			payer,
-			[...createAtaIxs, mintUsdcIx],
-			[mintAuth]
-		);
+		await sendAndConfirm(conn, payer, createAtaIxs);
 		console.log('setup taker tokens');
 
 		try {
@@ -487,8 +440,9 @@ describe('phoenixVaults', () => {
 			startSolUsdcPrice,
 			solUsdcMarket.toBase58()
 		);
+		const solAmountAfterFee = solUiAmount * (1 - 0.01 / 100);
 		const numBaseLots = phoenix.rawBaseUnitsToBaseLotsRoundedDown(
-			solUiAmount,
+			solAmountAfterFee,
 			solUsdcMarket.toBase58()
 		);
 		const takerOrderPacket = getLimitOrderPacket({
@@ -523,6 +477,8 @@ describe('phoenixVaults', () => {
 		).value.uiAmount;
 		console.log('vault sol before:', vaultSolBefore);
 		console.log('vault usdc before:', vaultUsdcBefore);
+		assert.equal(vaultSolBefore, 0);
+		assert.equal(vaultUsdcBefore, 1000);
 
 		try {
 			const ix = await program.methods
@@ -560,5 +516,22 @@ describe('phoenixVaults', () => {
 		).value.uiAmount;
 		console.log('vault sol after:', vaultSol);
 		console.log('vault usdc after:', vaultUsdc);
+
+		const makerBaseTokenAccount = getAssociatedTokenAddressSync(
+			solMint,
+			maker.publicKey
+		);
+		const makerQuoteTokenAccount = getAssociatedTokenAddressSync(
+			usdcMint,
+			maker.publicKey
+		);
+		const makerSolAfter = (
+			await conn.getTokenAccountBalance(makerBaseTokenAccount)
+		).value.uiAmount;
+		const makerUsdcAfter = (
+			await conn.getTokenAccountBalance(makerQuoteTokenAccount)
+		).value.uiAmount;
+		console.log('maker sol after:', makerSolAfter);
+		console.log('maker usdc after:', makerUsdcAfter);
 	});
 });

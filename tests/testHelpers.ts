@@ -31,7 +31,15 @@ import {
 import { assert } from 'chai';
 import buffer from 'buffer';
 import { BN } from '@coral-xyz/anchor';
-import { PRICE_PRECISION } from '../ts/sdk';
+import {
+	MOCK_JUP_MINT,
+	MOCK_JUP_SOL_MARKET,
+	MOCK_JUP_USDC_MARKET,
+	MOCK_SOL_MINT,
+	MOCK_SOL_USDC_MARKET,
+	MOCK_USDC_MINT,
+	PRICE_PRECISION,
+} from '../ts/sdk';
 import {
 	MarketState,
 	OrderPacket,
@@ -39,7 +47,58 @@ import {
 	PlaceLimitOrderInstructionArgs,
 	placeLimitOrderInstructionDiscriminator,
 	PlaceLimitOrderStruct,
+	RawMarketConfig,
 } from '@cosmic-lab/phoenix-sdk';
+
+export const MARKET_CONFIG: RawMarketConfig = {
+	['localhost']: {
+		tokens: [
+			{
+				name: 'SOL',
+				symbol: 'SOL',
+				mint: MOCK_SOL_MINT.publicKey.toString(),
+				logoUri: '',
+			},
+			{
+				name: 'USDC',
+				symbol: 'USDC',
+				mint: MOCK_USDC_MINT.publicKey.toString(),
+				logoUri: '',
+			},
+			{
+				name: 'JUP',
+				symbol: 'JUP',
+				mint: MOCK_JUP_MINT.publicKey.toString(),
+				logoUri: '',
+			},
+		],
+		markets: [
+			{
+				market: MOCK_SOL_USDC_MARKET.publicKey.toString(),
+				baseMint: MOCK_SOL_MINT.publicKey.toString(),
+				quoteMint: MOCK_USDC_MINT.publicKey.toString(),
+			},
+			{
+				market: MOCK_JUP_SOL_MARKET.publicKey.toString(),
+				baseMint: MOCK_JUP_MINT.publicKey.toString(),
+				quoteMint: MOCK_SOL_MINT.publicKey.toString(),
+			},
+			{
+				market: MOCK_JUP_USDC_MARKET.publicKey.toString(),
+				baseMint: MOCK_JUP_MINT.publicKey.toString(),
+				quoteMint: MOCK_USDC_MINT.publicKey.toString(),
+			},
+		],
+	},
+	['devnet']: {
+		tokens: [],
+		markets: [],
+	},
+	['mainnet-beta']: {
+		tokens: [],
+		markets: [],
+	},
+};
 
 export type OraclePriceData = {
 	price: BN;
