@@ -238,24 +238,6 @@ describe('phoenixVaults', () => {
 		assert(!!acct);
 	});
 
-	it('#1 Fetch Vault Tokens', async () => {
-		const vaultBaseTokenAccount = getAssociatedTokenAddressSync(
-			solMint,
-			vaultKey,
-			true
-		);
-		const vaultQuoteTokenAccount = getAssociatedTokenAddressSync(
-			usdcMint,
-			vaultKey,
-			true
-		);
-		const vaultSolAfter = await tokenBalance(conn, vaultBaseTokenAccount);
-		console.log('#1 vault sol:', vaultSolAfter);
-		// todo: SIGBUS caused by unpacking vault USDC AccountInfo<Buffer> into a TokenAccount
-		const vaultUsdcAfter = await tokenBalance(conn, vaultQuoteTokenAccount);
-		console.log('#1 vault usdc:', vaultUsdcAfter);
-	});
-
 	it('Initialize Investor', async () => {
 		const accounts = {
 			vault: vaultKey,
@@ -314,24 +296,6 @@ describe('phoenixVaults', () => {
 		const vaultAtaBalance = (await conn.getTokenAccountBalance(vaultAta)).value
 			.uiAmount;
 		assert.equal(vaultAtaBalance, 1000);
-	});
-
-	it('#2 Fetch Vault Tokens', async () => {
-		const vaultBaseTokenAccount = getAssociatedTokenAddressSync(
-			solMint,
-			vaultKey,
-			true
-		);
-		const vaultQuoteTokenAccount = getAssociatedTokenAddressSync(
-			usdcMint,
-			vaultKey,
-			true
-		);
-		const vaultSolAfter = await tokenBalance(conn, vaultBaseTokenAccount);
-		console.log('#2 vault sol:', vaultSolAfter);
-		// todo: SIGBUS caused by unpacking vault USDC AccountInfo<Buffer> into a TokenAccount
-		const vaultUsdcAfter = await tokenBalance(conn, vaultQuoteTokenAccount);
-		console.log('#2 vault usdc:', vaultUsdcAfter);
 	});
 
 	it('Check SOL/USDC Seat Manager', async () => {
@@ -427,24 +391,6 @@ describe('phoenixVaults', () => {
 		);
 		await sendAndConfirm(conn, payer, [makerOrderIx], [maker]);
 		console.log('placed maker ask');
-	});
-
-	it('#3 Fetch Vault Tokens', async () => {
-		const vaultBaseTokenAccount = getAssociatedTokenAddressSync(
-			solMint,
-			vaultKey,
-			true
-		);
-		const vaultQuoteTokenAccount = getAssociatedTokenAddressSync(
-			usdcMint,
-			vaultKey,
-			true
-		);
-		const vaultSolAfter = await tokenBalance(conn, vaultBaseTokenAccount);
-		console.log('#3 vault sol:', vaultSolAfter);
-		// todo: SIGBUS caused by unpacking vault USDC AccountInfo<Buffer> into a TokenAccount
-		const vaultUsdcAfter = await tokenBalance(conn, vaultQuoteTokenAccount);
-		console.log('#3 vault usdc:', vaultUsdcAfter);
 	});
 
 	it('Taker Buy SOL/USDC', async () => {
@@ -590,24 +536,6 @@ describe('phoenixVaults', () => {
 		console.log('maker usdc after:', makerUsdcAfter);
 	});
 
-	it('#4 Fetch Vault Tokens', async () => {
-		const vaultBaseTokenAccount = getAssociatedTokenAddressSync(
-			solMint,
-			vaultKey,
-			true
-		);
-		const vaultQuoteTokenAccount = getAssociatedTokenAddressSync(
-			usdcMint,
-			vaultKey,
-			true
-		);
-		const vaultSolAfter = await tokenBalance(conn, vaultBaseTokenAccount);
-		console.log('#4 vault sol:', vaultSolAfter);
-		// todo: SIGBUS caused by unpacking vault USDC AccountInfo<Buffer> into a TokenAccount
-		const vaultUsdcAfter = await tokenBalance(conn, vaultQuoteTokenAccount);
-		console.log('#4 vault usdc:', vaultUsdcAfter);
-	});
-
 	it('Maker Buy SOL/USDC @ $125', async () => {
 		await phoenix.refreshMarket(solUsdcMarket.toString());
 		const marketState = phoenix.marketStates.get(solUsdcMarket.toString());
@@ -655,24 +583,6 @@ describe('phoenixVaults', () => {
 		await simulate(conn, payer, [makerOrderIx], [maker]);
 		const sig = await sendAndConfirm(conn, payer, [makerOrderIx], [maker]);
 		console.log('maker buy:', signatureLink(sig, conn));
-	});
-
-	it('#5 Fetch Vault Tokens', async () => {
-		const vaultBaseTokenAccount = getAssociatedTokenAddressSync(
-			solMint,
-			vaultKey,
-			true
-		);
-		const vaultQuoteTokenAccount = getAssociatedTokenAddressSync(
-			usdcMint,
-			vaultKey,
-			true
-		);
-		const vaultSolAfter = await tokenBalance(conn, vaultBaseTokenAccount);
-		console.log('#5 vault sol:', vaultSolAfter);
-		// todo: SIGBUS caused by unpacking vault USDC AccountInfo<Buffer> into a TokenAccount
-		const vaultUsdcAfter = await tokenBalance(conn, vaultQuoteTokenAccount);
-		console.log('#5 vault usdc:', vaultUsdcAfter);
 	});
 
 	it('Taker Sell SOL/USDC @ $125', async () => {
@@ -741,8 +651,8 @@ describe('phoenixVaults', () => {
 				.instruction();
 
 			await simulate(conn, payer, [ix], [manager]);
-			// const sig = await sendAndConfirm(conn, payer, [ix], [manager]);
-			// console.log('taker sell:', signatureLink(sig, conn));
+			const sig = await sendAndConfirm(conn, payer, [ix], [manager]);
+			console.log('taker sell:', signatureLink(sig, conn));
 		} catch (e: any) {
 			throw new Error(e);
 		}

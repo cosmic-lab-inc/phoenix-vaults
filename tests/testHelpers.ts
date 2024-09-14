@@ -892,8 +892,13 @@ export async function tokenBalance(
 	conn: Connection,
 	tokenAccount: PublicKey
 ): Promise<number> {
-	const value: number | null = (await conn.getTokenAccountBalance(tokenAccount))
-		.value.uiAmount;
+	// const value: number | null = (await conn.getTokenAccountBalance(tokenAccount))
+	// 	.value.uiAmount;
+	const result = await conn.getTokenAccountBalance(tokenAccount);
+	if (!result) {
+		return 0;
+	}
+	const value: number | null = result.value.uiAmount;
 	if (value) {
 		return Number(value);
 	} else {
