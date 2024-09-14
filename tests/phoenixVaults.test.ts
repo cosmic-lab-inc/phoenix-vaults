@@ -10,7 +10,7 @@ import {
 	SystemProgram,
 } from '@solana/web3.js';
 import { assert } from 'chai';
-import { before } from 'mocha';
+import { beforeAll, describe, it } from '@jest/globals';
 import {
 	getVaultAddressSync,
 	PhoenixVaults,
@@ -112,9 +112,9 @@ describe('phoenixVaults', () => {
 	const usdcAmount = new BN(usdcUiAmount).mul(MOCK_USDC_PRECISION);
 	const startSolUiAmount = usdcUiAmount / startSolUsdcPrice; // 10 SOL
 	const solAmount = new BN(startSolUiAmount).mul(MOCK_SOL_PRECISION);
-	const endSolUiAmount = usdcUiAmount / endSolUsdcPrice; // 8 SOL
+	const _endSolUiAmount = usdcUiAmount / endSolUsdcPrice; // 8 SOL
 
-	before(async () => {
+	beforeAll(async () => {
 		phoenix = await PhoenixClient.createFromConfig(
 			conn,
 			MARKET_CONFIG,
