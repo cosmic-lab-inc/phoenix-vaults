@@ -106,7 +106,7 @@ describe('phoenixVaults', () => {
 	);
 	const solUsdcMarketIndex = 0;
 	const startSolUsdcPrice = 100;
-	const endSolUsdcPrice = 110;
+	const endSolUsdcPrice = 125;
 	const usdcUiAmount = 1_000;
 	const usdcAmount = new BN(usdcUiAmount).mul(MOCK_USDC_PRECISION);
 	const solUiAmount = usdcUiAmount / startSolUsdcPrice; // 10 SOL
@@ -628,7 +628,7 @@ describe('phoenixVaults', () => {
 			`taker after sell, sol: ${vaultSolAfter}, usdc: ${vaultUsdcAfter}`
 		);
 		assert.strictEqual(vaultSolAfter, 0.001);
-		assert.strictEqual(vaultUsdcAfter, 999.80002);
+		assert.strictEqual(vaultUsdcAfter, 999.77502);
 
 		const makerBaseTokenAccount = getAssociatedTokenAddressSync(
 			solMint,
@@ -653,6 +653,6 @@ describe('phoenixVaults', () => {
 			`market after taker sell, sol: ${marketSolAfter}, usdc: ${marketUsdcAfter}`
 		);
 		assert.strictEqual(marketSolAfter, 9.999);
-		assert.strictEqual(marketUsdcAfter, 0.19998);
+		assert.strictEqual(marketUsdcAfter, 0.22498);
 	});
 });
