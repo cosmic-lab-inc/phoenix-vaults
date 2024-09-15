@@ -42,7 +42,6 @@ import {
 	signatureLink,
 	MARKET_CONFIG,
 	tokenBalance,
-	simulate,
 	fetchMarketState,
 } from './testHelpers';
 import {
@@ -363,6 +362,9 @@ describe('phoenixVaults', () => {
 		const makerUsdcBefore = await tokenBalance(conn, makerQuoteTokenAccount);
 		console.log('maker sol before:', makerSolBefore);
 		console.log('maker usdc before:', makerUsdcBefore);
+		assert.strictEqual(makerSolBefore, 10);
+		assert.strictEqual(makerUsdcBefore, 0);
+
 		const priceInTicks = phoenix.floatPriceToTicks(
 			startSolUsdcPrice,
 			solUsdcMarket.toBase58()
@@ -454,8 +456,8 @@ describe('phoenixVaults', () => {
 		const vaultUsdcBefore = await tokenBalance(conn, vaultQuoteTokenAccount);
 		console.log('vault sol before:', vaultSolBefore);
 		console.log('vault usdc before:', vaultUsdcBefore);
-		assert.equal(vaultSolBefore, 0);
-		assert.equal(vaultUsdcBefore, 1000);
+		assert.strictEqual(vaultSolBefore, 0);
+		assert.strictEqual(vaultUsdcBefore, 1000);
 
 		try {
 			const ix = await program.methods
@@ -486,10 +488,12 @@ describe('phoenixVaults', () => {
 			throw new Error(e);
 		}
 
-		const vaultSol = await tokenBalance(conn, vaultBaseTokenAccount);
-		const vaultUsdc = await tokenBalance(conn, vaultQuoteTokenAccount);
-		console.log('vault sol after:', vaultSol);
-		console.log('vault usdc after:', vaultUsdc);
+		const vaultSolAfter = await tokenBalance(conn, vaultBaseTokenAccount);
+		const vaultUsdcAfter = await tokenBalance(conn, vaultQuoteTokenAccount);
+		console.log('vault sol after:', vaultSolAfter);
+		console.log('vault usdc after:', vaultUsdcAfter);
+		assert.strictEqual(vaultSolAfter, 9.999);
+		assert.strictEqual(vaultUsdcAfter, 0.00001);
 
 		const makerBaseTokenAccount = getAssociatedTokenAddressSync(
 			solMint,
@@ -503,6 +507,8 @@ describe('phoenixVaults', () => {
 		const makerUsdcAfter = await tokenBalance(conn, makerQuoteTokenAccount);
 		console.log('maker sol after:', makerSolAfter);
 		console.log('maker usdc after:', makerUsdcAfter);
+		assert.strictEqual(makerSolAfter, 0);
+		assert.strictEqual(makerUsdcAfter, 0);
 	});
 
 	it('Maker Buy SOL/USDC @ $125', async () => {
@@ -528,6 +534,7 @@ describe('phoenixVaults', () => {
 
 		const quoteUnitsFree = marketState.quoteLotsToQuoteUnits(quoteLots);
 		console.log('maker free quote units:', quoteUnitsFree);
+		assert.strictEqual(quoteUnitsFree, 999.9);
 		const baseUnitsToBuy = quoteUnitsFree / endSolUsdcPrice;
 
 		const numBaseLots = phoenix.rawBaseUnitsToBaseLotsRoundedDown(
@@ -607,7 +614,6 @@ describe('phoenixVaults', () => {
 				})
 				.instruction();
 
-			await simulate(conn, payer, [ix], [manager]);
 			const sig = await sendAndConfirm(conn, payer, [ix], [manager]);
 			console.log('taker sell:', signatureLink(sig, conn));
 		} catch (e: any) {
@@ -615,9 +621,11 @@ describe('phoenixVaults', () => {
 		}
 
 		const vaultSolAfter = await tokenBalance(conn, vaultBaseTokenAccount);
-		console.log('vault sol after sell:', vaultSolAfter);
 		const vaultUsdcAfter = await tokenBalance(conn, vaultQuoteTokenAccount);
+		console.log('vault sol after sell:', vaultSolAfter);
 		console.log('vault usdc after sell:', vaultUsdcAfter);
+		assert.strictEqual(vaultSolAfter, 0.001);
+		assert.strictEqual(vaultUsdcAfter, 999.80002);
 
 		const makerBaseTokenAccount = getAssociatedTokenAddressSync(
 			solMint,
@@ -631,10 +639,14 @@ describe('phoenixVaults', () => {
 		const makerUsdcAfter = await tokenBalance(conn, makerQuoteTokenAccount);
 		console.log('maker sol after buy:', makerSolAfter);
 		console.log('maker usdc after buy:', makerUsdcAfter);
+		assert.strictEqual(makerSolAfter, 0);
+		assert.strictEqual(makerUsdcAfter, 0);
 
 		const marketSolAfter = await tokenBalance(conn, marketBaseTokenAccount);
 		const marketUsdcAfter = await tokenBalance(conn, marketQuoteTokenAccount);
 		console.log('market sol after exit:', marketSolAfter);
 		console.log('market usdc after exit:', marketUsdcAfter);
+		assert.strictEqual(marketSolAfter, 9.999);
+		assert.strictEqual(marketUsdcAfter, 0.19998);
 	});
 });
