@@ -570,10 +570,10 @@ describe('phoenixVaults', () => {
 
 	it('Taker Sell SOL/USDC @ $125', async () => {
 		// await phoenix.refreshMarket(solUsdcMarket.toString());
-		// const marketState = phoenix.marketStates.get(solUsdcMarket.toString());
-		// if (marketState === undefined) {
-		// 	throw Error('SOL/USDC market not found');
-		// }
+		const marketState = phoenix.marketStates.get(solUsdcMarket.toString());
+		if (marketState === undefined) {
+			throw Error('SOL/USDC market not found');
+		}
 
 		const vaultBaseTokenAccount = getAssociatedTokenAddressSync(
 			solMint,
