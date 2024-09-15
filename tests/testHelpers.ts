@@ -897,16 +897,75 @@ export async function tokenBalance(
 	}
 }
 
-export async function fetchMarketState(conn: Connection, market: PublicKey) {
+export async function fetchMarketState(
+	conn: Connection,
+	market: PublicKey
+): Promise<MarketState> {
 	const ai = await conn.getAccountInfo(market);
 	if (!ai) {
 		throw Error(`market ${market.toString()} not found`);
 	}
 	const buffer: Buffer = ai.data;
 	const marketData = deserializeMarketData(buffer);
-	const marketState = new MarketState({
+	return new MarketState({
 		address: market,
 		data: marketData,
 	});
-	return marketState;
+}
+
+export interface UiTraderState {
+	quoteUnitsFree: number;
+	quoteUnitsLocked: number;
+	baseUnitsFree: number;
+	baseUnitsLocked: number;
+}
+
+export function parseTraderState(
+	marketState: MarketState,
+	trader: PublicKey
+): UiTraderState {
+	const traderState = marketState.data.traders.get(trader.toString());
+
+	const quoteLotsFreeBigNum = traderState.quoteLotsFree;
+	let quoteLotsFree: number;
+	if (quoteLotsFreeBigNum instanceof BN) {
+		quoteLotsFree = quoteLotsFreeBigNum.toNumber();
+	} else {
+		quoteLotsFree = quoteLotsFreeBigNum as number;
+	}
+
+	const quoteLotsLockedBigNum = traderState.quoteLotsLocked;
+	let quoteLotsLocked: number;
+	if (quoteLotsLockedBigNum instanceof BN) {
+		quoteLotsLocked = quoteLotsLockedBigNum.toNumber();
+	} else {
+		quoteLotsLocked = quoteLotsLockedBigNum as number;
+	}
+
+	const baseLotsFreeBigNum = traderState.baseLotsFree;
+	let baseLotsFree: number;
+	if (baseLotsFreeBigNum instanceof BN) {
+		baseLotsFree = baseLotsFreeBigNum.toNumber();
+	} else {
+		baseLotsFree = baseLotsFreeBigNum as number;
+	}
+
+	const baseLotsLockedBigNum = traderState.baseLotsLocked;
+	let baseLotsLocked: number;
+	if (baseLotsLockedBigNum instanceof BN) {
+		baseLotsLocked = baseLotsLockedBigNum.toNumber();
+	} else {
+		baseLotsLocked = baseLotsLockedBigNum as number;
+	}
+
+	const quoteUnitsFree = marketState.quoteLotsToQuoteUnits(quoteLotsFree);
+	const quoteUnitsLocked = marketState.quoteLotsToQuoteUnits(quoteLotsLocked);
+	const baseUnitsFree = marketState.baseLotsToRawBaseUnits(baseLotsFree);
+	const baseUnitsLocked = marketState.baseLotsToRawBaseUnits(baseLotsLocked);
+	return {
+		quoteUnitsFree,
+		quoteUnitsLocked,
+		baseUnitsFree,
+		baseUnitsLocked,
+	};
 }

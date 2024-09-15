@@ -359,6 +359,43 @@ export type PhoenixVaults = {
 					};
 				}
 			];
+		},
+		{
+			name: 'requestWithdraw';
+			accounts: [
+				{
+					name: 'vault';
+					isMut: true;
+					isSigner: false;
+				},
+				{
+					name: 'investor';
+					isMut: true;
+					isSigner: false;
+				},
+				{
+					name: 'authority';
+					isMut: false;
+					isSigner: true;
+				},
+				{
+					name: 'marketRegistry';
+					isMut: false;
+					isSigner: false;
+				}
+			];
+			args: [
+				{
+					name: 'withdrawAmount';
+					type: 'u64';
+				},
+				{
+					name: 'withdrawUnit';
+					type: {
+						defined: 'WithdrawUnit';
+					};
+				}
+			];
 		}
 	];
 	accounts: [
@@ -451,6 +488,14 @@ export type PhoenixVaults = {
 		},
 		{
 			name: 'marketRegistry';
+			docs: [
+				'DriftVaults validates vault user positions against the remaining accounts provided for those markets.',
+				'If the remaining accounts do not contain every market the user has a position in, then the instruction errors.',
+				'For Phoenix, we use our MarketRegistry as the official source of truth for the "list of markets",',
+				"and we can get the TraderState for the vault within each market to determine the vault's positions.",
+				'If the remaining accounts do not contain every market in the MarketRegistry that the vault has a position in,',
+				'then the instruction will error.'
+			];
 			type: {
 				kind: 'struct';
 				fields: [
@@ -1574,6 +1619,43 @@ export const IDL: PhoenixVaults = {
 				},
 			],
 		},
+		{
+			name: 'requestWithdraw',
+			accounts: [
+				{
+					name: 'vault',
+					isMut: true,
+					isSigner: false,
+				},
+				{
+					name: 'investor',
+					isMut: true,
+					isSigner: false,
+				},
+				{
+					name: 'authority',
+					isMut: false,
+					isSigner: true,
+				},
+				{
+					name: 'marketRegistry',
+					isMut: false,
+					isSigner: false,
+				},
+			],
+			args: [
+				{
+					name: 'withdrawAmount',
+					type: 'u64',
+				},
+				{
+					name: 'withdrawUnit',
+					type: {
+						defined: 'WithdrawUnit',
+					},
+				},
+			],
+		},
 	],
 	accounts: [
 		{
@@ -1665,6 +1747,14 @@ export const IDL: PhoenixVaults = {
 		},
 		{
 			name: 'marketRegistry',
+			docs: [
+				'DriftVaults validates vault user positions against the remaining accounts provided for those markets.',
+				'If the remaining accounts do not contain every market the user has a position in, then the instruction errors.',
+				'For Phoenix, we use our MarketRegistry as the official source of truth for the "list of markets",',
+				"and we can get the TraderState for the vault within each market to determine the vault's positions.",
+				'If the remaining accounts do not contain every market in the MarketRegistry that the vault has a position in,',
+				'then the instruction will error.',
+			],
 			type: {
 				kind: 'struct',
 				fields: [

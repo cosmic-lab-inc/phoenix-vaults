@@ -55,4 +55,12 @@ pub mod phoenix_vaults {
     ) -> Result<()> {
         instructions::place_limit_order(ctx, params)
     }
+
+    pub fn request_withdraw<'c: 'info, 'info>(
+        ctx: Context<'_, '_, 'c, 'info, RequestWithdraw<'info>>,
+        withdraw_amount: u64,
+        withdraw_unit: WithdrawUnit,
+    ) -> Result<()> {
+        instructions::request_withdraw(ctx, withdraw_amount, withdraw_unit)
+    }
 }

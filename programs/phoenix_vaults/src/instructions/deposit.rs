@@ -16,13 +16,6 @@ pub fn deposit<'c: 'info, 'info>(
     let mut vault = ctx.accounts.vault.load_mut()?;
     let mut investor = ctx.accounts.investor.load_mut()?;
 
-    // Drift validates vault user positions against the remaining accounts provider for those markets.
-    // If the remaining accounts do not contain every market the user has a position in, then it errors.
-    // For Phoenix, we use our MarketRegistry as the official source of truth for the "list of markets",
-    // and we can get the TraderState for the vault within each market to determine the vault's positions.
-    // If the remaining accounts do not contain every market in the MarketRegistry that the vault has a position in,
-    // then this instruction will error.
-
     let registry = ctx.accounts.market_registry.load()?;
     let params = MarketLookupTableParams {
         usdc_mint: registry.usdc_mint,
@@ -44,6 +37,7 @@ pub fn deposit<'c: 'info, 'info>(
 pub struct Deposit<'info> {
     #[account(mut)]
     pub vault: AccountLoader<'info, Vault>,
+
     #[account(
         mut,
         seeds = [b"investor", vault.key().as_ref(), authority.key().as_ref()],
@@ -51,6 +45,7 @@ pub struct Deposit<'info> {
         constraint = is_authority_for_investor(&investor, &authority)?
     )]
     pub investor: AccountLoader<'info, Investor>,
+
     pub authority: Signer<'info>,
 
     #[account(

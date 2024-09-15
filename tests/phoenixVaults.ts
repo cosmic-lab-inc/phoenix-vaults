@@ -27,6 +27,7 @@ import {
 	MOCK_SOL_PRECISION,
 	PHOENIX_PROGRAM_ID,
 	PHOENIX_SEAT_MANAGER_PROGRAM_ID,
+	WithdrawUnit,
 } from '../ts/sdk';
 import { BN } from '@coral-xyz/anchor';
 import {
@@ -43,6 +44,7 @@ import {
 	MARKET_CONFIG,
 	tokenBalance,
 	fetchMarketState,
+	parseTraderState,
 } from './testHelpers';
 import {
 	Client as PhoenixClient,
@@ -511,16 +513,18 @@ describe('phoenixVaults', () => {
 		);
 		assert.strictEqual(makerSolAfter, 0);
 		assert.strictEqual(makerUsdcAfter, 0);
+
+		const marketSolAfter = await tokenBalance(conn, marketBaseTokenAccount);
+		const marketUsdcAfter = await tokenBalance(conn, marketQuoteTokenAccount);
+		console.log(
+			`market after taker buy, sol: ${marketSolAfter}, usdc: ${marketUsdcAfter}`
+		);
+		assert.strictEqual(marketSolAfter, 0.001);
+		assert.strictEqual(marketUsdcAfter, 999.99999);
 	});
 
 	it('Maker Buy SOL/USDC @ $125', async () => {
 		const marketState = await fetchMarketState(conn, solUsdcMarket);
-
-		// maker lost 25% on trade, so only has $1000 @ $125/SOL or 8 SOL to buy back (not accounting 0.01% fee)
-		const priceInTicks = phoenix.floatPriceToTicks(
-			endSolUsdcPrice,
-			solUsdcMarket.toBase58()
-		);
 
 		const traderState = marketState.data.traders.get(
 			maker.publicKey.toString()
@@ -539,6 +543,11 @@ describe('phoenixVaults', () => {
 		assert.strictEqual(quoteUnitsFree, 999.9);
 		const baseUnitsToBuy = quoteUnitsFree / endSolUsdcPrice;
 
+		// maker lost 25% on trade, so only has $1000 @ $125/SOL or 8 SOL to buy back (not accounting 0.01% fee)
+		const priceInTicks = phoenix.floatPriceToTicks(
+			endSolUsdcPrice,
+			solUsdcMarket.toBase58()
+		);
 		const numBaseLots = phoenix.rawBaseUnitsToBaseLotsRoundedDown(
 			baseUnitsToBuy,
 			solUsdcMarket.toBase58()
@@ -648,11 +657,47 @@ describe('phoenixVaults', () => {
 
 		const marketSolAfter = await tokenBalance(conn, marketBaseTokenAccount);
 		const marketUsdcAfter = await tokenBalance(conn, marketQuoteTokenAccount);
-
 		console.log(
 			`market after taker sell, sol: ${marketSolAfter}, usdc: ${marketUsdcAfter}`
 		);
 		assert.strictEqual(marketSolAfter, 9.999);
+		// entry USDC fee: $999.9 * 0.01% fee = $0.09999
+		// exit SOL fee: 9.999 SOL @ $125/SOL * 0.01% fee = $0.1249875
+		// total fee = $0.09999 + $0.1249875 = $0.2249775 rounded to $0.22498
 		assert.strictEqual(marketUsdcAfter, 0.22498);
+	});
+
+	it('Request Withdraw', async () => {
+		const vaultQuoteTokenAccount = getAssociatedTokenAddressSync(
+			usdcMint,
+			vaultKey,
+			true
+		);
+		const usdc = await tokenBalance(conn, vaultQuoteTokenAccount);
+		const usdcBN = new BN(usdc).mul(QUOTE_PRECISION);
+		try {
+			const markets: AccountMeta[] = marketKeys.map((pubkey) => {
+				return {
+					pubkey,
+					isWritable: false,
+					isSigner: false,
+				};
+			});
+			const ix = await program.methods
+				.requestWithdraw(usdcBN, WithdrawUnit.TOKEN)
+				.accounts({
+					vault: vaultKey,
+					investor,
+					authority: provider.publicKey,
+					marketRegistry,
+				})
+				.remainingAccounts(markets)
+				.instruction();
+
+			const sig = await sendAndConfirm(conn, payer, [ix], [payer]);
+			console.log('request withdraw:', signatureLink(sig, conn));
+		} catch (e: any) {
+			throw new Error(e);
+		}
 	});
 });
