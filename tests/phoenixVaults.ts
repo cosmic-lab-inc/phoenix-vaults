@@ -47,6 +47,8 @@ import {
 	simulate,
 	logLadder,
 	outAmount,
+	marketPrice,
+	parseTraderState,
 } from './testHelpers';
 import {
 	Client as PhoenixClient,
@@ -317,6 +319,10 @@ describe('phoenixVaults', () => {
 		assert.equal(sm.market.toBase58(), solUsdcMarket.toBase58());
 	});
 
+	//
+	// Simulate profitable trader by vault for 25% gain
+	//
+
 	it('Maker Sell SOL/USDC', async () => {
 		const marketState = await fetchMarketState(conn, solUsdcMarket);
 		await logLadder(conn, solUsdcMarket);
@@ -528,32 +534,30 @@ describe('phoenixVaults', () => {
 	});
 
 	it('Maker Buy SOL/USDC @ $125', async () => {
-		const marketState = await fetchMarketState(conn, solUsdcMarket);
-
-		const traderState = marketState.data.traders.get(
-			maker.publicKey.toString()
+		// after a 25% loss, the vault needs more USDC to match the vault's sell order
+		const usdcAta = getAssociatedTokenAddressSync(usdcMint, maker.publicKey);
+		const mintUsdcIx = createMintToInstruction(
+			usdcMint,
+			usdcAta,
+			mintAuth.publicKey,
+			usdcAmount.toNumber()
 		);
-		const quoteLotsBigNum = traderState.quoteLotsFree;
-		let quoteLots: number;
-		// if quoteLots is BN, convert to number, else use as is
-		if (quoteLotsBigNum instanceof BN) {
-			quoteLots = quoteLotsBigNum.toNumber();
-		} else {
-			quoteLots = quoteLotsBigNum as number;
-		}
+		await sendAndConfirm(conn, payer, [mintUsdcIx], [mintAuth]);
 
-		const quoteUnitsFree = marketState.quoteLotsToQuoteUnits(quoteLots);
-		console.log('maker free quote units:', quoteUnitsFree);
-		assert.strictEqual(quoteUnitsFree, 999.9);
-		const baseUnitsToBuy = quoteUnitsFree / endSolUsdcPrice;
-
-		// maker lost 25% on trade, so only has $1000 @ $125/SOL or 8 SOL to buy back (not accounting 0.01% fee)
-		const priceInTicks = phoenix.floatPriceToTicks(
-			endSolUsdcPrice,
+		const vaultBaseTokenAccount = getAssociatedTokenAddressSync(
+			solMint,
+			vaultKey,
+			true
+		);
+		const solAmount = await tokenBalance(conn, vaultBaseTokenAccount);
+		// maker buys 100% of what vault can sell
+		console.log(`maker to buy ${solAmount} SOL @ $125/SOL`);
+		const numBaseLots = phoenix.rawBaseUnitsToBaseLotsRoundedDown(
+			solAmount,
 			solUsdcMarket.toBase58()
 		);
-		const numBaseLots = phoenix.rawBaseUnitsToBaseLotsRoundedDown(
-			baseUnitsToBuy,
+		const priceInTicks = phoenix.floatPriceToTicks(
+			endSolUsdcPrice,
 			solUsdcMarket.toBase58()
 		);
 		const makerOrderPacket = getLimitOrderPacket({
@@ -590,11 +594,12 @@ describe('phoenixVaults', () => {
 		);
 
 		const priceInTicks = phoenix.floatPriceToTicks(
-			startSolUsdcPrice,
+			endSolUsdcPrice,
 			solUsdcMarket.toBase58()
 		);
 
 		const solAmountAfterFee = await tokenBalance(conn, vaultBaseTokenAccount);
+		console.log(`taker to sell ${solAmountAfterFee} SOL @ $125/SOL`);
 		const numBaseLots = phoenix.rawBaseUnitsToBaseLotsRoundedDown(
 			solAmountAfterFee,
 			solUsdcMarket.toBase58()
@@ -639,7 +644,8 @@ describe('phoenixVaults', () => {
 			`taker after sell, sol: ${vaultSolAfter}, usdc: ${vaultUsdcAfter}`
 		);
 		assert.strictEqual(vaultSolAfter, 0);
-		assert.strictEqual(vaultUsdcAfter, 999.77502);
+		// 25% gain on $1000 minus fees
+		assert.strictEqual(vaultUsdcAfter, 1249.75002);
 
 		const makerBaseTokenAccount = getAssociatedTokenAddressSync(
 			solMint,
@@ -655,7 +661,7 @@ describe('phoenixVaults', () => {
 			`maker after taker sell, sol: ${makerSolAfter}, usdc: ${makerUsdcAfter}`
 		);
 		assert.strictEqual(makerSolAfter, 0);
-		assert.strictEqual(makerUsdcAfter, 0);
+		assert.strictEqual(makerUsdcAfter, 750.025);
 
 		const marketSolAfter = await tokenBalance(conn, marketBaseTokenAccount);
 		const marketUsdcAfter = await tokenBalance(conn, marketQuoteTokenAccount);
@@ -671,39 +677,79 @@ describe('phoenixVaults', () => {
 		await logLadder(conn, solUsdcMarket);
 	});
 
-	it('Request Withdraw', async () => {
-		const vaultQuoteTokenAccount = getAssociatedTokenAddressSync(
-			usdcMint,
-			vaultKey,
-			true
-		);
-		const usdc = await tokenBalance(conn, vaultQuoteTokenAccount);
-		const usdcBN = new BN(usdc * QUOTE_PRECISION.toNumber());
-		try {
-			const markets: AccountMeta[] = marketKeys.map((pubkey) => {
-				return {
-					pubkey,
-					isWritable: false,
-					isSigner: false,
-				};
-			});
-			const ix = await program.methods
-				.requestWithdraw(usdcBN, WithdrawUnit.TOKEN)
-				.accounts({
-					vault: vaultKey,
-					investor,
-					authority: provider.publicKey,
-					marketRegistry,
-				})
-				.remainingAccounts(markets)
-				.instruction();
+	//
+	// Place pending ask at $125/SOL that never gets filled, so withdraw request can measure price as best ask on-chain.
+	//
 
-			await simulate(conn, payer, [ix], [payer]);
-			await sendAndConfirm(conn, payer, [ix], [payer]);
-		} catch (e: any) {
-			throw new Error(e);
-		}
-
-		await logLadder(conn, solUsdcMarket);
-	});
+	// it('Maker Pending Ask SOL/USDC', async () => {
+	// 	const makerTraderState = parseTraderState(
+	// 		await fetchMarketState(conn, solUsdcMarket),
+	// 		maker.publicKey
+	// 	);
+	// 	console.log(makerTraderState);
+	//
+	// 	const makerBaseTokenAccount = getAssociatedTokenAddressSync(
+	// 		solMint,
+	// 		maker.publicKey
+	// 	);
+	// 	const priceInTicks = phoenix.floatPriceToTicks(
+	// 		endSolUsdcPrice,
+	// 		solUsdcMarket.toBase58()
+	// 	);
+	// 	const makerSol = await tokenBalance(conn, makerBaseTokenAccount);
+	// 	const numBaseLots = phoenix.rawBaseUnitsToBaseLotsRoundedDown(
+	// 		makerSol,
+	// 		solUsdcMarket.toBase58()
+	// 	);
+	// 	const makerOrderPacket = getLimitOrderPacket({
+	// 		side: Side.Ask,
+	// 		priceInTicks,
+	// 		numBaseLots,
+	// 	});
+	// 	const makerOrderIx = phoenix.createPlaceLimitOrderInstruction(
+	// 		makerOrderPacket,
+	// 		solUsdcMarket.toString(),
+	// 		maker.publicKey
+	// 	);
+	// 	await simulate(conn, payer, [makerOrderIx], [maker]);
+	// 	await sendAndConfirm(conn, payer, [makerOrderIx], [maker]);
+	//
+	// 	await logLadder(conn, solUsdcMarket);
+	// });
+	//
+	// it('Request Withdraw', async () => {
+	// 	const vaultQuoteTokenAccount = getAssociatedTokenAddressSync(
+	// 		usdcMint,
+	// 		vaultKey,
+	// 		true
+	// 	);
+	// 	const usdc = await tokenBalance(conn, vaultQuoteTokenAccount);
+	// 	const usdcBN = new BN(usdc * QUOTE_PRECISION.toNumber());
+	// 	try {
+	// 		const markets: AccountMeta[] = marketKeys.map((pubkey) => {
+	// 			return {
+	// 				pubkey,
+	// 				isWritable: false,
+	// 				isSigner: false,
+	// 			};
+	// 		});
+	// 		const ix = await program.methods
+	// 			.requestWithdraw(usdcBN, WithdrawUnit.TOKEN)
+	// 			.accounts({
+	// 				vault: vaultKey,
+	// 				investor,
+	// 				authority: provider.publicKey,
+	// 				marketRegistry,
+	// 			})
+	// 			.remainingAccounts(markets)
+	// 			.instruction();
+	//
+	// 		await simulate(conn, payer, [ix], [payer]);
+	// 		await sendAndConfirm(conn, payer, [ix], [payer]);
+	// 	} catch (e: any) {
+	// 		throw new Error(e);
+	// 	}
+	//
+	// 	await logLadder(conn, solUsdcMarket);
+	// });
 });

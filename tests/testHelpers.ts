@@ -53,6 +53,7 @@ import {
 	PlaceLimitOrderStruct,
 	RawMarketConfig,
 	Side,
+	toNum,
 } from '@cosmic-lab/phoenix-sdk';
 
 export const MARKET_CONFIG: RawMarketConfig = {
@@ -1009,4 +1010,12 @@ export async function logLadder(conn: Connection, market: PublicKey) {
 		const price = ask.price;
 		console.log(`ask: ${price}`);
 	}
+}
+
+export async function marketPrice(conn: Connection, market: PublicKey) {
+	const marketState = await fetchMarketState(conn, market);
+	const quoteAtomsPrice =
+		marketState.data.header.tickSizeInQuoteAtomsPerBaseUnit;
+	const price = marketState.quoteAtomsToQuoteUnits(toNum(quoteAtomsPrice));
+	return price;
 }
