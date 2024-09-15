@@ -880,41 +880,10 @@ export function decodeLimitOrderPacket(buffer: Buffer) {
 	return orderPacket.read(serializedOrderPacket, 0);
 }
 
-export async function tokenAccount(
-	conn: Connection,
-	key: PublicKey
-): Promise<TokenAccount> {
-	const acct = await conn.getAccountInfo(key);
-	return unpackAccount(key, acct);
-}
-
-// export async function tokenBalance(
-// 	conn: Connection,
-// 	tokenAccount: PublicKey
-// ): Promise<number> {
-// 	// const value: number | null = (await conn.getTokenAccountBalance(tokenAccount))
-// 	// 	.value.uiAmount;
-// 	const result = await conn.getTokenAccountBalance(tokenAccount);
-// 	if (!result) {
-// 		return 0;
-// 	}
-// 	const value = result.value;
-// 	if (!value) {
-// 		return 0;
-// 	}
-// 	const uiAmount: number | null = value.uiAmount;
-// 	if (!uiAmount) {
-// 		return 0;
-// 	}
-// 	return Number(value);
-// }
-
 export async function tokenBalance(
 	conn: Connection,
 	tokenAccount: PublicKey
 ): Promise<number> {
-	// const value: number | null = (await conn.getTokenAccountBalance(tokenAccount))
-	// 	.value.uiAmount;
 	const result = await conn.getTokenAccountBalance(tokenAccount);
 	if (!result) {
 		return 0;

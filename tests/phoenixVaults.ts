@@ -348,7 +348,7 @@ describe('phoenixVaults', () => {
 				maker.publicKey,
 				payer.publicKey
 			);
-			await simulate(conn, payer, claimMakerSeatIxs, [maker]);
+			// await simulate(conn, payer, claimMakerSeatIxs, [maker]);
 			const sig = await sendAndConfirm(conn, payer, claimMakerSeatIxs, [maker]);
 			console.log('claim maker seat:', signatureLink(sig, conn));
 		} catch (e: any) {
@@ -389,7 +389,7 @@ describe('phoenixVaults', () => {
 			solUsdcMarket.toString(),
 			maker.publicKey
 		);
-		await simulate(conn, payer, [makerOrderIx], [maker]);
+		// await simulate(conn, payer, [makerOrderIx], [maker]);
 		const sig = await sendAndConfirm(conn, payer, [makerOrderIx], [maker]);
 		console.log('maker sell:', signatureLink(sig, conn));
 	});
@@ -431,7 +431,7 @@ describe('phoenixVaults', () => {
 				})
 				.instruction();
 
-			await simulate(conn, payer, [claimSeatIx], [manager]);
+			// await simulate(conn, payer, [claimSeatIx], [manager]);
 			const sig = await sendAndConfirm(conn, payer, [claimSeatIx], [manager]);
 			console.log('claim taker seat:', signatureLink(sig, conn));
 		} catch (e: any) {
@@ -504,7 +504,7 @@ describe('phoenixVaults', () => {
 				})
 				.instruction();
 
-			await simulate(conn, payer, [ix], [manager]);
+			// await simulate(conn, payer, [ix], [manager]);
 			const sig = await sendAndConfirm(conn, payer, [ix], [manager]);
 			console.log('taker buy:', signatureLink(sig, conn));
 		} catch (e: any) {
@@ -580,7 +580,7 @@ describe('phoenixVaults', () => {
 			solUsdcMarket.toString(),
 			maker.publicKey
 		);
-		await simulate(conn, payer, [makerOrderIx], [maker]);
+		// await simulate(conn, payer, [makerOrderIx], [maker]);
 		const sig = await sendAndConfirm(conn, payer, [makerOrderIx], [maker]);
 		console.log('maker buy:', signatureLink(sig, conn));
 	});
@@ -649,7 +649,7 @@ describe('phoenixVaults', () => {
 				})
 				.instruction();
 
-			await simulate(conn, payer, [ix], [manager]);
+			// await simulate(conn, payer, [ix], [manager]);
 			const sig = await sendAndConfirm(conn, payer, [ix], [manager]);
 			console.log('taker sell:', signatureLink(sig, conn));
 		} catch (e: any) {
