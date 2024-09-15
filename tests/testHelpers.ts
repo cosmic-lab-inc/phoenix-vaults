@@ -43,6 +43,7 @@ import {
 	PRICE_PRECISION,
 } from '../ts/sdk';
 import {
+	deserializeMarketData,
 	MarketState,
 	OrderPacket,
 	orderPacketBeet,
@@ -894,4 +895,18 @@ export async function tokenBalance(
 	} else {
 		return 0;
 	}
+}
+
+export async function fetchMarketState(conn: Connection, market: PublicKey) {
+	const ai = await conn.getAccountInfo(market);
+	if (!ai) {
+		throw Error(`market ${market.toString()} not found`);
+	}
+	const buffer: Buffer = ai.data;
+	const marketData = deserializeMarketData(buffer);
+	const marketState = new MarketState({
+		address: market,
+		data: marketData,
+	});
+	return marketState;
 }

@@ -43,6 +43,7 @@ import {
 	MARKET_CONFIG,
 	tokenBalance,
 	simulate,
+	fetchMarketState,
 } from './testHelpers';
 import {
 	Client as PhoenixClient,
@@ -314,10 +315,7 @@ describe('phoenixVaults', () => {
 	});
 
 	it('Maker Sell SOL/USDC', async () => {
-		const marketState = phoenix.marketStates.get(solUsdcMarket.toString());
-		if (marketState === undefined) {
-			throw Error('SOL/USDC market not found');
-		}
+		const marketState = await fetchMarketState(conn, solUsdcMarket);
 
 		const createAtaIxs = await createMarketTokenAccountIxs(
 			conn,
@@ -389,19 +387,6 @@ describe('phoenixVaults', () => {
 	});
 
 	it('Taker Buy SOL/USDC', async () => {
-		const marketState = phoenix.marketStates.get(solUsdcMarket.toString());
-		if (marketState === undefined) {
-			throw Error('SOL/USDC market not found');
-		}
-		// const createAtaIxs = await createMarketTokenAccountIxs(
-		// 	conn,
-		// 	marketState,
-		// 	vaultKey,
-		// 	payer
-		// );
-		// await sendAndConfirm(conn, payer, createAtaIxs);
-		// console.log('setup taker tokens');
-
 		try {
 			const seatManager = getSeatManagerAddress(solUsdcMarket);
 			const seatDepositCollector =
@@ -521,11 +506,7 @@ describe('phoenixVaults', () => {
 	});
 
 	it('Maker Buy SOL/USDC @ $125', async () => {
-		await phoenix.refreshMarket(solUsdcMarket.toString());
-		const marketState = phoenix.marketStates.get(solUsdcMarket.toString());
-		if (marketState === undefined) {
-			throw Error('SOL/USDC market not found');
-		}
+		const marketState = await fetchMarketState(conn, solUsdcMarket);
 
 		// maker lost 25% on trade, so only has $1000 @ $125/SOL or 8 SOL to buy back (not accounting 0.01% fee)
 		const priceInTicks = phoenix.floatPriceToTicks(
@@ -569,12 +550,6 @@ describe('phoenixVaults', () => {
 	});
 
 	it('Taker Sell SOL/USDC @ $125', async () => {
-		// await phoenix.refreshMarket(solUsdcMarket.toString());
-		const marketState = phoenix.marketStates.get(solUsdcMarket.toString());
-		if (marketState === undefined) {
-			throw Error('SOL/USDC market not found');
-		}
-
 		const vaultBaseTokenAccount = getAssociatedTokenAddressSync(
 			solMint,
 			vaultKey,
@@ -598,7 +573,6 @@ describe('phoenixVaults', () => {
 		);
 
 		const vaultSolAmount = await tokenBalance(conn, vaultBaseTokenAccount);
-		console.log('vaultSolAmount:', vaultSolAmount);
 		const solAmountAfterFee = vaultSolAmount * (1 - 0.01 / 100);
 		const numBaseLots = phoenix.rawBaseUnitsToBaseLotsRoundedDown(
 			solAmountAfterFee,
