@@ -293,8 +293,7 @@ describe('phoenixVaults', () => {
 		assert.equal(deposits, 1000);
 		assert.equal(shares, 1000);
 
-		const vaultAtaBalance = (await conn.getTokenAccountBalance(vaultAta)).value
-			.uiAmount;
+		const vaultAtaBalance = await tokenBalance(conn, vaultAta);
 		assert.equal(vaultAtaBalance, 1000);
 	});
 
@@ -363,12 +362,8 @@ describe('phoenixVaults', () => {
 			usdcMint,
 			maker.publicKey
 		);
-		const makerSolBefore = (
-			await conn.getTokenAccountBalance(makerBaseTokenAccount)
-		).value.uiAmount;
-		const makerUsdcBefore = (
-			await conn.getTokenAccountBalance(makerQuoteTokenAccount)
-		).value.uiAmount;
+		const makerSolBefore = await tokenBalance(conn, makerBaseTokenAccount);
+		const makerUsdcBefore = await tokenBalance(conn, makerQuoteTokenAccount);
 		console.log('maker sol before:', makerSolBefore);
 		console.log('maker usdc before:', makerUsdcBefore);
 		const priceInTicks = phoenix.floatPriceToTicks(
@@ -471,12 +466,8 @@ describe('phoenixVaults', () => {
 			solUsdcMarket.toString()
 		);
 
-		const vaultSolBefore = (
-			await conn.getTokenAccountBalance(vaultBaseTokenAccount)
-		).value.uiAmount;
-		const vaultUsdcBefore = (
-			await conn.getTokenAccountBalance(vaultQuoteTokenAccount)
-		).value.uiAmount;
+		const vaultSolBefore = await tokenBalance(conn, vaultBaseTokenAccount);
+		const vaultUsdcBefore = await tokenBalance(conn, vaultQuoteTokenAccount);
 		console.log('vault sol before:', vaultSolBefore);
 		console.log('vault usdc before:', vaultUsdcBefore);
 		assert.equal(vaultSolBefore, 0);
@@ -511,11 +502,8 @@ describe('phoenixVaults', () => {
 			throw new Error(e);
 		}
 
-		const vaultSol = (await conn.getTokenAccountBalance(vaultBaseTokenAccount))
-			.value.uiAmount;
-		const vaultUsdc = (
-			await conn.getTokenAccountBalance(vaultQuoteTokenAccount)
-		).value.uiAmount;
+		const vaultSol = await tokenBalance(conn, vaultBaseTokenAccount);
+		const vaultUsdc = await tokenBalance(conn, vaultQuoteTokenAccount);
 		console.log('vault sol after:', vaultSol);
 		console.log('vault usdc after:', vaultUsdc);
 
@@ -527,12 +515,8 @@ describe('phoenixVaults', () => {
 			usdcMint,
 			maker.publicKey
 		);
-		const makerSolAfter = (
-			await conn.getTokenAccountBalance(makerBaseTokenAccount)
-		).value.uiAmount;
-		const makerUsdcAfter = (
-			await conn.getTokenAccountBalance(makerQuoteTokenAccount)
-		).value.uiAmount;
+		const makerSolAfter = await tokenBalance(conn, makerBaseTokenAccount);
+		const makerUsdcAfter = await tokenBalance(conn, makerQuoteTokenAccount);
 		console.log('maker sol after:', makerSolAfter);
 		console.log('maker usdc after:', makerUsdcAfter);
 	});
