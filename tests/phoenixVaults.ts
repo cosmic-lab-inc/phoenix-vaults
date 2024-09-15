@@ -360,8 +360,9 @@ describe('phoenixVaults', () => {
 		);
 		const makerSolBefore = await tokenBalance(conn, makerBaseTokenAccount);
 		const makerUsdcBefore = await tokenBalance(conn, makerQuoteTokenAccount);
-		console.log('maker sol before:', makerSolBefore);
-		console.log('maker usdc before:', makerUsdcBefore);
+		console.log(
+			`maker before sell, sol: ${makerSolBefore}, usdc: ${makerUsdcBefore}`
+		);
 		assert.strictEqual(makerSolBefore, 10);
 		assert.strictEqual(makerUsdcBefore, 0);
 
@@ -412,7 +413,6 @@ describe('phoenixVaults', () => {
 				})
 				.instruction();
 
-			// await simulate(conn, payer, [claimSeatIx], [manager]);
 			const sig = await sendAndConfirm(conn, payer, [claimSeatIx], [manager]);
 			console.log('claim taker seat:', signatureLink(sig, conn));
 		} catch (e: any) {
@@ -454,8 +454,9 @@ describe('phoenixVaults', () => {
 
 		const vaultSolBefore = await tokenBalance(conn, vaultBaseTokenAccount);
 		const vaultUsdcBefore = await tokenBalance(conn, vaultQuoteTokenAccount);
-		console.log('vault sol before:', vaultSolBefore);
-		console.log('vault usdc before:', vaultUsdcBefore);
+		console.log(
+			`taker before buy, sol: ${vaultSolBefore}, usdc: ${vaultUsdcBefore}`
+		);
 		assert.strictEqual(vaultSolBefore, 0);
 		assert.strictEqual(vaultUsdcBefore, 1000);
 
@@ -481,7 +482,6 @@ describe('phoenixVaults', () => {
 				})
 				.instruction();
 
-			// await simulate(conn, payer, [ix], [manager]);
 			const sig = await sendAndConfirm(conn, payer, [ix], [manager]);
 			console.log('taker buy:', signatureLink(sig, conn));
 		} catch (e: any) {
@@ -490,8 +490,9 @@ describe('phoenixVaults', () => {
 
 		const vaultSolAfter = await tokenBalance(conn, vaultBaseTokenAccount);
 		const vaultUsdcAfter = await tokenBalance(conn, vaultQuoteTokenAccount);
-		console.log('vault sol after:', vaultSolAfter);
-		console.log('vault usdc after:', vaultUsdcAfter);
+		console.log(
+			`taker after buy, sol: ${vaultSolAfter}, usdc: ${vaultUsdcAfter}`
+		);
 		assert.strictEqual(vaultSolAfter, 9.999);
 		assert.strictEqual(vaultUsdcAfter, 0.00001);
 
@@ -505,8 +506,9 @@ describe('phoenixVaults', () => {
 		);
 		const makerSolAfter = await tokenBalance(conn, makerBaseTokenAccount);
 		const makerUsdcAfter = await tokenBalance(conn, makerQuoteTokenAccount);
-		console.log('maker sol after:', makerSolAfter);
-		console.log('maker usdc after:', makerUsdcAfter);
+		console.log(
+			`maker after taker buy, sol: ${makerSolAfter}, usdc: ${makerUsdcAfter}`
+		);
 		assert.strictEqual(makerSolAfter, 0);
 		assert.strictEqual(makerUsdcAfter, 0);
 	});
@@ -551,7 +553,7 @@ describe('phoenixVaults', () => {
 			solUsdcMarket.toString(),
 			maker.publicKey
 		);
-		// await simulate(conn, payer, [makerOrderIx], [maker]);
+
 		const sig = await sendAndConfirm(conn, payer, [makerOrderIx], [maker]);
 		console.log('maker buy:', signatureLink(sig, conn));
 	});
@@ -622,8 +624,9 @@ describe('phoenixVaults', () => {
 
 		const vaultSolAfter = await tokenBalance(conn, vaultBaseTokenAccount);
 		const vaultUsdcAfter = await tokenBalance(conn, vaultQuoteTokenAccount);
-		console.log('vault sol after sell:', vaultSolAfter);
-		console.log('vault usdc after sell:', vaultUsdcAfter);
+		console.log(
+			`taker after sell, sol: ${vaultSolAfter}, usdc: ${vaultUsdcAfter}`
+		);
 		assert.strictEqual(vaultSolAfter, 0.001);
 		assert.strictEqual(vaultUsdcAfter, 999.80002);
 
@@ -637,15 +640,18 @@ describe('phoenixVaults', () => {
 		);
 		const makerSolAfter = await tokenBalance(conn, makerBaseTokenAccount);
 		const makerUsdcAfter = await tokenBalance(conn, makerQuoteTokenAccount);
-		console.log('maker sol after buy:', makerSolAfter);
-		console.log('maker usdc after buy:', makerUsdcAfter);
+		console.log(
+			`maker after taker sell, sol: ${makerSolAfter}, usdc: ${makerUsdcAfter}`
+		);
 		assert.strictEqual(makerSolAfter, 0);
 		assert.strictEqual(makerUsdcAfter, 0);
 
 		const marketSolAfter = await tokenBalance(conn, marketBaseTokenAccount);
 		const marketUsdcAfter = await tokenBalance(conn, marketQuoteTokenAccount);
-		console.log('market sol after exit:', marketSolAfter);
-		console.log('market usdc after exit:', marketUsdcAfter);
+
+		console.log(
+			`market after taker sell, sol: ${marketSolAfter}, usdc: ${marketUsdcAfter}`
+		);
 		assert.strictEqual(marketSolAfter, 9.999);
 		assert.strictEqual(marketUsdcAfter, 0.19998);
 	});
