@@ -389,8 +389,9 @@ describe('phoenixVaults', () => {
 			solUsdcMarket.toString(),
 			maker.publicKey
 		);
-		await sendAndConfirm(conn, payer, [makerOrderIx], [maker]);
-		console.log('placed maker ask');
+		await simulate(conn, payer, [makerOrderIx], [maker]);
+		const sig = await sendAndConfirm(conn, payer, [makerOrderIx], [maker]);
+		console.log('maker sell:', signatureLink(sig, conn));
 	});
 
 	it('Taker Buy SOL/USDC', async () => {
@@ -505,7 +506,7 @@ describe('phoenixVaults', () => {
 
 			await simulate(conn, payer, [ix], [manager]);
 			const sig = await sendAndConfirm(conn, payer, [ix], [manager]);
-			console.log('place taker bid:', signatureLink(sig, conn));
+			console.log('taker buy:', signatureLink(sig, conn));
 		} catch (e: any) {
 			throw new Error(e);
 		}
@@ -552,7 +553,6 @@ describe('phoenixVaults', () => {
 		const traderState = marketState.data.traders.get(
 			maker.publicKey.toString()
 		);
-		console.log('maker trader state:', traderState);
 		const quoteLotsBigNum = traderState.quoteLotsFree;
 		let quoteLots: number;
 		// if quoteLots is BN, convert to number, else use as is
@@ -628,7 +628,6 @@ describe('phoenixVaults', () => {
 		const order = encodeLimitOrderPacket(takerOrderPacket);
 
 		try {
-			// todo: constructing this instruction seems to cause SIGBUS
 			const ix = await program.methods
 				.placeLimitOrder({
 					order,
