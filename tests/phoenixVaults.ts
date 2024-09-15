@@ -20,10 +20,7 @@ import {
 	getMarketRegistryAddressSync,
 	MOCK_USDC_MINT,
 	MOCK_SOL_MINT,
-	MOCK_JUP_MINT,
 	MOCK_SOL_USDC_MARKET,
-	MOCK_JUP_SOL_MARKET,
-	MOCK_JUP_USDC_MARKET,
 	MOCK_MARKET_AUTHORITY,
 	QUOTE_PRECISION,
 	MOCK_USDC_PRECISION,
@@ -43,9 +40,9 @@ import {
 	encodeLimitOrderPacket,
 	sendAndConfirm,
 	signatureLink,
-	simulate,
 	MARKET_CONFIG,
 	tokenBalance,
+	simulate,
 } from './testHelpers';
 import {
 	Client as PhoenixClient,
@@ -85,10 +82,10 @@ describe('phoenixVaults', () => {
 	const mintAuth = MOCK_MARKET_AUTHORITY;
 	const usdcMint = MOCK_USDC_MINT.publicKey;
 	const solMint = MOCK_SOL_MINT.publicKey;
-	const _jupMint = MOCK_JUP_MINT;
+	// const _jupMint = MOCK_JUP_MINT;
 	const solUsdcMarket = MOCK_SOL_USDC_MARKET.publicKey;
-	const jupSolMarket = MOCK_JUP_SOL_MARKET.publicKey;
-	const jupUsdcMarket = MOCK_JUP_USDC_MARKET.publicKey;
+	// const jupSolMarket = MOCK_JUP_SOL_MARKET.publicKey;
+	// const jupUsdcMarket = MOCK_JUP_USDC_MARKET.publicKey;
 	// const manager = Keypair.generate();
 	const manager = payer;
 	const protocol = Keypair.generate();
@@ -104,7 +101,9 @@ describe('phoenixVaults', () => {
 		provider.publicKey
 	);
 
-	const marketKeys: PublicKey[] = [solUsdcMarket, jupSolMarket, jupUsdcMarket];
+	const marketKeys: PublicKey[] = MARKET_CONFIG['localhost'].markets.map(
+		(m) => new PublicKey(m.market)
+	);
 	const solUsdcMarketIndex = 0;
 	const startSolUsdcPrice = 100;
 	const endSolUsdcPrice = 110;
@@ -570,11 +569,11 @@ describe('phoenixVaults', () => {
 	});
 
 	it('Taker Sell SOL/USDC @ $125', async () => {
-		await phoenix.refreshMarket(solUsdcMarket.toString());
-		const marketState = phoenix.marketStates.get(solUsdcMarket.toString());
-		if (marketState === undefined) {
-			throw Error('SOL/USDC market not found');
-		}
+		// await phoenix.refreshMarket(solUsdcMarket.toString());
+		// const marketState = phoenix.marketStates.get(solUsdcMarket.toString());
+		// if (marketState === undefined) {
+		// 	throw Error('SOL/USDC market not found');
+		// }
 
 		const vaultBaseTokenAccount = getAssociatedTokenAddressSync(
 			solMint,
@@ -599,6 +598,7 @@ describe('phoenixVaults', () => {
 		);
 
 		const vaultSolAmount = await tokenBalance(conn, vaultBaseTokenAccount);
+		console.log('vaultSolAmount:', vaultSolAmount);
 		const solAmountAfterFee = vaultSolAmount * (1 - 0.01 / 100);
 		const numBaseLots = phoenix.rawBaseUnitsToBaseLotsRoundedDown(
 			solAmountAfterFee,
@@ -633,7 +633,7 @@ describe('phoenixVaults', () => {
 				})
 				.instruction();
 
-			// await simulate(conn, payer, [ix], [manager]);
+			await simulate(conn, payer, [ix], [manager]);
 			const sig = await sendAndConfirm(conn, payer, [ix], [manager]);
 			console.log('taker sell:', signatureLink(sig, conn));
 		} catch (e: any) {

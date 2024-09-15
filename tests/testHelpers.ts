@@ -12,8 +12,8 @@ import {
 	createWrappedNativeAccount,
 	getAssociatedTokenAddress,
 	createAssociatedTokenAccountInstruction,
-	unpackAccount,
-	Account as TokenAccount,
+	// unpackAccount,
+	// Account as TokenAccount,
 } from '@solana/spl-token';
 import {
 	ComputeBudgetProgram,
@@ -67,12 +67,12 @@ export const MARKET_CONFIG: RawMarketConfig = {
 				mint: MOCK_USDC_MINT.publicKey.toString(),
 				logoUri: '',
 			},
-			{
-				name: 'JUP',
-				symbol: 'JUP',
-				mint: MOCK_JUP_MINT.publicKey.toString(),
-				logoUri: '',
-			},
+			// {
+			// 	name: 'JUP',
+			// 	symbol: 'JUP',
+			// 	mint: MOCK_JUP_MINT.publicKey.toString(),
+			// 	logoUri: '',
+			// },
 		],
 		markets: [
 			{
@@ -80,16 +80,16 @@ export const MARKET_CONFIG: RawMarketConfig = {
 				baseMint: MOCK_SOL_MINT.publicKey.toString(),
 				quoteMint: MOCK_USDC_MINT.publicKey.toString(),
 			},
-			{
-				market: MOCK_JUP_SOL_MARKET.publicKey.toString(),
-				baseMint: MOCK_JUP_MINT.publicKey.toString(),
-				quoteMint: MOCK_SOL_MINT.publicKey.toString(),
-			},
-			{
-				market: MOCK_JUP_USDC_MARKET.publicKey.toString(),
-				baseMint: MOCK_JUP_MINT.publicKey.toString(),
-				quoteMint: MOCK_USDC_MINT.publicKey.toString(),
-			},
+			// {
+			// 	market: MOCK_JUP_SOL_MARKET.publicKey.toString(),
+			// 	baseMint: MOCK_JUP_MINT.publicKey.toString(),
+			// 	quoteMint: MOCK_SOL_MINT.publicKey.toString(),
+			// },
+			// {
+			// 	market: MOCK_JUP_USDC_MARKET.publicKey.toString(),
+			// 	baseMint: MOCK_JUP_MINT.publicKey.toString(),
+			// 	quoteMint: MOCK_USDC_MINT.publicKey.toString(),
+			// },
 		],
 	},
 	['devnet']: {
