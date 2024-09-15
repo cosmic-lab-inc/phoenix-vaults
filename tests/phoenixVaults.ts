@@ -44,7 +44,9 @@ import {
 	MARKET_CONFIG,
 	tokenBalance,
 	fetchMarketState,
-	parseTraderState,
+	simulate,
+	logLadder,
+	outAmount,
 } from './testHelpers';
 import {
 	Client as PhoenixClient,
@@ -56,6 +58,7 @@ import {
 	getLogAuthority,
 	getSeatAddress,
 	getSeatDepositCollectorAddress,
+	getExpectedOutAmountRouter,
 } from '@cosmic-lab/phoenix-sdk';
 
 describe('phoenixVaults', () => {
@@ -212,7 +215,6 @@ describe('phoenixVaults', () => {
 			payer
 		);
 		await sendAndConfirm(conn, payer, createAtaIxs);
-		console.log('setup vault market tokens');
 
 		const config: VaultParams = {
 			name: encodeName(name),
@@ -220,12 +222,12 @@ describe('phoenixVaults', () => {
 			maxTokens: new BN(0),
 			managementFee: new BN(0),
 			minDepositAmount: new BN(0),
-			profitShare: 0,
+			profitShare: 100_000, // 10%
 			hurdleRate: 0,
 			permissioned: false,
 			protocol: protocol.publicKey,
 			protocolFee: new BN(0),
-			protocolProfitShare: 0,
+			protocolProfitShare: 100_000, // 10%
 		};
 		const accounts = {
 			vault: vaultKey,
@@ -317,6 +319,7 @@ describe('phoenixVaults', () => {
 
 	it('Maker Sell SOL/USDC', async () => {
 		const marketState = await fetchMarketState(conn, solUsdcMarket);
+		await logLadder(conn, solUsdcMarket);
 
 		const createAtaIxs = await createMarketTokenAccountIxs(
 			conn,
@@ -336,7 +339,6 @@ describe('phoenixVaults', () => {
 			solAmount.toNumber()
 		);
 		await sendAndConfirm(conn, payer, [...createAtaIxs, mintSolIx], [mintAuth]);
-		console.log('setup maker tokens');
 
 		try {
 			const claimMakerSeatIxs = await confirmOrCreateClaimSeatIxs(
@@ -345,9 +347,7 @@ describe('phoenixVaults', () => {
 				maker.publicKey,
 				payer.publicKey
 			);
-			// await simulate(conn, payer, claimMakerSeatIxs, [maker]);
-			const sig = await sendAndConfirm(conn, payer, claimMakerSeatIxs, [maker]);
-			console.log('claim maker seat:', signatureLink(sig, conn));
+			await sendAndConfirm(conn, payer, claimMakerSeatIxs, [maker]);
 		} catch (e: any) {
 			throw new Error(e);
 		}
@@ -386,9 +386,9 @@ describe('phoenixVaults', () => {
 			solUsdcMarket.toString(),
 			maker.publicKey
 		);
-		// await simulate(conn, payer, [makerOrderIx], [maker]);
-		const sig = await sendAndConfirm(conn, payer, [makerOrderIx], [maker]);
-		console.log('maker sell:', signatureLink(sig, conn));
+		await sendAndConfirm(conn, payer, [makerOrderIx], [maker]);
+
+		await logLadder(conn, solUsdcMarket);
 	});
 
 	it('Taker Buy SOL/USDC', async () => {
@@ -414,9 +414,7 @@ describe('phoenixVaults', () => {
 					phoenixSeatManager: PHOENIX_SEAT_MANAGER_PROGRAM_ID,
 				})
 				.instruction();
-
-			const sig = await sendAndConfirm(conn, payer, [claimSeatIx], [manager]);
-			console.log('claim taker seat:', signatureLink(sig, conn));
+			await sendAndConfirm(conn, payer, [claimSeatIx], [manager]);
 		} catch (e: any) {
 			throw new Error(e);
 		}
@@ -425,7 +423,13 @@ describe('phoenixVaults', () => {
 			startSolUsdcPrice,
 			solUsdcMarket.toBase58()
 		);
-		const solAmountAfterFee = solUiAmount * (1 - 0.01 / 100);
+		const solAmountAfterFee = await outAmount(
+			conn,
+			solUsdcMarket,
+			Side.Bid,
+			usdcUiAmount
+		);
+		console.log(`out: ${solAmountAfterFee}`);
 		const numBaseLots = phoenix.rawBaseUnitsToBaseLotsRoundedDown(
 			solAmountAfterFee,
 			solUsdcMarket.toBase58()
@@ -483,9 +487,7 @@ describe('phoenixVaults', () => {
 					tokenProgram: TOKEN_PROGRAM_ID,
 				})
 				.instruction();
-
-			const sig = await sendAndConfirm(conn, payer, [ix], [manager]);
-			console.log('taker buy:', signatureLink(sig, conn));
+			await sendAndConfirm(conn, payer, [ix], [manager]);
 		} catch (e: any) {
 			throw new Error(e);
 		}
@@ -521,6 +523,8 @@ describe('phoenixVaults', () => {
 		);
 		assert.strictEqual(marketSolAfter, 0.001);
 		assert.strictEqual(marketUsdcAfter, 999.99999);
+
+		await logLadder(conn, solUsdcMarket);
 	});
 
 	it('Maker Buy SOL/USDC @ $125', async () => {
@@ -562,9 +566,9 @@ describe('phoenixVaults', () => {
 			solUsdcMarket.toString(),
 			maker.publicKey
 		);
+		await sendAndConfirm(conn, payer, [makerOrderIx], [maker]);
 
-		const sig = await sendAndConfirm(conn, payer, [makerOrderIx], [maker]);
-		console.log('maker buy:', signatureLink(sig, conn));
+		await logLadder(conn, solUsdcMarket);
 	});
 
 	it('Taker Sell SOL/USDC @ $125', async () => {
@@ -590,8 +594,7 @@ describe('phoenixVaults', () => {
 			solUsdcMarket.toBase58()
 		);
 
-		const vaultSolAmount = await tokenBalance(conn, vaultBaseTokenAccount);
-		const solAmountAfterFee = vaultSolAmount * (1 - 0.01 / 100);
+		const solAmountAfterFee = await tokenBalance(conn, vaultBaseTokenAccount);
 		const numBaseLots = phoenix.rawBaseUnitsToBaseLotsRoundedDown(
 			solAmountAfterFee,
 			solUsdcMarket.toBase58()
@@ -624,9 +627,8 @@ describe('phoenixVaults', () => {
 					tokenProgram: TOKEN_PROGRAM_ID,
 				})
 				.instruction();
-
-			const sig = await sendAndConfirm(conn, payer, [ix], [manager]);
-			console.log('taker sell:', signatureLink(sig, conn));
+			await simulate(conn, payer, [ix], [manager]);
+			await sendAndConfirm(conn, payer, [ix], [manager]);
 		} catch (e: any) {
 			throw new Error(e);
 		}
@@ -636,7 +638,7 @@ describe('phoenixVaults', () => {
 		console.log(
 			`taker after sell, sol: ${vaultSolAfter}, usdc: ${vaultUsdcAfter}`
 		);
-		assert.strictEqual(vaultSolAfter, 0.001);
+		assert.strictEqual(vaultSolAfter, 0);
 		assert.strictEqual(vaultUsdcAfter, 999.77502);
 
 		const makerBaseTokenAccount = getAssociatedTokenAddressSync(
@@ -660,11 +662,13 @@ describe('phoenixVaults', () => {
 		console.log(
 			`market after taker sell, sol: ${marketSolAfter}, usdc: ${marketUsdcAfter}`
 		);
-		assert.strictEqual(marketSolAfter, 9.999);
+		assert.strictEqual(marketSolAfter, 10);
 		// entry USDC fee: $999.9 * 0.01% fee = $0.09999
 		// exit SOL fee: 9.999 SOL @ $125/SOL * 0.01% fee = $0.1249875
 		// total fee = $0.09999 + $0.1249875 = $0.2249775 rounded to $0.22498
 		assert.strictEqual(marketUsdcAfter, 0.22498);
+
+		await logLadder(conn, solUsdcMarket);
 	});
 
 	it('Request Withdraw', async () => {
@@ -674,7 +678,7 @@ describe('phoenixVaults', () => {
 			true
 		);
 		const usdc = await tokenBalance(conn, vaultQuoteTokenAccount);
-		const usdcBN = new BN(usdc).mul(QUOTE_PRECISION);
+		const usdcBN = new BN(usdc * QUOTE_PRECISION.toNumber());
 		try {
 			const markets: AccountMeta[] = marketKeys.map((pubkey) => {
 				return {
@@ -694,10 +698,12 @@ describe('phoenixVaults', () => {
 				.remainingAccounts(markets)
 				.instruction();
 
-			const sig = await sendAndConfirm(conn, payer, [ix], [payer]);
-			console.log('request withdraw:', signatureLink(sig, conn));
+			await simulate(conn, payer, [ix], [payer]);
+			await sendAndConfirm(conn, payer, [ix], [payer]);
 		} catch (e: any) {
 			throw new Error(e);
 		}
+
+		await logLadder(conn, solUsdcMarket);
 	});
 });

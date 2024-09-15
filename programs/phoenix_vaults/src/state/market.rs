@@ -17,6 +17,7 @@ pub trait MarketMapProvider<'a> {
     fn equity(&self, trader: &Pubkey, params: MarketLookupTableParams) -> Result<u64>;
 }
 
+// todo: validate remaining accounts against keys in MarketRegistry to prevent invalid accounts from being passed in.
 impl<'a: 'info, 'info, T: anchor_lang::Bumps> MarketMapProvider<'a>
     for Context<'_, '_, 'a, 'info, T>
 {
@@ -82,11 +83,9 @@ impl<'a: 'info, 'info, T: anchor_lang::Bumps> MarketMapProvider<'a>
         }
         let market = load_with_dispatch(&header.market_size_params, bytes)?;
         let ladder = market.inner.get_ladder(1);
-        let tick_price = match ladder.asks.first() {
-            Some(ask) => ask.price_in_ticks,
-            None => 0,
-        };
+        let tick_price = ladder.asks.first().map_or(0, |ask| ask.price_in_ticks);
         let price = ticks_to_price_precision(&header, tick_price);
+        msg!("sol ask price: {}/1_000_000", price);
         Ok((account.key(), price))
     }
 

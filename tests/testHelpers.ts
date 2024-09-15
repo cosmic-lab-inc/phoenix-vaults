@@ -44,6 +44,7 @@ import {
 } from '../ts/sdk';
 import {
 	deserializeMarketData,
+	getExpectedOutAmountRouter,
 	MarketState,
 	OrderPacket,
 	orderPacketBeet,
@@ -51,6 +52,7 @@ import {
 	placeLimitOrderInstructionDiscriminator,
 	PlaceLimitOrderStruct,
 	RawMarketConfig,
+	Side,
 } from '@cosmic-lab/phoenix-sdk';
 
 export const MARKET_CONFIG: RawMarketConfig = {
@@ -968,4 +970,43 @@ export function parseTraderState(
 		baseUnitsFree,
 		baseUnitsLocked,
 	};
+}
+
+export async function outAmount(
+	conn: Connection,
+	market: PublicKey,
+	side: Side,
+	inAmount: number,
+	takerFeeBps?: number
+) {
+	const marketState = await fetchMarketState(conn, market);
+	const uiLadder = marketState.getUiLadder(3, 0, 0);
+	const out = getExpectedOutAmountRouter({
+		uiLadder,
+		side,
+		takerFeeBps: takerFeeBps ?? marketState.data.takerFeeBps,
+		inAmount,
+	});
+	return out;
+}
+
+export async function logLadder(conn: Connection, market: PublicKey) {
+	const marketState = await fetchMarketState(conn, market);
+	const ladder = marketState.getUiLadder(3, 0, 0);
+	if (ladder.bids.length === 0) {
+		console.log('no bids');
+	}
+	if (ladder.asks.length === 0) {
+		console.log('no asks');
+	}
+	for (const bid of ladder.bids) {
+		// const price = marketState.ticksToFloatPrice(bid.priceInTicks.toNumber());
+		const price = bid.price;
+		console.log(`bid: ${price}`);
+	}
+	for (const ask of ladder.asks) {
+		// const price = marketState.ticksToFloatPrice(ask.priceInTicks.toNumber());
+		const price = ask.price;
+		console.log(`ask: ${price}`);
+	}
 }

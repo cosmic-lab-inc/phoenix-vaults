@@ -527,6 +527,15 @@ impl Investor {
             .safe_add(protocol_profit_share)?
             .cast()?;
 
+        msg!(
+            "investor_shares: {}/{}",
+            self.vault_shares,
+            vault.total_shares
+        );
+        msg!("investor_equity: {}/{}", total_amount, vault_equity);
+        msg!("manager_profit_share: {}", manager_profit_share);
+        msg!("protocol_profit_share: {}", protocol_profit_share);
+
         let profit_share_shares: u128 =
             amount_to_shares(profit_share, vault.total_shares, vault_equity)?;
 
@@ -545,17 +554,9 @@ impl Investor {
             vault.total_shares,
             vault_equity,
         )?;
-        msg!(
-            "protocol profit share shares: {}",
-            protocol_profit_share_shares
-        );
         vault.protocol_profit_and_fee_shares = vault
             .protocol_profit_and_fee_shares
             .saturating_add(protocol_profit_share_shares);
-        msg!(
-            "protocol shares after: {}",
-            vault.protocol_profit_and_fee_shares
-        );
 
         Ok((manager_profit_share, protocol_profit_share))
     }
