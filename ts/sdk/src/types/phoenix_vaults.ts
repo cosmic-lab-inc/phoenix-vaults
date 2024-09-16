@@ -492,26 +492,95 @@ export type PhoenixVaults = {
 					name: 'tokenProgram';
 					isMut: false;
 					isSigner: false;
+				}
+			];
+			args: [
+				{
+					name: 'params';
+					type: {
+						defined: 'MarketTransferParams';
+					};
+				}
+			];
+		},
+		{
+			name: 'marketWithdraw';
+			accounts: [
+				{
+					name: 'vault';
+					isMut: false;
+					isSigner: false;
+					docs: [
+						'If delegate has authority to sign for vault, then any Phoenix CPI is valid.',
+						'Phoenix CPI validates that opaque instruction data is a [`PhoenixInstruction`],',
+						'so this is safe since any Phoenix CPI is secure.'
+					];
 				},
 				{
-					name: 'rent';
+					name: 'delegate';
+					isMut: false;
+					isSigner: true;
+					docs: [
+						'Is manager by default, but can be delegated to another pubkey using `update_delegate`'
+					];
+				},
+				{
+					name: 'phoenix';
 					isMut: false;
 					isSigner: false;
 				},
 				{
-					name: 'systemProgram';
+					name: 'logAuthority';
+					isMut: false;
+					isSigner: false;
+				},
+				{
+					name: 'market';
+					isMut: true;
+					isSigner: false;
+				},
+				{
+					name: 'baseMint';
+					isMut: false;
+					isSigner: false;
+				},
+				{
+					name: 'quoteMint';
+					isMut: false;
+					isSigner: false;
+				},
+				{
+					name: 'vaultBaseTokenAccount';
+					isMut: true;
+					isSigner: false;
+				},
+				{
+					name: 'vaultQuoteTokenAccount';
+					isMut: true;
+					isSigner: false;
+				},
+				{
+					name: 'marketBaseTokenAccount';
+					isMut: true;
+					isSigner: false;
+				},
+				{
+					name: 'marketQuoteTokenAccount';
+					isMut: true;
+					isSigner: false;
+				},
+				{
+					name: 'tokenProgram';
 					isMut: false;
 					isSigner: false;
 				}
 			];
 			args: [
 				{
-					name: 'quoteLots';
-					type: 'u64';
-				},
-				{
-					name: 'baseLots';
-					type: 'u64';
+					name: 'params';
+					type: {
+						defined: 'MarketTransferParams';
+					};
 				}
 			];
 		}
@@ -994,6 +1063,22 @@ export type PhoenixVaults = {
 					{
 						name: 'order';
 						type: 'bytes';
+					}
+				];
+			};
+		},
+		{
+			name: 'MarketTransferParams';
+			type: {
+				kind: 'struct';
+				fields: [
+					{
+						name: 'quoteLots';
+						type: 'u64';
+					},
+					{
+						name: 'baseLots';
+						type: 'u64';
 					}
 				];
 			};
@@ -1892,25 +1977,94 @@ export const IDL: PhoenixVaults = {
 					isMut: false,
 					isSigner: false,
 				},
+			],
+			args: [
 				{
-					name: 'rent',
+					name: 'params',
+					type: {
+						defined: 'MarketTransferParams',
+					},
+				},
+			],
+		},
+		{
+			name: 'marketWithdraw',
+			accounts: [
+				{
+					name: 'vault',
+					isMut: false,
+					isSigner: false,
+					docs: [
+						'If delegate has authority to sign for vault, then any Phoenix CPI is valid.',
+						'Phoenix CPI validates that opaque instruction data is a [`PhoenixInstruction`],',
+						'so this is safe since any Phoenix CPI is secure.',
+					],
+				},
+				{
+					name: 'delegate',
+					isMut: false,
+					isSigner: true,
+					docs: [
+						'Is manager by default, but can be delegated to another pubkey using `update_delegate`',
+					],
+				},
+				{
+					name: 'phoenix',
 					isMut: false,
 					isSigner: false,
 				},
 				{
-					name: 'systemProgram',
+					name: 'logAuthority',
+					isMut: false,
+					isSigner: false,
+				},
+				{
+					name: 'market',
+					isMut: true,
+					isSigner: false,
+				},
+				{
+					name: 'baseMint',
+					isMut: false,
+					isSigner: false,
+				},
+				{
+					name: 'quoteMint',
+					isMut: false,
+					isSigner: false,
+				},
+				{
+					name: 'vaultBaseTokenAccount',
+					isMut: true,
+					isSigner: false,
+				},
+				{
+					name: 'vaultQuoteTokenAccount',
+					isMut: true,
+					isSigner: false,
+				},
+				{
+					name: 'marketBaseTokenAccount',
+					isMut: true,
+					isSigner: false,
+				},
+				{
+					name: 'marketQuoteTokenAccount',
+					isMut: true,
+					isSigner: false,
+				},
+				{
+					name: 'tokenProgram',
 					isMut: false,
 					isSigner: false,
 				},
 			],
 			args: [
 				{
-					name: 'quoteLots',
-					type: 'u64',
-				},
-				{
-					name: 'baseLots',
-					type: 'u64',
+					name: 'params',
+					type: {
+						defined: 'MarketTransferParams',
+					},
 				},
 			],
 		},
@@ -2393,6 +2547,22 @@ export const IDL: PhoenixVaults = {
 					{
 						name: 'order',
 						type: 'bytes',
+					},
+				],
+			},
+		},
+		{
+			name: 'MarketTransferParams',
+			type: {
+				kind: 'struct',
+				fields: [
+					{
+						name: 'quoteLots',
+						type: 'u64',
+					},
+					{
+						name: 'baseLots',
+						type: 'u64',
 					},
 				],
 			},

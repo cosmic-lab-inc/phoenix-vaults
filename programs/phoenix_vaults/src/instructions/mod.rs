@@ -6,6 +6,7 @@ mod initialize_vault;
 mod investor_deposit;
 mod investor_withdraw;
 mod market_deposit;
+mod market_withdraw;
 mod place_limit_order;
 mod request_withdraw;
 
@@ -17,5 +18,6 @@ pub use initialize_vault::*;
 pub use investor_deposit::*;
 pub use investor_withdraw::*;
 pub use market_deposit::*;
+pub use market_withdraw::*;
 pub use place_limit_order::*;
 pub use request_withdraw::*;

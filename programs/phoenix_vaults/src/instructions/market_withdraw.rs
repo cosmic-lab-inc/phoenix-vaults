@@ -4,23 +4,23 @@ use phoenix::program::deposit::DepositParams;
 use solana_program::program::invoke_signed;
 
 use crate::constraints::{
-    is_delegate_for_vault, is_lut_for_registry, is_sol_mint, is_usdc_mint, is_usdc_token_for_vault,
+    is_delegate_for_vault, is_sol_mint, is_usdc_mint, is_usdc_token_for_vault,
 };
-use crate::cpis::PhoenixDepositCPI;
+use crate::cpis::PhoenixWithdrawCPI;
 use crate::declare_vault_seeds;
-use crate::state::{Investor, MarketRegistry, MarketTransferParams, PhoenixProgram, Vault};
+use crate::state::{MarketTransferParams, PhoenixProgram, Vault};
 
-pub fn market_deposit<'c: 'info, 'info>(
-    ctx: Context<'_, '_, 'c, 'info, MarketDeposit<'info>>,
+pub fn market_withdraw<'c: 'info, 'info>(
+    ctx: Context<'_, '_, 'c, 'info, MarketWithdraw<'info>>,
     params: MarketTransferParams,
 ) -> Result<()> {
-    ctx.phoenix_deposit(params)?;
+    ctx.phoenix_withdraw(params)?;
 
     Ok(())
 }
 
 #[derive(Accounts)]
-pub struct MarketDeposit<'info> {
+pub struct MarketWithdraw<'info> {
     /// If delegate has authority to sign for vault, then any Phoenix CPI is valid.
     /// Phoenix CPI validates that opaque instruction data is a [`PhoenixInstruction`],
     /// so this is safe since any Phoenix CPI is secure.
@@ -40,8 +40,6 @@ pub struct MarketDeposit<'info> {
     /// CHECK: validated in Phoenix CPI
     #[account(mut)]
     pub market: UncheckedAccount<'info>,
-    /// CHECK: validated in Phoenix CPI
-    pub seat: UncheckedAccount<'info>,
 
     pub base_mint: Account<'info, Mint>,
     #[account(
@@ -75,18 +73,16 @@ pub struct MarketDeposit<'info> {
     pub token_program: Program<'info, Token>,
 }
 
-impl<'info> PhoenixDepositCPI for Context<'_, '_, '_, 'info, MarketDeposit<'info>> {
-    fn phoenix_deposit(&self, params: MarketTransferParams) -> Result<()> {
+impl<'info> PhoenixWithdrawCPI for Context<'_, '_, '_, 'info, MarketWithdraw<'info>> {
+    fn phoenix_withdraw(&self, params: MarketTransferParams) -> Result<()> {
         let trader_index = 3;
-        let mut ix = phoenix::program::instruction_builders::create_deposit_funds_instruction(
+        let mut ix = phoenix::program::instruction_builders::create_withdraw_funds_with_custom_amounts_instruction(
             &self.accounts.market.key(),
             &self.accounts.vault.key(),
             &self.accounts.base_mint.key(),
             &self.accounts.quote_mint.key(),
-            &DepositParams {
-                quote_lots_to_deposit: params.quote_lots,
-                base_lots_to_deposit: params.base_lots,
-            },
+            params.base_lots,
+            params.quote_lots
         );
         ix.accounts[trader_index].is_signer = true;
 
@@ -94,18 +90,16 @@ impl<'info> PhoenixDepositCPI for Context<'_, '_, '_, 'info, MarketDeposit<'info
         // #[account(1, name = "log_authority", desc = "Phoenix log authority")]
         // #[account(2, writable, name = "market", desc = "This account holds the market state")]
         // #[account(3, signer, name = "trader")]
-        // #[account(4, name = "seat")]
-        // #[account(5, writable, name = "base_account", desc = "Trader base token account")]
-        // #[account(6, writable, name = "quote_account", desc = "Trader quote token account")]
-        // #[account(7, writable, name = "base_vault", desc = "Base vault PDA, seeds are [b'vault', market_address, base_mint_address]")]
-        // #[account(8, writable, name = "quote_vault", desc = "Quote vault PDA, seeds are [b'vault', market_address, quote_mint_address]")]
-        // #[account(9, name = "token_program", desc = "Token program")]
+        // #[account(4, writable, name = "base_account", desc = "Trader base token account")]
+        // #[account(5, writable, name = "quote_account", desc = "Trader quote token account")]
+        // #[account(6, writable, name = "base_vault", desc = "Base vault PDA, seeds are [b'vault', market_address, base_mint_address]")]
+        // #[account(7, writable, name = "quote_vault", desc = "Quote vault PDA, seeds are [b'vault', market_address, quote_mint_address]")]
+        // #[account(8, name = "token_program", desc = "Token program")]
         let accounts = [
             self.accounts.phoenix.to_account_info(),
             self.accounts.log_authority.to_account_info(),
             self.accounts.market.to_account_info(),
             self.accounts.vault.to_account_info(),
-            self.accounts.seat.to_account_info(),
             self.accounts.vault_base_token_account.to_account_info(),
             self.accounts.vault_quote_token_account.to_account_info(),
             self.accounts.market_base_token_account.to_account_info(),

@@ -66,9 +66,15 @@ pub mod phoenix_vaults {
 
     pub fn market_deposit<'c: 'info, 'info>(
         ctx: Context<'_, '_, 'c, 'info, MarketDeposit<'info>>,
-        quote_lots: u64,
-        base_lots: u64,
+        params: MarketTransferParams,
     ) -> Result<()> {
-        instructions::market_deposit(ctx, quote_lots, base_lots)
+        instructions::market_deposit(ctx, params)
+    }
+
+    pub fn market_withdraw<'c: 'info, 'info>(
+        ctx: Context<'_, '_, 'c, 'info, MarketWithdraw<'info>>,
+        params: MarketTransferParams,
+    ) -> Result<()> {
+        instructions::market_withdraw(ctx, params)
     }
 }

@@ -76,6 +76,7 @@ export type Vault = {
 	padding: number[];
 };
 
-export type PhoenixParams = {
-	cpiIxData: Buffer;
+export type MarketTransferParams = {
+	quoteLots: BN;
+	baseLots: BN;
 };

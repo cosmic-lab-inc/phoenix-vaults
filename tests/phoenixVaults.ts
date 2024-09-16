@@ -28,6 +28,7 @@ import {
 	PHOENIX_PROGRAM_ID,
 	PHOENIX_SEAT_MANAGER_PROGRAM_ID,
 	WithdrawUnit,
+	MarketTransferParams,
 } from '../ts/sdk';
 import { BN } from '@coral-xyz/anchor';
 import {
@@ -377,10 +378,14 @@ describe('phoenixVaults', () => {
 
 		const quoteLots = new BN(quoteLotsNum);
 		const baseLots = new BN(0);
+		const params: MarketTransferParams = {
+			quoteLots,
+			baseLots,
+		};
 
 		try {
 			const ix = await program.methods
-				.marketDeposit(quoteLots, baseLots)
+				.marketDeposit(params)
 				.accounts({
 					vault: vaultKey,
 					delegate: manager.publicKey,
@@ -758,11 +763,115 @@ describe('phoenixVaults', () => {
 	});
 
 	//
+	// Remove investor equity from market back to vault token accounts,
+	// so that the investor may withdraw their funds without forcefully liquidating the vault.
+	//
+
+	it('Vault Withdraw from SOL/USDC Market', async () => {
+		const vaultBaseTokenAccount = getAssociatedTokenAddressSync(
+			solMint,
+			vaultKey,
+			true
+		);
+		const vaultQuoteTokenAccount = getAssociatedTokenAddressSync(
+			usdcMint,
+			vaultKey,
+			true
+		);
+		const marketBaseTokenAccount = phoenix.getBaseVaultKey(
+			solUsdcMarket.toString()
+		);
+		const marketQuoteTokenAccount = phoenix.getQuoteVaultKey(
+			solUsdcMarket.toString()
+		);
+
+		const vaultSolBefore = await tokenBalance(conn, vaultBaseTokenAccount);
+		const vaultUsdcBefore = await tokenBalance(conn, vaultQuoteTokenAccount);
+		console.log(
+			`vault atas before market withdraw, sol: ${vaultSolBefore}, usdc: ${vaultUsdcBefore}`
+		);
+		assert.strictEqual(vaultSolBefore, 0);
+		assert.strictEqual(vaultUsdcBefore, 0);
+
+		const vaultStateBefore = await fetchTraderState(
+			conn,
+			solUsdcMarket,
+			vaultKey
+		);
+		console.log(
+			`vault trader before market withdraw, sol: ${vaultStateBefore.baseUnitsFree}, usdc: ${vaultStateBefore.quoteUnitsFree}`
+		);
+		assert.strictEqual(vaultStateBefore.baseUnitsFree, 0);
+		assert.strictEqual(vaultStateBefore.quoteUnitsFree, 1249.75002);
+
+		const investorEquity = await fetchInvestorEquity(
+			program,
+			conn,
+			investor,
+			vaultKey,
+			marketRegistry
+		);
+		console.log(`investor equity: ${investorEquity}`);
+		const investorEquityLots = phoenix.quoteUnitsToQuoteLots(
+			investorEquity,
+			solUsdcMarket.toString()
+		);
+
+		const quoteLots = new BN(investorEquityLots);
+		const baseLots = new BN(0);
+		const params: MarketTransferParams = {
+			quoteLots,
+			baseLots,
+		};
+
+		try {
+			const ix = await program.methods
+				.marketWithdraw(params)
+				.accounts({
+					vault: vaultKey,
+					delegate: manager.publicKey,
+					phoenix: PHOENIX_PROGRAM_ID,
+					logAuthority: getLogAuthority(),
+					market: solUsdcMarket,
+					baseMint: solMint,
+					quoteMint: usdcMint,
+					vaultBaseTokenAccount,
+					vaultQuoteTokenAccount,
+					marketBaseTokenAccount,
+					marketQuoteTokenAccount,
+					tokenProgram: TOKEN_PROGRAM_ID,
+				})
+				.instruction();
+			await sendAndConfirm(conn, payer, [ix], [manager]);
+		} catch (e: any) {
+			throw new Error(e);
+		}
+
+		const vaultSolAfter = await tokenBalance(conn, vaultBaseTokenAccount);
+		const vaultUsdcAfter = await tokenBalance(conn, vaultQuoteTokenAccount);
+		console.log(
+			`vault atas after market withdraw, sol: ${vaultSolAfter}, usdc: ${vaultUsdcAfter}`
+		);
+		assert.strictEqual(vaultSolAfter, 0);
+		assert.strictEqual(vaultUsdcAfter, 1249.75002);
+
+		const vaultStateAfter = await fetchTraderState(
+			conn,
+			solUsdcMarket,
+			vaultKey
+		);
+		console.log(
+			`vault trader state after market withdraw, sol: ${vaultStateAfter.baseUnitsFree}, usdc: ${vaultStateAfter.quoteUnitsFree}`
+		);
+		assert.strictEqual(vaultStateAfter.baseUnitsFree, 0);
+		assert.strictEqual(vaultStateAfter.quoteUnitsFree, 0);
+	});
+
+	//
 	// Now that an ask at $125/SOL is on the book, we can use that price on-chain to measure vault equity
 	//
 
 	it('Request Withdraw', async () => {
-		// todo: fn to get investor equity
 		const investorEquity = await fetchInvestorEquity(
 			program,
 			conn,
