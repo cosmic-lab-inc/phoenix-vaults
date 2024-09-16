@@ -43,7 +43,6 @@ import {
 	tokenBalance,
 	fetchMarketState,
 	simulate,
-	logLadder,
 	outAmount,
 	encodeLimitOrderPacketWithFreeFunds,
 	fetchTraderState,
@@ -772,13 +771,7 @@ describe('phoenixVaults', () => {
 			marketRegistry
 		);
 		console.log(`investor equity: ${investorEquity}`);
-		const vaultQuoteTokenAccount = getAssociatedTokenAddressSync(
-			usdcMint,
-			vaultKey,
-			true
-		);
-		const usdc = await tokenBalance(conn, vaultQuoteTokenAccount);
-		const usdcBN = new BN(usdc * QUOTE_PRECISION.toNumber());
+		const usdcBN = new BN(investorEquity * QUOTE_PRECISION.toNumber());
 		try {
 			const markets: AccountMeta[] = marketKeys.map((pubkey) => {
 				return {
