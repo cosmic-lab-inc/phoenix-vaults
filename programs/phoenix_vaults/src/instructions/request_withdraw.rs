@@ -1,9 +1,10 @@
 use anchor_lang::prelude::*;
 
-use crate::constraints::is_authority_for_investor;
-use crate::instructions::MarketLookupTableParams;
+use crate::constraints::{is_authority_for_investor, is_lut_for_registry};
 use crate::math::Cast;
-use crate::state::{Investor, MarketMapProvider, MarketRegistry, Vault, WithdrawUnit};
+use crate::state::{
+    Investor, MarketLookupTable, MarketMapProvider, MarketRegistry, Vault, WithdrawUnit,
+};
 
 pub fn request_withdraw<'c: 'info, 'info>(
     ctx: Context<'_, '_, 'c, 'info, RequestWithdraw<'info>>,
@@ -15,13 +16,16 @@ pub fn request_withdraw<'c: 'info, 'info>(
     let vault = &mut ctx.accounts.vault.load_mut()?;
     let mut investor = ctx.accounts.investor.load_mut()?;
 
-    let registry = ctx.accounts.market_registry.load()?;
-    let params = MarketLookupTableParams {
-        usdc_mint: registry.usdc_mint,
-        sol_mint: registry.sol_mint,
-        sol_usdc_market_index: 0,
+    let registry = ctx.accounts.market_registry.load_mut()?;
+
+    let lut_acct_info = ctx.accounts.lut.to_account_info();
+    let lut_data = lut_acct_info.data.borrow();
+    let lut = MarketRegistry::deserialize_lookup_table(registry.lut_auth, lut_data.as_ref())?;
+    let market_lut = MarketLookupTable {
+        lut_key: ctx.accounts.lut.key(),
+        lut: &lut,
     };
-    let vault_equity = ctx.equity(&vault_key, params)?;
+    let vault_equity = ctx.equity(&vault_key, registry, market_lut)?;
 
     investor.request_withdraw(
         withdraw_amount.cast()?,
@@ -50,8 +54,13 @@ pub struct RequestWithdraw<'info> {
     pub authority: Signer<'info>,
 
     #[account(
+        mut,
         seeds = [b"market_registry"],
-        bump
+        bump,
+        constraint = is_lut_for_registry(&market_registry, &lut)?
     )]
     pub market_registry: AccountLoader<'info, MarketRegistry>,
+
+    /// CHECK: Deserialized into [`AddressLookupTable`] within instruction
+    pub lut: UncheckedAccount<'info>,
 }

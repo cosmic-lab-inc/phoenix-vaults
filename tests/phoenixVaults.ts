@@ -40,14 +40,12 @@ import {
 	createMarketTokenAccountIxs,
 	encodeLimitOrderPacket,
 	sendAndConfirm,
-	signatureLink,
 	MARKET_CONFIG,
 	tokenBalance,
 	fetchMarketState,
 	simulate,
 	logLadder,
 	outAmount,
-	marketPrice,
 	parseTraderState,
 } from './testHelpers';
 import {
@@ -60,7 +58,6 @@ import {
 	getLogAuthority,
 	getSeatAddress,
 	getSeatDepositCollectorAddress,
-	getExpectedOutAmountRouter,
 } from '@cosmic-lab/phoenix-sdk';
 
 describe('phoenixVaults', () => {
@@ -111,7 +108,6 @@ describe('phoenixVaults', () => {
 	const marketKeys: PublicKey[] = MARKET_CONFIG['localhost'].markets.map(
 		(m) => new PublicKey(m.market)
 	);
-	const solUsdcMarketIndex = 0;
 	const startSolUsdcPrice = 100;
 	const endSolUsdcPrice = 125;
 	const usdcUiAmount = 1_000;
@@ -190,7 +186,6 @@ describe('phoenixVaults', () => {
 		const params = {
 			usdcMint,
 			solMint,
-			solUsdcMarketIndex,
 		};
 
 		try {
@@ -273,6 +268,7 @@ describe('phoenixVaults', () => {
 			vault: vaultKey,
 			investor,
 			marketRegistry,
+			lut,
 			vaultTokenAccount: vaultAta,
 			investorTokenAccount: investorAta,
 			authority: provider.publicKey,
@@ -320,7 +316,7 @@ describe('phoenixVaults', () => {
 	});
 
 	//
-	// Simulate profitable trader by vault for 25% gain
+	// Simulate profitable trade by vault for 25% gain
 	//
 
 	it('Maker Sell SOL/USDC', async () => {
@@ -435,7 +431,6 @@ describe('phoenixVaults', () => {
 			Side.Bid,
 			usdcUiAmount
 		);
-		console.log(`out: ${solAmountAfterFee}`);
 		const numBaseLots = phoenix.rawBaseUnitsToBaseLotsRoundedDown(
 			solAmountAfterFee,
 			solUsdcMarket.toBase58()
@@ -632,7 +627,6 @@ describe('phoenixVaults', () => {
 					tokenProgram: TOKEN_PROGRAM_ID,
 				})
 				.instruction();
-			await simulate(conn, payer, [ix], [manager]);
 			await sendAndConfirm(conn, payer, [ix], [manager]);
 		} catch (e: any) {
 			throw new Error(e);
@@ -681,75 +675,76 @@ describe('phoenixVaults', () => {
 	// Place pending ask at $125/SOL that never gets filled, so withdraw request can measure price as best ask on-chain.
 	//
 
-	// it('Maker Pending Ask SOL/USDC', async () => {
-	// 	const makerTraderState = parseTraderState(
-	// 		await fetchMarketState(conn, solUsdcMarket),
-	// 		maker.publicKey
-	// 	);
-	// 	console.log(makerTraderState);
+	it('Maker Ask SOL/USDC @ $125/SOL', async () => {
+		const makerTraderState = parseTraderState(
+			await fetchMarketState(conn, solUsdcMarket),
+			maker.publicKey
+		);
+		const solAmount = makerTraderState.baseUnitsFree;
+		console.log(`maker sol on market to sell: ${solAmount}`);
+
+		const priceInTicks = phoenix.floatPriceToTicks(
+			endSolUsdcPrice,
+			solUsdcMarket.toBase58()
+		);
+		const numBaseLots = phoenix.rawBaseUnitsToBaseLotsRoundedDown(
+			solAmount,
+			solUsdcMarket.toBase58()
+		);
+		const makerOrderPacket = getLimitOrderPacket({
+			side: Side.Ask,
+			priceInTicks,
+			numBaseLots,
+		});
+		const makerOrderIx = phoenix.createPlaceLimitOrderInstruction(
+			makerOrderPacket,
+			solUsdcMarket.toString(),
+			maker.publicKey
+		);
+		await simulate(conn, payer, [makerOrderIx], [maker]);
+		await sendAndConfirm(conn, payer, [makerOrderIx], [maker]);
+
+		await logLadder(conn, solUsdcMarket);
+	});
+
 	//
-	// 	const makerBaseTokenAccount = getAssociatedTokenAddressSync(
-	// 		solMint,
-	// 		maker.publicKey
-	// 	);
-	// 	const priceInTicks = phoenix.floatPriceToTicks(
-	// 		endSolUsdcPrice,
-	// 		solUsdcMarket.toBase58()
-	// 	);
-	// 	const makerSol = await tokenBalance(conn, makerBaseTokenAccount);
-	// 	const numBaseLots = phoenix.rawBaseUnitsToBaseLotsRoundedDown(
-	// 		makerSol,
-	// 		solUsdcMarket.toBase58()
-	// 	);
-	// 	const makerOrderPacket = getLimitOrderPacket({
-	// 		side: Side.Ask,
-	// 		priceInTicks,
-	// 		numBaseLots,
-	// 	});
-	// 	const makerOrderIx = phoenix.createPlaceLimitOrderInstruction(
-	// 		makerOrderPacket,
-	// 		solUsdcMarket.toString(),
-	// 		maker.publicKey
-	// 	);
-	// 	await simulate(conn, payer, [makerOrderIx], [maker]);
-	// 	await sendAndConfirm(conn, payer, [makerOrderIx], [maker]);
+	// Now that an ask at $125/SOL is on the book, we can use that price on-chain to measure vault equity
 	//
-	// 	await logLadder(conn, solUsdcMarket);
-	// });
-	//
-	// it('Request Withdraw', async () => {
-	// 	const vaultQuoteTokenAccount = getAssociatedTokenAddressSync(
-	// 		usdcMint,
-	// 		vaultKey,
-	// 		true
-	// 	);
-	// 	const usdc = await tokenBalance(conn, vaultQuoteTokenAccount);
-	// 	const usdcBN = new BN(usdc * QUOTE_PRECISION.toNumber());
-	// 	try {
-	// 		const markets: AccountMeta[] = marketKeys.map((pubkey) => {
-	// 			return {
-	// 				pubkey,
-	// 				isWritable: false,
-	// 				isSigner: false,
-	// 			};
-	// 		});
-	// 		const ix = await program.methods
-	// 			.requestWithdraw(usdcBN, WithdrawUnit.TOKEN)
-	// 			.accounts({
-	// 				vault: vaultKey,
-	// 				investor,
-	// 				authority: provider.publicKey,
-	// 				marketRegistry,
-	// 			})
-	// 			.remainingAccounts(markets)
-	// 			.instruction();
-	//
-	// 		await simulate(conn, payer, [ix], [payer]);
-	// 		await sendAndConfirm(conn, payer, [ix], [payer]);
-	// 	} catch (e: any) {
-	// 		throw new Error(e);
-	// 	}
-	//
-	// 	await logLadder(conn, solUsdcMarket);
-	// });
+
+	it('Request Withdraw', async () => {
+		const vaultQuoteTokenAccount = getAssociatedTokenAddressSync(
+			usdcMint,
+			vaultKey,
+			true
+		);
+		const usdc = await tokenBalance(conn, vaultQuoteTokenAccount);
+		const usdcBN = new BN(usdc * QUOTE_PRECISION.toNumber());
+		try {
+			const markets: AccountMeta[] = marketKeys.map((pubkey) => {
+				return {
+					pubkey,
+					isWritable: false,
+					isSigner: false,
+				};
+			});
+			const ix = await program.methods
+				.requestWithdraw(usdcBN, WithdrawUnit.TOKEN)
+				.accounts({
+					vault: vaultKey,
+					investor,
+					authority: provider.publicKey,
+					marketRegistry,
+					lut,
+				})
+				.remainingAccounts(markets)
+				.instruction();
+
+			await simulate(conn, payer, [ix], [payer]);
+			await sendAndConfirm(conn, payer, [ix], [payer]);
+		} catch (e: any) {
+			throw new Error(e);
+		}
+
+		await logLadder(conn, solUsdcMarket);
+	});
 });

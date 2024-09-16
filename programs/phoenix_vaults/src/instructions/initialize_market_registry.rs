@@ -1,6 +1,7 @@
-use crate::state::MarketRegistry;
-use crate::MarketMapProvider;
+use crate::error::ErrorCode;
+use crate::state::{MarketLookupTable, MarketRegistry};
 use crate::Size;
+use crate::{validate, MarketMapProvider};
 use anchor_lang::prelude::*;
 
 pub fn initialize_market_registry<'c: 'info, 'info>(
@@ -10,34 +11,45 @@ pub fn initialize_market_registry<'c: 'info, 'info>(
     let auth = ctx.accounts.authority.key();
     let lut_acct_info = ctx.accounts.lut.to_account_info();
     let lut_data = lut_acct_info.data.borrow();
-    // checks unchecked account info is a lookup table
     let lut = MarketRegistry::deserialize_lookup_table(auth, lut_data.as_ref())?;
-
-    let markets: Vec<Pubkey> = ctx.load_markets(params)?.keys().cloned().collect();
-
-    if markets.len() != lut.addresses.len() {
-        msg!(
-            "MarketRegistryLength: {:?} != {:?}",
-            markets.len(),
-            lut.addresses.len()
-        );
-        return Err(crate::error::ErrorCode::MarketRegistryLength.into());
-    }
-
-    // zip markets and lut addresses and check they match
-    // if this ix was built correctly, the order of the remaining accounts should simply be the lut addresses
-    for (market, lut_address) in markets.iter().zip(lut.addresses.iter()) {
-        if market != lut_address {
-            msg!("MarketRegistryMismatch: {:?} != {:?}", market, lut_address);
-            return Err(crate::error::ErrorCode::MarketRegistryMismatch.into());
-            // return Err(anchor_lang::error::Error::from(crate::error::ErrorCode::MarketRegistryMismatch));
-        }
-    }
 
     let mut registry = ctx.accounts.market_registry.load_init()?;
     registry.lut = ctx.accounts.lut.key();
+    registry.lut_auth = ctx.accounts.authority.key();
     registry.usdc_mint = params.usdc_mint;
     registry.sol_mint = params.sol_mint;
+
+    // transpose RefMut<MarketRegistry> to Ref<MarketRegistry>
+
+    let market_lut = MarketLookupTable {
+        lut_key: ctx.accounts.lut.key(),
+        lut: &lut,
+    };
+    let markets: Vec<Pubkey> = ctx
+        .load_markets(registry, market_lut)?
+        .keys()
+        .cloned()
+        .collect();
+
+    validate!(
+        markets.len() == lut.addresses.len(),
+        ErrorCode::MarketRegistryLength,
+        &format!(
+            "MarketRegistryLength: {:?} != {:?}",
+            markets.len(),
+            lut.addresses.len()
+        )
+    )?;
+
+    validate!(
+        markets.len() == lut.addresses.len(),
+        ErrorCode::MarketRegistryLength,
+        &format!(
+            "MarketRegistryLength: {:?} != {:?}",
+            markets.len(),
+            lut.addresses.len()
+        )
+    )?;
 
     Ok(())
 }
@@ -46,8 +58,6 @@ pub fn initialize_market_registry<'c: 'info, 'info>(
 pub struct MarketLookupTableParams {
     pub usdc_mint: Pubkey,
     pub sol_mint: Pubkey,
-    /// Index of SOL/USDC market in remaining accounts
-    pub sol_usdc_market_index: u8,
 }
 
 #[derive(Accounts)]

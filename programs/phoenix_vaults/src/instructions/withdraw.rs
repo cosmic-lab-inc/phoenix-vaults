@@ -2,11 +2,10 @@ use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Transfer};
 use anchor_spl::token::{Token, TokenAccount};
 
-use crate::constraints::{is_authority_for_investor, is_token_for_vault};
+use crate::constraints::{is_authority_for_investor, is_lut_for_registry, is_token_for_vault};
 use crate::cpis::TokenTransferCPI;
 use crate::declare_vault_seeds;
-use crate::instructions::MarketLookupTableParams;
-use crate::state::{Investor, MarketMapProvider, MarketRegistry, Vault};
+use crate::state::{Investor, MarketLookupTable, MarketMapProvider, MarketRegistry, Vault};
 
 pub fn withdraw<'c: 'info, 'info>(ctx: Context<'_, '_, 'c, 'info, Withdraw<'info>>) -> Result<()> {
     let clock = &Clock::get()?;
@@ -14,13 +13,16 @@ pub fn withdraw<'c: 'info, 'info>(ctx: Context<'_, '_, 'c, 'info, Withdraw<'info
     let mut vault = ctx.accounts.vault.load_mut()?;
     let mut investor = ctx.accounts.investor.load_mut()?;
 
-    let registry = ctx.accounts.market_registry.load()?;
-    let params = MarketLookupTableParams {
-        usdc_mint: registry.usdc_mint,
-        sol_mint: registry.sol_mint,
-        sol_usdc_market_index: 0,
+    let registry = ctx.accounts.market_registry.load_mut()?;
+
+    let lut_acct_info = ctx.accounts.lut.to_account_info();
+    let lut_data = lut_acct_info.data.borrow();
+    let lut = MarketRegistry::deserialize_lookup_table(registry.lut_auth, lut_data.as_ref())?;
+    let market_lut = MarketLookupTable {
+        lut_key: ctx.accounts.lut.key(),
+        lut: &lut,
     };
-    let vault_equity = ctx.equity(&vault_key, params)?;
+    let vault_equity = ctx.equity(&vault_key, registry, market_lut)?;
 
     let investor_withdraw_amount =
         investor.withdraw(vault_equity, &mut vault, clock.unix_timestamp)?;
@@ -50,10 +52,16 @@ pub struct Withdraw<'info> {
     pub authority: Signer<'info>,
 
     #[account(
+        mut,
         seeds = [b"market_registry"],
-        bump
+        bump,
+        constraint = is_lut_for_registry(&market_registry, &lut)?
     )]
     pub market_registry: AccountLoader<'info, MarketRegistry>,
+
+    /// CHECK: Deserialized into [`AddressLookupTable`] within instruction
+    pub lut: UncheckedAccount<'info>,
+
     #[account(
         mut,
         constraint = is_token_for_vault(&vault, &vault_token_account)?,

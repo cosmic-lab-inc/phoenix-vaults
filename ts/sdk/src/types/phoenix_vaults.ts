@@ -169,6 +169,11 @@ export type PhoenixVaults = {
 				},
 				{
 					name: 'marketRegistry';
+					isMut: true;
+					isSigner: false;
+				},
+				{
+					name: 'lut';
 					isMut: false;
 					isSigner: false;
 				},
@@ -380,6 +385,11 @@ export type PhoenixVaults = {
 				},
 				{
 					name: 'marketRegistry';
+					isMut: true;
+					isSigner: false;
+				},
+				{
+					name: 'lut';
 					isMut: false;
 					isSigner: false;
 				}
@@ -504,6 +514,11 @@ export type PhoenixVaults = {
 						docs: [
 							'[`AddressLookupTable`] that contains a list of Phoenix markets'
 						];
+						type: 'publicKey';
+					},
+					{
+						name: 'lutAuth';
+						docs: ['Authority over the [`AddressLookupTable`]'];
 						type: 'publicKey';
 					},
 					{
@@ -794,11 +809,6 @@ export type PhoenixVaults = {
 					{
 						name: 'solMint';
 						type: 'publicKey';
-					},
-					{
-						name: 'solUsdcMarketIndex';
-						docs: ['Index of SOL/USDC market in remaining accounts'];
-						type: 'u8';
 					}
 				];
 			};
@@ -1236,21 +1246,26 @@ export type PhoenixVaults = {
 		},
 		{
 			code: 6034;
+			name: 'MarketRegistryLookupTableMismatch';
+			msg: 'MarketRegistryLookupTableMismatch';
+		},
+		{
+			code: 6035;
 			name: 'MarketRegistryLength';
 			msg: 'MarketRegistryLength';
 		},
 		{
-			code: 6035;
+			code: 6036;
 			name: 'MarketRegistryMismatch';
 			msg: 'MarketRegistryMismatch';
 		},
 		{
-			code: 6036;
+			code: 6037;
 			name: 'OrderPacketDeserialization';
 			msg: 'OrderPacketDeserialization';
 		},
 		{
-			code: 6037;
+			code: 6038;
 			name: 'InvalidPhoenixInstruction';
 			msg: 'InvalidPhoenixInstruction';
 		}
@@ -1428,6 +1443,11 @@ export const IDL: PhoenixVaults = {
 				},
 				{
 					name: 'marketRegistry',
+					isMut: true,
+					isSigner: false,
+				},
+				{
+					name: 'lut',
 					isMut: false,
 					isSigner: false,
 				},
@@ -1639,6 +1659,11 @@ export const IDL: PhoenixVaults = {
 				},
 				{
 					name: 'marketRegistry',
+					isMut: true,
+					isSigner: false,
+				},
+				{
+					name: 'lut',
 					isMut: false,
 					isSigner: false,
 				},
@@ -1763,6 +1788,11 @@ export const IDL: PhoenixVaults = {
 						docs: [
 							'[`AddressLookupTable`] that contains a list of Phoenix markets',
 						],
+						type: 'publicKey',
+					},
+					{
+						name: 'lutAuth',
+						docs: ['Authority over the [`AddressLookupTable`]'],
 						type: 'publicKey',
 					},
 					{
@@ -2053,11 +2083,6 @@ export const IDL: PhoenixVaults = {
 					{
 						name: 'solMint',
 						type: 'publicKey',
-					},
-					{
-						name: 'solUsdcMarketIndex',
-						docs: ['Index of SOL/USDC market in remaining accounts'],
-						type: 'u8',
 					},
 				],
 			},
@@ -2495,21 +2520,26 @@ export const IDL: PhoenixVaults = {
 		},
 		{
 			code: 6034,
+			name: 'MarketRegistryLookupTableMismatch',
+			msg: 'MarketRegistryLookupTableMismatch',
+		},
+		{
+			code: 6035,
 			name: 'MarketRegistryLength',
 			msg: 'MarketRegistryLength',
 		},
 		{
-			code: 6035,
+			code: 6036,
 			name: 'MarketRegistryMismatch',
 			msg: 'MarketRegistryMismatch',
 		},
 		{
-			code: 6036,
+			code: 6037,
 			name: 'OrderPacketDeserialization',
 			msg: 'OrderPacketDeserialization',
 		},
 		{
-			code: 6037,
+			code: 6038,
 			name: 'InvalidPhoenixInstruction',
 			msg: 'InvalidPhoenixInstruction',
 		},

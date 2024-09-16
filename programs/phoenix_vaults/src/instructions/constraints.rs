@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{Mint, TokenAccount};
 
-use crate::state::{Investor, Vault};
+use crate::state::{Investor, MarketRegistry, Vault};
 
 pub fn is_vault_for_investor(
     investor: &AccountLoader<Investor>,
@@ -41,4 +41,11 @@ pub fn is_token_for_vault(
     Ok(vault_ref.token_account.eq(&token.key())
         && vault_ref.mint.eq(&token.mint)
         && token.owner.eq(&vault.key()))
+}
+
+pub fn is_lut_for_registry(
+    registry: &AccountLoader<MarketRegistry>,
+    lut: &UncheckedAccount,
+) -> Result<bool> {
+    Ok(&registry.load()?.lut == lut.key)
 }

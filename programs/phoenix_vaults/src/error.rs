@@ -73,6 +73,8 @@ pub enum ErrorCode {
     AddressLookupTableAuthorityMissing,
     #[msg("AddressLookupTableAuthorityInvalid")]
     AddressLookupTableAuthorityInvalid,
+    #[msg("MarketRegistryLookupTableMismatch")]
+    MarketRegistryLookupTableMismatch,
     #[msg("MarketRegistryLength")]
     MarketRegistryLength,
     #[msg("MarketRegistryMismatch")]

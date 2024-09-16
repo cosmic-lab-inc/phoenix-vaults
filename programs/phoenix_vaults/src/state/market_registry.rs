@@ -3,7 +3,8 @@ use drift_macros::assert_no_slop;
 use solana_program::address_lookup_table::state::AddressLookupTable;
 use static_assertions::const_assert_eq;
 
-use crate::Size;
+use crate::error::ErrorCode;
+use crate::{validate, Size};
 
 /// DriftVaults validates vault user positions against the remaining accounts provided for those markets.
 /// If the remaining accounts do not contain every market the user has a position in, then the instruction errors.
@@ -18,6 +19,8 @@ use crate::Size;
 pub struct MarketRegistry {
     /// [`AddressLookupTable`] that contains a list of Phoenix markets
     pub lut: Pubkey,
+    /// Authority over the [`AddressLookupTable`]
+    pub lut_auth: Pubkey,
     /// Phoenix markets are denominated in USDC or SOL, so we must pre-define this
     pub usdc_mint: Pubkey,
     /// Phoenix markets are denominated in USDC or SOL, so we must pre-define this
@@ -25,7 +28,7 @@ pub struct MarketRegistry {
 }
 
 impl Size for MarketRegistry {
-    const SIZE: usize = 32 * 3 + 8;
+    const SIZE: usize = 32 * 4 + 8;
 }
 const_assert_eq!(
     MarketRegistry::SIZE,
@@ -33,19 +36,20 @@ const_assert_eq!(
 );
 
 impl MarketRegistry {
+    /// Deserialize raw data into an [`AddressLookupTable`]
     pub fn deserialize_lookup_table(auth: Pubkey, lut_data: &[u8]) -> Result<AddressLookupTable> {
         let lookup_table = AddressLookupTable::deserialize(lut_data).map_err(|_| {
-            anchor_lang::error::Error::from(crate::error::ErrorCode::InvalidAddressLookupTableData)
+            anchor_lang::error::Error::from(ErrorCode::InvalidAddressLookupTableData)
         })?;
         if lookup_table.meta.authority.is_none() {
             return Err(anchor_lang::error::Error::from(
-                crate::error::ErrorCode::AddressLookupTableAuthorityMissing,
+                ErrorCode::AddressLookupTableAuthorityMissing,
             ));
         }
         let lut_auth = lookup_table.meta.authority.unwrap();
         if lut_auth != auth {
             return Err(anchor_lang::error::Error::from(
-                crate::error::ErrorCode::AddressLookupTableAuthorityInvalid,
+                ErrorCode::AddressLookupTableAuthorityInvalid,
             ));
         }
         Ok(lookup_table)
