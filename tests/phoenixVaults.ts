@@ -38,7 +38,6 @@ import {
 } from '@solana/spl-token';
 import {
 	createMarketTokenAccountIxs,
-	encodeLimitOrderPacket,
 	sendAndConfirm,
 	MARKET_CONFIG,
 	tokenBalance,
@@ -46,9 +45,9 @@ import {
 	simulate,
 	logLadder,
 	outAmount,
-	parseTraderState,
 	encodeLimitOrderPacketWithFreeFunds,
-	fetchDepositedTokens,
+	fetchTraderState,
+	fetchInvestorEquity,
 } from './testHelpers';
 import {
 	Client as PhoenixClient,
@@ -516,11 +515,7 @@ describe('phoenixVaults', () => {
 			solUsdcMarket.toString()
 		);
 
-		const vaultBefore = await fetchDepositedTokens(
-			conn,
-			solUsdcMarket,
-			vaultKey
-		);
+		const vaultBefore = await fetchTraderState(conn, solUsdcMarket, vaultKey);
 		console.log(
 			`taker deposited tokens before buy, sol: ${vaultBefore.baseUnitsFree}, usdc: ${vaultBefore.quoteUnitsFree}`
 		);
@@ -554,11 +549,7 @@ describe('phoenixVaults', () => {
 			throw new Error(e);
 		}
 
-		const vaultAfter = await fetchDepositedTokens(
-			conn,
-			solUsdcMarket,
-			vaultKey
-		);
+		const vaultAfter = await fetchTraderState(conn, solUsdcMarket, vaultKey);
 		console.log(
 			`taker deposited tokens after buy, sol: ${vaultAfter.baseUnitsFree}, usdc: ${vaultAfter.quoteUnitsFree}`
 		);
@@ -602,11 +593,7 @@ describe('phoenixVaults', () => {
 		await sendAndConfirm(conn, payer, [mintUsdcIx], [mintAuth]);
 
 		// maker buys 100% of what vault can sell, so we use the vault balance
-		const vaultState = await fetchDepositedTokens(
-			conn,
-			solUsdcMarket,
-			vaultKey
-		);
+		const vaultState = await fetchTraderState(conn, solUsdcMarket, vaultKey);
 		const solAmount = vaultState.baseUnitsFree;
 		console.log(`maker to buy ${solAmount} SOL @ $125/SOL`);
 		const numBaseLots = phoenix.rawBaseUnitsToBaseLotsRoundedDown(
@@ -653,11 +640,7 @@ describe('phoenixVaults', () => {
 			solUsdcMarket.toBase58()
 		);
 
-		const vaultBefore = await fetchDepositedTokens(
-			conn,
-			solUsdcMarket,
-			vaultKey
-		);
+		const vaultBefore = await fetchTraderState(conn, solUsdcMarket, vaultKey);
 		console.log(
 			`taker deposited tokens before sell, sol: ${vaultBefore.baseUnitsFree}, usdc: ${vaultBefore.quoteUnitsFree}`
 		);
@@ -704,11 +687,7 @@ describe('phoenixVaults', () => {
 			throw new Error(e);
 		}
 
-		const vaultAfter = await fetchDepositedTokens(
-			conn,
-			solUsdcMarket,
-			vaultKey
-		);
+		const vaultAfter = await fetchTraderState(conn, solUsdcMarket, vaultKey);
 		console.log(
 			`taker deposited tokens after sell, sol: ${vaultAfter.baseUnitsFree}, usdc: ${vaultAfter.quoteUnitsFree}`
 		);
@@ -744,48 +723,55 @@ describe('phoenixVaults', () => {
 		// vault balance of $1249.75002 + $0.22498 = $1249.975
 		assert.strictEqual(marketUsdcAfter, 1249.975);
 	});
+
 	//
-	// //
-	// // Place pending ask at $125/SOL that never gets filled, so withdraw request can measure price as best ask on-chain.
-	// //
+	// Place pending ask at $125/SOL that never gets filled, so withdraw request can measure price as best ask on-chain.
 	//
-	// it('Maker Ask SOL/USDC @ $125/SOL', async () => {
-	// 	const makerTraderState = parseTraderState(
-	// 		await fetchMarketState(conn, solUsdcMarket),
-	// 		maker.publicKey
-	// 	);
-	// 	const solAmount = makerTraderState.baseUnitsFree;
-	// 	console.log(`maker sol on market to sell: ${solAmount}`);
-	//
-	// 	const priceInTicks = phoenix.floatPriceToTicks(
-	// 		endSolUsdcPrice,
-	// 		solUsdcMarket.toBase58()
-	// 	);
-	// 	const numBaseLots = phoenix.rawBaseUnitsToBaseLotsRoundedDown(
-	// 		solAmount,
-	// 		solUsdcMarket.toBase58()
-	// 	);
-	// 	const makerOrderPacket = getLimitOrderPacket({
-	// 		side: Side.Ask,
-	// 		priceInTicks,
-	// 		numBaseLots,
-	// 	});
-	// 	const makerOrderIx = phoenix.createPlaceLimitOrderInstruction(
-	// 		makerOrderPacket,
-	// 		solUsdcMarket.toString(),
-	// 		maker.publicKey
-	// 	);
-	// 	await simulate(conn, payer, [makerOrderIx], [maker]);
-	// 	await sendAndConfirm(conn, payer, [makerOrderIx], [maker]);
-	//
-	// 	await logLadder(conn, solUsdcMarket);
-	// });
+
+	it('Maker Ask SOL/USDC @ $125/SOL', async () => {
+		const makerTraderState = await fetchTraderState(
+			conn,
+			solUsdcMarket,
+			maker.publicKey
+		);
+		const solAmount = makerTraderState.baseUnitsFree;
+		console.log(`maker sol on market to sell: ${solAmount}`);
+
+		const priceInTicks = phoenix.floatPriceToTicks(
+			endSolUsdcPrice,
+			solUsdcMarket.toBase58()
+		);
+		const numBaseLots = phoenix.rawBaseUnitsToBaseLotsRoundedDown(
+			solAmount,
+			solUsdcMarket.toBase58()
+		);
+		const makerOrderPacket = getLimitOrderPacket({
+			side: Side.Ask,
+			priceInTicks,
+			numBaseLots,
+		});
+		const makerOrderIx = phoenix.createPlaceLimitOrderInstruction(
+			makerOrderPacket,
+			solUsdcMarket.toString(),
+			maker.publicKey
+		);
+		await sendAndConfirm(conn, payer, [makerOrderIx], [maker]);
+	});
 
 	//
 	// Now that an ask at $125/SOL is on the book, we can use that price on-chain to measure vault equity
 	//
 
 	it('Request Withdraw', async () => {
+		// todo: fn to get investor equity
+		const investorEquity = await fetchInvestorEquity(
+			program,
+			conn,
+			investor,
+			vaultKey,
+			marketRegistry
+		);
+		console.log(`investor equity: ${investorEquity}`);
 		const vaultQuoteTokenAccount = getAssociatedTokenAddressSync(
 			usdcMint,
 			vaultKey,
@@ -818,7 +804,5 @@ describe('phoenixVaults', () => {
 		} catch (e: any) {
 			throw new Error(e);
 		}
-
-		await logLadder(conn, solUsdcMarket);
 	});
 });

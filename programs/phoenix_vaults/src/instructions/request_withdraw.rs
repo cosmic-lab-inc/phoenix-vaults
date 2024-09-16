@@ -6,6 +6,13 @@ use crate::state::{
     Investor, MarketLookupTable, MarketMapProvider, MarketRegistry, Vault, WithdrawUnit,
 };
 
+/// The investor deposits funds to the vault token accounts.
+/// The vault then deposits those funds to various Phoenix markets.
+/// If the vault has insufficient funds in the token accounts, this instruction will
+/// forcefully withdraw any free funds from Phoenix markets to the vault token accounts.
+/// Then it will flag that balance within the vault token accounts as pending withdrawal,
+/// and therefore unusable by the vault to trade.
+/// Once the withdrawal is finalized, the pending withdrawal will be nullified.
 pub fn request_withdraw<'c: 'info, 'info>(
     ctx: Context<'_, '_, 'c, 'info, RequestWithdraw<'info>>,
     withdraw_amount: u64,
