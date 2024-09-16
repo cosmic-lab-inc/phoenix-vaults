@@ -18,7 +18,8 @@ pub struct InvestorRecord {
     pub action: InvestorAction,
     pub amount: u64,
 
-    pub mint: Pubkey,
+    pub usdc_mint: Pubkey,
+    pub sol_mint: Pubkey,
     pub vault_shares_before: u128,
     pub vault_shares_after: u128,
 

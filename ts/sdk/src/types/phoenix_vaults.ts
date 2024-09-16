@@ -11,19 +11,29 @@ export type PhoenixVaults = {
 					isSigner: false;
 				},
 				{
-					name: 'tokenAccount';
+					name: 'manager';
+					isMut: false;
+					isSigner: true;
+				},
+				{
+					name: 'usdcTokenAccount';
 					isMut: true;
 					isSigner: false;
 				},
 				{
-					name: 'mint';
+					name: 'usdcMint';
 					isMut: false;
 					isSigner: false;
 				},
 				{
-					name: 'manager';
+					name: 'solTokenAccount';
+					isMut: true;
+					isSigner: false;
+				},
+				{
+					name: 'solMint';
 					isMut: false;
-					isSigner: true;
+					isSigner: false;
 				},
 				{
 					name: 'payer';
@@ -150,7 +160,7 @@ export type PhoenixVaults = {
 			];
 		},
 		{
-			name: 'deposit';
+			name: 'investorDeposit';
 			accounts: [
 				{
 					name: 'vault';
@@ -406,6 +416,104 @@ export type PhoenixVaults = {
 					};
 				}
 			];
+		},
+		{
+			name: 'marketDeposit';
+			accounts: [
+				{
+					name: 'vault';
+					isMut: false;
+					isSigner: false;
+					docs: [
+						'If delegate has authority to sign for vault, then any Phoenix CPI is valid.',
+						'Phoenix CPI validates that opaque instruction data is a [`PhoenixInstruction`],',
+						'so this is safe since any Phoenix CPI is secure.'
+					];
+				},
+				{
+					name: 'delegate';
+					isMut: false;
+					isSigner: true;
+					docs: [
+						'Is manager by default, but can be delegated to another pubkey using `update_delegate`'
+					];
+				},
+				{
+					name: 'phoenix';
+					isMut: false;
+					isSigner: false;
+				},
+				{
+					name: 'logAuthority';
+					isMut: false;
+					isSigner: false;
+				},
+				{
+					name: 'market';
+					isMut: true;
+					isSigner: false;
+				},
+				{
+					name: 'seat';
+					isMut: false;
+					isSigner: false;
+				},
+				{
+					name: 'baseMint';
+					isMut: false;
+					isSigner: false;
+				},
+				{
+					name: 'quoteMint';
+					isMut: false;
+					isSigner: false;
+				},
+				{
+					name: 'vaultBaseTokenAccount';
+					isMut: true;
+					isSigner: false;
+				},
+				{
+					name: 'vaultQuoteTokenAccount';
+					isMut: true;
+					isSigner: false;
+				},
+				{
+					name: 'marketBaseTokenAccount';
+					isMut: true;
+					isSigner: false;
+				},
+				{
+					name: 'marketQuoteTokenAccount';
+					isMut: true;
+					isSigner: false;
+				},
+				{
+					name: 'tokenProgram';
+					isMut: false;
+					isSigner: false;
+				},
+				{
+					name: 'rent';
+					isMut: false;
+					isSigner: false;
+				},
+				{
+					name: 'systemProgram';
+					isMut: false;
+					isSigner: false;
+				}
+			];
+			args: [
+				{
+					name: 'quoteLots';
+					type: 'u64';
+				},
+				{
+					name: 'baseLots';
+					type: 'u64';
+				}
+			];
 		}
 	];
 	accounts: [
@@ -568,17 +676,28 @@ export type PhoenixVaults = {
 						type: 'publicKey';
 					},
 					{
-						name: 'mint';
+						name: 'usdcMint';
+						docs: ['The Phoenix USDC mint.'];
+						type: 'publicKey';
+					},
+					{
+						name: 'solMint';
+						docs: ['The Phoenix (wrapped) SOL mint.'];
+						type: 'publicKey';
+					},
+					{
+						name: 'usdcTokenAccount';
 						docs: [
-							'The token mint the vault deposits into/withdraws from (e.g., USDC).'
+							'The USDC token account investor transfer with,',
+							'and the vault transfer to Phoenix markets with.'
 						];
 						type: 'publicKey';
 					},
 					{
-						name: 'tokenAccount';
+						name: 'solTokenAccount';
 						docs: [
-							'The token account investors deposit into and withdraw from.',
-							'This uses the mint specified above, and is likely USDC.'
+							'The SOL token account investor transfer with,',
+							'and the vault transfer to Phoenix markets with.'
 						];
 						type: 'publicKey';
 					},
@@ -849,10 +968,6 @@ export type PhoenixVaults = {
 						type: 'u32';
 					},
 					{
-						name: 'spotMarketIndex';
-						type: 'u16';
-					},
-					{
 						name: 'permissioned';
 						type: 'bool';
 					},
@@ -1001,7 +1116,12 @@ export type PhoenixVaults = {
 					index: false;
 				},
 				{
-					name: 'mint';
+					name: 'usdcMint';
+					type: 'publicKey';
+					index: false;
+				},
+				{
+					name: 'solMint';
 					type: 'publicKey';
 					index: false;
 				},
@@ -1266,6 +1386,11 @@ export type PhoenixVaults = {
 		},
 		{
 			code: 6038;
+			name: 'OrderPacketMustUseDepositedFunds';
+			msg: 'OrderPacketMustUseDepositedFunds';
+		},
+		{
+			code: 6039;
 			name: 'InvalidPhoenixInstruction';
 			msg: 'InvalidPhoenixInstruction';
 		}
@@ -1285,19 +1410,29 @@ export const IDL: PhoenixVaults = {
 					isSigner: false,
 				},
 				{
-					name: 'tokenAccount',
+					name: 'manager',
+					isMut: false,
+					isSigner: true,
+				},
+				{
+					name: 'usdcTokenAccount',
 					isMut: true,
 					isSigner: false,
 				},
 				{
-					name: 'mint',
+					name: 'usdcMint',
 					isMut: false,
 					isSigner: false,
 				},
 				{
-					name: 'manager',
+					name: 'solTokenAccount',
+					isMut: true,
+					isSigner: false,
+				},
+				{
+					name: 'solMint',
 					isMut: false,
-					isSigner: true,
+					isSigner: false,
 				},
 				{
 					name: 'payer',
@@ -1424,7 +1559,7 @@ export const IDL: PhoenixVaults = {
 			],
 		},
 		{
-			name: 'deposit',
+			name: 'investorDeposit',
 			accounts: [
 				{
 					name: 'vault',
@@ -1681,6 +1816,104 @@ export const IDL: PhoenixVaults = {
 				},
 			],
 		},
+		{
+			name: 'marketDeposit',
+			accounts: [
+				{
+					name: 'vault',
+					isMut: false,
+					isSigner: false,
+					docs: [
+						'If delegate has authority to sign for vault, then any Phoenix CPI is valid.',
+						'Phoenix CPI validates that opaque instruction data is a [`PhoenixInstruction`],',
+						'so this is safe since any Phoenix CPI is secure.',
+					],
+				},
+				{
+					name: 'delegate',
+					isMut: false,
+					isSigner: true,
+					docs: [
+						'Is manager by default, but can be delegated to another pubkey using `update_delegate`',
+					],
+				},
+				{
+					name: 'phoenix',
+					isMut: false,
+					isSigner: false,
+				},
+				{
+					name: 'logAuthority',
+					isMut: false,
+					isSigner: false,
+				},
+				{
+					name: 'market',
+					isMut: true,
+					isSigner: false,
+				},
+				{
+					name: 'seat',
+					isMut: false,
+					isSigner: false,
+				},
+				{
+					name: 'baseMint',
+					isMut: false,
+					isSigner: false,
+				},
+				{
+					name: 'quoteMint',
+					isMut: false,
+					isSigner: false,
+				},
+				{
+					name: 'vaultBaseTokenAccount',
+					isMut: true,
+					isSigner: false,
+				},
+				{
+					name: 'vaultQuoteTokenAccount',
+					isMut: true,
+					isSigner: false,
+				},
+				{
+					name: 'marketBaseTokenAccount',
+					isMut: true,
+					isSigner: false,
+				},
+				{
+					name: 'marketQuoteTokenAccount',
+					isMut: true,
+					isSigner: false,
+				},
+				{
+					name: 'tokenProgram',
+					isMut: false,
+					isSigner: false,
+				},
+				{
+					name: 'rent',
+					isMut: false,
+					isSigner: false,
+				},
+				{
+					name: 'systemProgram',
+					isMut: false,
+					isSigner: false,
+				},
+			],
+			args: [
+				{
+					name: 'quoteLots',
+					type: 'u64',
+				},
+				{
+					name: 'baseLots',
+					type: 'u64',
+				},
+			],
+		},
 	],
 	accounts: [
 		{
@@ -1842,17 +2075,28 @@ export const IDL: PhoenixVaults = {
 						type: 'publicKey',
 					},
 					{
-						name: 'mint',
+						name: 'usdcMint',
+						docs: ['The Phoenix USDC mint.'],
+						type: 'publicKey',
+					},
+					{
+						name: 'solMint',
+						docs: ['The Phoenix (wrapped) SOL mint.'],
+						type: 'publicKey',
+					},
+					{
+						name: 'usdcTokenAccount',
 						docs: [
-							'The token mint the vault deposits into/withdraws from (e.g., USDC).',
+							'The USDC token account investor transfer with,',
+							'and the vault transfer to Phoenix markets with.',
 						],
 						type: 'publicKey',
 					},
 					{
-						name: 'tokenAccount',
+						name: 'solTokenAccount',
 						docs: [
-							'The token account investors deposit into and withdraw from.',
-							'This uses the mint specified above, and is likely USDC.',
+							'The SOL token account investor transfer with,',
+							'and the vault transfer to Phoenix markets with.',
 						],
 						type: 'publicKey',
 					},
@@ -2123,10 +2367,6 @@ export const IDL: PhoenixVaults = {
 						type: 'u32',
 					},
 					{
-						name: 'spotMarketIndex',
-						type: 'u16',
-					},
-					{
 						name: 'permissioned',
 						type: 'bool',
 					},
@@ -2275,7 +2515,12 @@ export const IDL: PhoenixVaults = {
 					index: false,
 				},
 				{
-					name: 'mint',
+					name: 'usdcMint',
+					type: 'publicKey',
+					index: false,
+				},
+				{
+					name: 'solMint',
 					type: 'publicKey',
 					index: false,
 				},
@@ -2540,6 +2785,11 @@ export const IDL: PhoenixVaults = {
 		},
 		{
 			code: 6038,
+			name: 'OrderPacketMustUseDepositedFunds',
+			msg: 'OrderPacketMustUseDepositedFunds',
+		},
+		{
+			code: 6039,
 			name: 'InvalidPhoenixInstruction',
 			msg: 'InvalidPhoenixInstruction',
 		},

@@ -1,10 +1,13 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{Mint, Token, TokenAccount};
 use phoenix::program::PhoenixInstruction;
-use phoenix::state::decode_order_packet;
+use phoenix::state::{decode_order_packet, OrderPacketMetadata};
 use solana_program::program::invoke_signed;
 
-use crate::constraints::is_delegate_for_vault;
+use crate::constraints::{
+    is_delegate_for_vault, is_sol_mint, is_sol_token_for_vault, is_usdc_mint,
+    is_usdc_token_for_vault,
+};
 use crate::error::ErrorCode;
 use crate::state::{PhoenixProgram, Vault};
 use crate::{declare_vault_seeds, validate};
@@ -20,21 +23,28 @@ pub fn place_limit_order<'c: 'info, 'info>(
     let instruction =
         PhoenixInstruction::try_from(*tag).or(Err(ProgramError::InvalidInstructionData))?;
     validate!(
-        matches!(instruction, PhoenixInstruction::PlaceLimitOrder),
+        matches!(
+            instruction,
+            PhoenixInstruction::PlaceLimitOrderWithFreeFunds
+        ),
         ErrorCode::InvalidPhoenixInstruction,
-        "Phoenix instruction tag does not match PlaceLimitOrder"
+        "Phoenix instruction tag does not match PlaceLimitOrderWithFreeFunds"
     )?;
 
     let order = decode_order_packet(data).ok_or(ErrorCode::OrderPacketDeserialization)?;
+    validate!(
+        order.no_deposit_or_withdrawal(),
+        ErrorCode::OrderPacketMustUseDepositedFunds,
+        "OrderPacket must use deposited funds"
+    )?;
 
     let trader_index = 3;
-    let mut ix = phoenix::program::instruction_builders::create_new_order_instruction(
-        &ctx.accounts.market.key(),
-        &ctx.accounts.vault.key(),
-        &ctx.accounts.base_mint.key(),
-        &ctx.accounts.quote_mint.key(),
-        &order,
-    );
+    let mut ix =
+        phoenix::program::instruction_builders::create_new_order_with_free_funds_instruction(
+            &ctx.accounts.market.key(),
+            &ctx.accounts.vault.key(),
+            &order,
+        );
     ix.accounts[trader_index].is_signer = true;
 
     // #[account(0, name = "phoenix_program", desc = "Phoenix program")]
@@ -92,15 +102,34 @@ pub struct PlaceLimitOrder<'info> {
     pub seat: UncheckedAccount<'info>,
 
     pub base_mint: Account<'info, Mint>,
+    #[account(
+        constraint = is_usdc_mint(&vault, &quote_mint.key())? || is_sol_mint(&vault, &quote_mint.key())?,
+    )]
     pub quote_mint: Account<'info, Mint>,
 
-    #[account(mut)]
+    #[account(
+        mut,
+        token::mint = base_mint
+    )]
     pub vault_base_token_account: Account<'info, TokenAccount>,
-    #[account(mut)]
+    #[account(
+        mut,
+        constraint = is_usdc_token_for_vault(&vault, &vault_quote_token_account)? || is_sol_token_for_vault(&vault, &vault_quote_token_account)?,
+        token::mint = quote_mint
+    )]
     pub vault_quote_token_account: Account<'info, TokenAccount>,
-    #[account(mut)]
+
+    #[account(
+        mut,
+        token::mint = base_mint
+    )]
     pub market_base_token_account: Account<'info, TokenAccount>,
-    #[account(mut)]
+    #[account(
+        mut,
+        constraint = is_usdc_mint(&vault, &market_quote_token_account.mint)? || is_sol_mint(&vault, &market_quote_token_account.mint)?,
+        token::mint = quote_mint
+    )]
     pub market_quote_token_account: Account<'info, TokenAccount>,
+
     pub token_program: Program<'info, Token>,
 }

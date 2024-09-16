@@ -2,12 +2,17 @@ use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Transfer};
 use anchor_spl::token::{Token, TokenAccount};
 
-use crate::constraints::{is_authority_for_investor, is_lut_for_registry, is_token_for_vault};
+use crate::constraints::{
+    is_authority_for_investor, is_lut_for_registry, is_sol_mint, is_sol_token_for_vault,
+    is_usdc_mint, is_usdc_token_for_vault,
+};
 use crate::cpis::TokenTransferCPI;
 use crate::declare_vault_seeds;
 use crate::state::{Investor, MarketLookupTable, MarketMapProvider, MarketRegistry, Vault};
 
-pub fn withdraw<'c: 'info, 'info>(ctx: Context<'_, '_, 'c, 'info, Withdraw<'info>>) -> Result<()> {
+pub fn investor_withdraw<'c: 'info, 'info>(
+    ctx: Context<'_, '_, 'c, 'info, InvestorWithdraw<'info>>,
+) -> Result<()> {
     let clock = &Clock::get()?;
     let vault_key = ctx.accounts.vault.key();
     let mut vault = ctx.accounts.vault.load_mut()?;
@@ -37,7 +42,7 @@ pub fn withdraw<'c: 'info, 'info>(ctx: Context<'_, '_, 'c, 'info, Withdraw<'info
 }
 
 #[derive(Accounts)]
-pub struct Withdraw<'info> {
+pub struct InvestorWithdraw<'info> {
     #[account(mut)]
     pub vault: AccountLoader<'info, Vault>,
 
@@ -64,11 +69,12 @@ pub struct Withdraw<'info> {
 
     #[account(
         mut,
-        constraint = is_token_for_vault(&vault, &vault_token_account)?,
+        constraint = is_usdc_token_for_vault(&vault, &vault_token_account)? || is_sol_token_for_vault(&vault, &vault_token_account)?,
     )]
     pub vault_token_account: Box<Account<'info, TokenAccount>>,
     #[account(
         mut,
+        constraint = is_usdc_mint(&vault, &investor_token_account.mint)? || is_sol_mint(&vault, &investor_token_account.mint)?,
         token::authority = authority,
         token::mint = vault_token_account.mint,
     )]
@@ -76,7 +82,7 @@ pub struct Withdraw<'info> {
     pub token_program: Program<'info, Token>,
 }
 
-impl<'info> TokenTransferCPI for Context<'_, '_, '_, 'info, Withdraw<'info>> {
+impl<'info> TokenTransferCPI for Context<'_, '_, '_, 'info, InvestorWithdraw<'info>> {
     fn token_transfer(&self, amount: u64) -> Result<()> {
         declare_vault_seeds!(self.accounts.vault, seeds);
 

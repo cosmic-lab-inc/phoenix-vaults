@@ -35,8 +35,10 @@ export type Vault = {
 	name: number[];
 	pubkey: PublicKey;
 	manager: PublicKey;
-	mint: PublicKey;
-	tokenAccount: PublicKey;
+	usdcMint: PublicKey;
+	solMint: PublicKey;
+	usdcTokenAccount: PublicKey;
+	solTokenAccount: PublicKey;
 	delegate: PublicKey;
 	investorShares: BN;
 	totalShares: BN;

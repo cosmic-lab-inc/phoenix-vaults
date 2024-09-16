@@ -1,12 +1,15 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Token, TokenAccount, Transfer};
 
-use crate::constraints::{is_authority_for_investor, is_lut_for_registry, is_token_for_vault};
+use crate::constraints::{
+    is_authority_for_investor, is_lut_for_registry, is_sol_mint, is_sol_token_for_vault,
+    is_usdc_mint, is_usdc_token_for_vault,
+};
 use crate::cpis::TokenTransferCPI;
 use crate::state::{Investor, MarketLookupTable, MarketMapProvider, MarketRegistry, Vault};
 
-pub fn deposit<'c: 'info, 'info>(
-    ctx: Context<'_, '_, 'c, 'info, Deposit<'info>>,
+pub fn investor_deposit<'c: 'info, 'info>(
+    ctx: Context<'_, '_, 'c, 'info, InvestorDeposit<'info>>,
     amount: u64,
 ) -> Result<()> {
     let clock = &Clock::get()?;
@@ -35,8 +38,9 @@ pub fn deposit<'c: 'info, 'info>(
     Ok(())
 }
 
+/// Investor may deposit USDC or SOL into vault.
 #[derive(Accounts)]
-pub struct Deposit<'info> {
+pub struct InvestorDeposit<'info> {
     #[account(mut)]
     pub vault: AccountLoader<'info, Vault>,
 
@@ -63,23 +67,27 @@ pub struct Deposit<'info> {
 
     #[account(
         mut,
-        constraint = is_token_for_vault(&vault, &vault_token_account)?,
+        constraint = is_usdc_token_for_vault(&vault, &vault_token_account)? || is_sol_token_for_vault(&vault, &vault_token_account)?,
+        token::mint = investor_token_account.mint,
     )]
     pub vault_token_account: Box<Account<'info, TokenAccount>>,
 
     #[account(
         mut,
+        constraint = is_usdc_mint(&vault, &investor_token_account.mint)? || is_sol_mint(&vault, &investor_token_account.mint)?,
         token::authority = authority,
-        token::mint = vault_token_account.mint,
     )]
     pub investor_token_account: Box<Account<'info, TokenAccount>>,
 
+    //
+    // Programs needed for token transfer
+    //
     pub token_program: Program<'info, Token>,
     pub rent: Sysvar<'info, Rent>,
     pub system_program: Program<'info, System>,
 }
 
-impl<'info> TokenTransferCPI for Context<'_, '_, '_, 'info, Deposit<'info>> {
+impl<'info> TokenTransferCPI for Context<'_, '_, '_, 'info, InvestorDeposit<'info>> {
     fn token_transfer(&self, amount: u64) -> Result<()> {
         let cpi_accounts = Transfer {
             from: self

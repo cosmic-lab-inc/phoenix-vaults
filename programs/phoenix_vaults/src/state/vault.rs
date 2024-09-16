@@ -21,11 +21,16 @@ pub struct Vault {
     /// The manager of the vault who has ability to update vault config,
     /// and earns a profit share or management fee.
     pub manager: Pubkey,
-    /// The token mint the vault deposits into/withdraws from (e.g., USDC).
-    pub mint: Pubkey,
-    /// The token account investors deposit into and withdraw from.
-    /// This uses the mint specified above, and is likely USDC.
-    pub token_account: Pubkey,
+    /// The Phoenix USDC mint.
+    pub usdc_mint: Pubkey,
+    /// The Phoenix (wrapped) SOL mint.
+    pub sol_mint: Pubkey,
+    /// The USDC token account investor transfer with,
+    /// and the vault transfer to Phoenix markets with.
+    pub usdc_token_account: Pubkey,
+    /// The SOL token account investor transfer with,
+    /// and the vault transfer to Phoenix markets with.
+    pub sol_token_account: Pubkey,
     /// The delegate is the "portfolio manager", "trader", or "bot" that manages the vault's assets.
     /// They can swap 100% of vault tokens.
     /// This is the manager by default.
@@ -114,7 +119,7 @@ impl Vault {
 }
 
 impl Size for Vault {
-    const SIZE: usize = 512 + 8;
+    const SIZE: usize = 576 + 8;
 }
 const_assert_eq!(Vault::SIZE, std::mem::size_of::<Vault>() + 8);
 
@@ -348,15 +353,6 @@ impl Vault {
         Ok(rebase_divisor)
     }
 
-    pub fn calculate_equity(&self, token_accounts: &[TokenAccount]) -> VaultResult<u64> {
-        // todo:
-        //  read all token accounts given,
-        //  assert owned by vault (using macro constraints in ix context)
-        //  map to their oracles (how to do this securely?)
-        //  sum the equity in USDC terms
-        Ok(0)
-    }
-
     pub fn manager_deposit(&mut self, amount: u64, vault_equity: u64, now: i64) -> Result<()> {
         self.apply_rebase(vault_equity)?;
         let VaultFee {
@@ -386,7 +382,8 @@ impl Vault {
             depositor_authority: self.manager,
             action: InvestorAction::Deposit,
             amount: 0,
-            mint: self.mint,
+            usdc_mint: self.usdc_mint,
+            sol_mint: self.sol_mint,
             vault_equity_before: vault_equity,
             vault_shares_before,
             user_vault_shares_before,
@@ -463,7 +460,8 @@ impl Vault {
             depositor_authority: self.manager,
             action: InvestorAction::WithdrawRequest,
             amount: self.last_manager_withdraw_request.value,
-            mint: self.mint,
+            usdc_mint: self.usdc_mint,
+            sol_mint: self.sol_mint,
             vault_equity_before: vault_equity,
             vault_shares_before,
             user_vault_shares_before,
@@ -512,7 +510,8 @@ impl Vault {
             depositor_authority: self.manager,
             action: InvestorAction::CancelWithdrawRequest,
             amount: 0,
-            mint: self.mint,
+            usdc_mint: self.usdc_mint,
+            sol_mint: self.sol_mint,
             vault_equity_before: vault_equity,
             vault_shares_before,
             user_vault_shares_before,
@@ -595,7 +594,8 @@ impl Vault {
             depositor_authority: self.manager,
             action: InvestorAction::Withdraw,
             amount: 0,
-            mint: self.mint,
+            usdc_mint: self.usdc_mint,
+            sol_mint: self.sol_mint,
             vault_equity_before: vault_equity,
             vault_shares_before,
             user_vault_shares_before,
@@ -670,7 +670,8 @@ impl Vault {
             depositor_authority: self.manager,
             action: InvestorAction::WithdrawRequest,
             amount: self.last_manager_withdraw_request.value,
-            mint: self.mint,
+            usdc_mint: self.usdc_mint,
+            sol_mint: self.sol_mint,
             vault_equity_before: vault_equity,
             vault_shares_before,
             user_vault_shares_before,
@@ -724,7 +725,8 @@ impl Vault {
             depositor_authority: self.manager,
             action: InvestorAction::CancelWithdrawRequest,
             amount: 0,
-            mint: self.mint,
+            usdc_mint: self.usdc_mint,
+            sol_mint: self.sol_mint,
             vault_equity_before: vault_equity,
             vault_shares_before,
             user_vault_shares_before,
@@ -803,7 +805,8 @@ impl Vault {
             depositor_authority: self.manager,
             action: InvestorAction::Withdraw,
             amount: 0,
-            mint: self.mint,
+            usdc_mint: self.usdc_mint,
+            sol_mint: self.sol_mint,
             vault_equity_before: vault_equity,
             vault_shares_before,
             user_vault_shares_before,

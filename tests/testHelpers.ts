@@ -51,6 +51,9 @@ import {
 	PlaceLimitOrderInstructionArgs,
 	placeLimitOrderInstructionDiscriminator,
 	PlaceLimitOrderStruct,
+	PlaceLimitOrderWithFreeFundsInstructionArgs,
+	placeLimitOrderWithFreeFundsInstructionDiscriminator,
+	PlaceLimitOrderWithFreeFundsStruct,
 	RawMarketConfig,
 	Side,
 	toNum,
@@ -866,12 +869,27 @@ export function messageLink(
 	return `https://explorer.solana.com/tx/inspector?message=${message}&cluster=custom&customUrl=${clusterUrl}`;
 }
 
-export function encodeLimitOrderPacket(packet: OrderPacket) {
+export function encodeLimitOrderPacket(packet: OrderPacket): Buffer {
 	const args: PlaceLimitOrderInstructionArgs = {
 		orderPacket: packet,
 	};
 	const [buffer] = PlaceLimitOrderStruct.serialize({
 		instructionDiscriminator: placeLimitOrderInstructionDiscriminator,
+		...args,
+	});
+	const order: Buffer = Buffer.from(buffer);
+	return order;
+}
+
+export function encodeLimitOrderPacketWithFreeFunds(
+	packet: OrderPacket
+): Buffer {
+	const args: PlaceLimitOrderWithFreeFundsInstructionArgs = {
+		orderPacket: packet,
+	};
+	const [buffer] = PlaceLimitOrderWithFreeFundsStruct.serialize({
+		instructionDiscriminator:
+			placeLimitOrderWithFreeFundsInstructionDiscriminator,
 		...args,
 	});
 	const order: Buffer = Buffer.from(buffer);
@@ -971,6 +989,15 @@ export function parseTraderState(
 		baseUnitsFree,
 		baseUnitsLocked,
 	};
+}
+
+export async function fetchDepositedTokens(
+	conn: Connection,
+	market: PublicKey,
+	trader: PublicKey
+): Promise<UiTraderState> {
+	const marketState = await fetchMarketState(conn, market);
+	return parseTraderState(marketState, trader);
 }
 
 export async function outAmount(

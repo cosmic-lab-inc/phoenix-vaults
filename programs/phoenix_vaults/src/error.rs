@@ -81,6 +81,8 @@ pub enum ErrorCode {
     MarketRegistryMismatch,
     #[msg("OrderPacketDeserialization")]
     OrderPacketDeserialization,
+    #[msg("OrderPacketMustUseDepositedFunds")]
+    OrderPacketMustUseDepositedFunds,
     #[msg("InvalidPhoenixInstruction")]
     InvalidPhoenixInstruction,
 }

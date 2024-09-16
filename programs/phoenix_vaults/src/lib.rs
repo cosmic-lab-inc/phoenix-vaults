@@ -36,11 +36,11 @@ pub mod phoenix_vaults {
         instructions::initialize_market_registry(ctx, params)
     }
 
-    pub fn deposit<'c: 'info, 'info>(
-        ctx: Context<'_, '_, 'c, 'info, Deposit<'info>>,
+    pub fn investor_deposit<'c: 'info, 'info>(
+        ctx: Context<'_, '_, 'c, 'info, InvestorDeposit<'info>>,
         amount: u64,
     ) -> Result<()> {
-        instructions::deposit(ctx, amount)
+        instructions::investor_deposit(ctx, amount)
     }
 
     pub fn claim_seat<'c: 'info, 'info>(
@@ -62,5 +62,13 @@ pub mod phoenix_vaults {
         withdraw_unit: WithdrawUnit,
     ) -> Result<()> {
         instructions::request_withdraw(ctx, withdraw_amount, withdraw_unit)
+    }
+
+    pub fn market_deposit<'c: 'info, 'info>(
+        ctx: Context<'_, '_, 'c, 'info, MarketDeposit<'info>>,
+        quote_lots: u64,
+        base_lots: u64,
+    ) -> Result<()> {
+        instructions::market_deposit(ctx, quote_lots, base_lots)
     }
 }

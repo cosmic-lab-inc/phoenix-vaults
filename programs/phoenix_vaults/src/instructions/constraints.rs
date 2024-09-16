@@ -1,5 +1,5 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token::{Mint, TokenAccount};
+use anchor_spl::token::TokenAccount;
 
 use crate::state::{Investor, MarketRegistry, Vault};
 
@@ -29,18 +29,32 @@ pub fn is_protocol_for_vault(vault: &AccountLoader<Vault>, protocol: &Signer) ->
     Ok(vault.load()?.protocol.eq(protocol.key))
 }
 
-pub fn is_mint_for_vault(vault: &AccountLoader<Vault>, mint: &Account<Mint>) -> Result<bool> {
-    Ok(vault.load()?.mint.eq(&mint.key()))
-}
-
-pub fn is_token_for_vault(
+pub fn is_usdc_token_for_vault(
     vault: &AccountLoader<Vault>,
     token: &Account<TokenAccount>,
 ) -> Result<bool> {
     let vault_ref = vault.load()?;
-    Ok(vault_ref.token_account.eq(&token.key())
-        && vault_ref.mint.eq(&token.mint)
-        && token.owner.eq(&vault.key()))
+    let owner = token.owner.eq(&vault.key());
+    let mint_is_usdc = vault_ref.usdc_mint.eq(&token.mint);
+    Ok(owner && vault_ref.usdc_token_account.eq(&token.key()))
+}
+
+pub fn is_sol_token_for_vault(
+    vault: &AccountLoader<Vault>,
+    token: &Account<TokenAccount>,
+) -> Result<bool> {
+    let vault_ref = vault.load()?;
+    let owner = token.owner.eq(&vault.key());
+    let mint_is_sol = vault_ref.sol_mint.eq(&token.mint);
+    Ok(owner && vault_ref.sol_token_account.eq(&token.key()))
+}
+
+pub fn is_usdc_mint(vault: &AccountLoader<Vault>, mint: &Pubkey) -> Result<bool> {
+    Ok(vault.load()?.usdc_mint.eq(&mint))
+}
+
+pub fn is_sol_mint(vault: &AccountLoader<Vault>, mint: &Pubkey) -> Result<bool> {
+    Ok(vault.load()?.sol_mint.eq(&mint))
 }
 
 pub fn is_lut_for_registry(

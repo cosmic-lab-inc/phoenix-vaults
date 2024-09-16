@@ -6,7 +6,7 @@ use anchor_spl::token::{Mint, Token, TokenAccount};
 
 use crate::constants::ONE_DAY;
 use crate::state::Vault;
-use crate::{declare_vault_seeds, error::ErrorCode, validate, Size};
+use crate::{error::ErrorCode, validate, Size};
 
 pub fn initialize_vault<'c: 'info, 'info>(
     ctx: Context<'_, '_, 'c, 'info, InitializeVault<'info>>,
@@ -20,8 +20,10 @@ pub fn initialize_vault<'c: 'info, 'info>(
     vault.manager = *ctx.accounts.manager.key;
     vault.delegate = *ctx.accounts.manager.key;
     vault.protocol = params.protocol;
-    vault.token_account = *ctx.accounts.token_account.to_account_info().key;
-    vault.mint = *ctx.accounts.mint.to_account_info().key;
+    vault.usdc_token_account = *ctx.accounts.usdc_token_account.to_account_info().key;
+    vault.usdc_mint = *ctx.accounts.usdc_mint.to_account_info().key;
+    vault.sol_token_account = *ctx.accounts.sol_token_account.to_account_info().key;
+    vault.sol_mint = *ctx.accounts.sol_mint.to_account_info().key;
     vault.init_ts = Clock::get()?.unix_timestamp;
     vault.bump = bump;
     vault.permissioned = params.permissioned;
@@ -79,7 +81,6 @@ pub struct VaultParams {
     pub min_deposit_amount: u64,
     pub profit_share: u32,
     pub hurdle_rate: u32,
-    pub spot_market_index: u16,
     pub permissioned: bool,
     pub protocol: Pubkey,
     pub protocol_fee: u64,
@@ -97,26 +98,25 @@ pub struct InitializeVault<'info> {
         payer = payer
     )]
     pub vault: AccountLoader<'info, Vault>,
-    // #[account(
-    //     mut,
-    //     seeds = [
-    //         vault.key().as_ref(),
-    //         token_program.key().as_ref(),
-    //         mint.key().as_ref(),
-    //     ],
-    //     seeds::program = associated_token_program.key(),
-    //     bump,
-    //     token::mint = mint,
-    //     token::authority = vault
-    // )]
+
+    pub manager: Signer<'info>,
+
     #[account(
         mut,
-        token::mint = mint,
+        token::mint = usdc_mint,
         token::authority = vault
     )]
-    pub token_account: Box<Account<'info, TokenAccount>>,
-    pub mint: Box<Account<'info, Mint>>,
-    pub manager: Signer<'info>,
+    pub usdc_token_account: Box<Account<'info, TokenAccount>>,
+    pub usdc_mint: Box<Account<'info, Mint>>,
+
+    #[account(
+        mut,
+        token::mint = sol_mint,
+        token::authority = vault
+    )]
+    pub sol_token_account: Box<Account<'info, TokenAccount>>,
+    pub sol_mint: Box<Account<'info, Mint>>,
+
     #[account(mut)]
     pub payer: Signer<'info>,
     pub rent: Sysvar<'info, Rent>,
