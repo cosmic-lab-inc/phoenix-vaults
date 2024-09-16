@@ -63,3 +63,10 @@ pub fn is_lut_for_registry(
 ) -> Result<bool> {
     Ok(&registry.load()?.lut == lut.key)
 }
+
+pub fn is_liquidation_delegate_for_vault(
+    vault: &AccountLoader<Vault>,
+    authority: &Signer,
+) -> Result<bool> {
+    Ok(vault.load()?.liquidator.eq(authority.key))
+}

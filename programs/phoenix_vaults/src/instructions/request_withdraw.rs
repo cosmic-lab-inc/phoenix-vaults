@@ -20,7 +20,7 @@ pub fn request_withdraw<'c: 'info, 'info>(
 ) -> Result<()> {
     let clock = &Clock::get()?;
     let vault_key = ctx.accounts.vault.key();
-    let mut vault = ctx.accounts.vault.load_mut()?;
+    let vault = &mut ctx.accounts.vault.load_mut()?;
     let mut investor = ctx.accounts.investor.load_mut()?;
 
     let registry = ctx.accounts.market_registry.load_mut()?;

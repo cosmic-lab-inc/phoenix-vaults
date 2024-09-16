@@ -31,3 +31,8 @@ pub fn quote_lots_to_quote_units_precision(header: &MarketHeader, quote_lots: u6
     let quote_atoms_per_quote_unit = 10u64.pow(header.quote_params.decimals);
     quote_lots * quote_atoms_per_quote_lot * PRICE_PRECISION_U64 / quote_atoms_per_quote_unit
 }
+
+pub fn quote_atoms_to_quote_lots_rounded_down(header: &MarketHeader, quote_atoms: u64) -> u64 {
+    let quote_atoms_per_quote_lot: u64 = header.get_quote_lot_size().into();
+    quote_atoms / quote_atoms_per_quote_lot
+}

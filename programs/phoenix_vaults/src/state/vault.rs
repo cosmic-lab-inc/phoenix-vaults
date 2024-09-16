@@ -1,11 +1,12 @@
-use crate::constants::{ONE_YEAR, PERCENTAGE_PRECISION, PERCENTAGE_PRECISION_I128};
+use crate::constants::{
+    ONE_YEAR, PERCENTAGE_PRECISION, PERCENTAGE_PRECISION_I128, TIME_FOR_LIQUIDATION,
+};
 use crate::error::{ErrorCode, VaultResult};
 use crate::math::{amount_to_shares, calculate_rebase_info, shares_to_amount, Cast, SafeMath};
 use crate::state::withdraw_request::WithdrawRequest;
-use crate::state::{InvestorAction, InvestorRecord, VaultFee, WithdrawUnit};
+use crate::state::{Investor, InvestorAction, InvestorRecord, VaultFee, WithdrawUnit};
 use crate::{validate, Size};
 use anchor_lang::prelude::*;
-use anchor_spl::token::TokenAccount;
 use drift_macros::assert_no_slop;
 use static_assertions::const_assert_eq;
 
@@ -31,8 +32,10 @@ pub struct Vault {
     /// The SOL token account investor transfer with,
     /// and the vault transfer to Phoenix markets with.
     pub sol_token_account: Pubkey,
-    /// The delegate is the "portfolio manager", "trader", or "bot" that manages the vault's assets.
-    /// They can swap 100% of vault tokens.
+    /// The delegate (investor) handling liquidation for an investor to withdraw their funds.
+    pub liquidator: Pubkey,
+    /// The delegate is the "portfolio manager", "trader", or "bot" that trades the vault assets.
+    /// It can swap 100% of vault tokens.
     /// This is the manager by default.
     pub delegate: Pubkey,
     /// The sum of all shares held by the investors
@@ -42,6 +45,8 @@ pub struct Vault {
     pub total_shares: u128,
     /// Last fee update unix timestamp
     pub last_fee_update_ts: i64,
+    /// When the liquidation starts
+    pub liquidation_start_ts: i64,
     /// The period (in seconds) that an investor must wait after requesting a withdrawal to transfer funds.
     /// The maximum is 90 days.
     /// This is only updatable to lesser values.
@@ -119,7 +124,7 @@ impl Vault {
 }
 
 impl Size for Vault {
-    const SIZE: usize = 576 + 8;
+    const SIZE: usize = 616 + 8;
 }
 const_assert_eq!(Vault::SIZE, std::mem::size_of::<Vault>() + 8);
 
@@ -617,6 +622,60 @@ impl Vault {
         self.last_manager_withdraw_request.reset(now)?;
 
         Ok(n_tokens)
+    }
+
+    pub fn in_liquidation(&self) -> bool {
+        self.liquidator != Pubkey::default()
+    }
+
+    pub fn liquidation_expired(&self, now: i64) -> bool {
+        now.saturating_sub(self.liquidation_start_ts) > TIME_FOR_LIQUIDATION
+    }
+
+    pub fn check_liquidator(&self, investor: &Investor, now: i64) -> VaultResult {
+        validate!(
+            self.liquidator == investor.authority,
+            ErrorCode::InvalidLiquidator,
+            "Investor is not the liquidator"
+        )?;
+
+        validate!(
+            now.saturating_sub(self.liquidation_start_ts) > TIME_FOR_LIQUIDATION,
+            ErrorCode::LiquidationExpired,
+            "Investor liquidation expired"
+        )?;
+
+        Ok(())
+    }
+
+    pub fn check_delegate_available_for_liquidation(
+        &self,
+        investor: &Investor,
+        now: i64,
+    ) -> VaultResult {
+        validate!(
+            self.liquidator != investor.authority,
+            ErrorCode::DelegateNotAvailableForLiquidation,
+            "liquidation delegate is already this investor"
+        )?;
+
+        validate!(
+            now.saturating_sub(self.liquidation_start_ts) > TIME_FOR_LIQUIDATION,
+            ErrorCode::DelegateNotAvailableForLiquidation,
+            "vault is already in liquidation"
+        )?;
+
+        Ok(())
+    }
+
+    pub fn set_liquidation_delegate(&mut self, liquidation_delegate: Pubkey, now: i64) {
+        self.liquidator = liquidation_delegate;
+        self.liquidation_start_ts = now;
+    }
+
+    pub fn reset_liquidation_delegate(&mut self) {
+        self.liquidator = Pubkey::default();
+        self.liquidation_start_ts = 0;
     }
 
     pub fn protocol_request_withdraw(

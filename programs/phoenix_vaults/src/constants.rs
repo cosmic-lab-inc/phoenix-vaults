@@ -30,5 +30,6 @@ pub const PERCENTAGE_PRECISION_I64: i64 = PERCENTAGE_PRECISION as i64;
 
 // TIME
 pub const ONE_HOUR: i64 = 60 * 60;
+pub const TIME_FOR_LIQUIDATION: i64 = ONE_HOUR;
 pub const ONE_DAY: i64 = ONE_HOUR * 24;
 pub const ONE_YEAR: u128 = 31536000;

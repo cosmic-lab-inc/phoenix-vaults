@@ -29,12 +29,16 @@ pub enum ErrorCode {
     InvalidVaultDepositorInitialization,
     #[msg("DelegateNotAvailableForLiquidation")]
     DelegateNotAvailableForLiquidation,
+    #[msg("InvalidLiquidator")]
+    InvalidLiquidator,
+    #[msg("LiquidationExpired")]
+    LiquidationExpired,
     #[msg("InvalidEquityValue")]
     InvalidEquityValue,
     #[msg("VaultInLiquidation")]
     VaultInLiquidation,
-    #[msg("DriftError")]
-    DriftError,
+    #[msg("InvestorCanWithdraw")]
+    InvestorCanWithdraw,
     #[msg("InvalidVaultInitialization")]
     InvalidVaultInitialization,
     #[msg("InvalidVaultUpdate")]

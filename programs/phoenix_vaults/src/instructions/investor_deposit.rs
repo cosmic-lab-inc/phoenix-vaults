@@ -3,7 +3,7 @@ use anchor_spl::token::{self, Token, TokenAccount, Transfer};
 
 use crate::constraints::{
     is_authority_for_investor, is_lut_for_registry, is_sol_mint, is_sol_token_for_vault,
-    is_usdc_mint, is_usdc_token_for_vault,
+    is_usdc_mint, is_usdc_token_for_vault, is_vault_for_investor,
 };
 use crate::cpis::TokenTransferCPI;
 use crate::state::{Investor, MarketLookupTable, MarketMapProvider, MarketRegistry, Vault};
@@ -39,6 +39,7 @@ pub fn investor_deposit<'c: 'info, 'info>(
 }
 
 /// Investor may deposit USDC or SOL into vault.
+/// The funds will add to the vault's SOL/USDC market position on Phoenix.
 #[derive(Accounts)]
 pub struct InvestorDeposit<'info> {
     #[account(mut)]
@@ -48,7 +49,8 @@ pub struct InvestorDeposit<'info> {
         mut,
         seeds = [b"investor", vault.key().as_ref(), authority.key().as_ref()],
         bump,
-        constraint = is_authority_for_investor(&investor, &authority)?
+        constraint = is_authority_for_investor(&investor, &authority)?,
+        constraint = is_vault_for_investor(&investor, &vault)?
     )]
     pub investor: AccountLoader<'info, Investor>,
 

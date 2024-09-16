@@ -1,3 +1,4 @@
+mod appoint_liquidator;
 mod claim_seat;
 pub mod constraints;
 mod initialize_investor;
@@ -5,11 +6,13 @@ mod initialize_market_registry;
 mod initialize_vault;
 mod investor_deposit;
 mod investor_withdraw;
+mod liquidate_market;
 mod market_deposit;
 mod market_withdraw;
 mod place_limit_order;
 mod request_withdraw;
 
+pub use appoint_liquidator::*;
 pub use claim_seat::*;
 pub use constraints::*;
 pub use initialize_investor::*;
@@ -17,6 +20,7 @@ pub use initialize_market_registry::*;
 pub use initialize_vault::*;
 pub use investor_deposit::*;
 pub use investor_withdraw::*;
+pub use liquidate_market::*;
 pub use market_deposit::*;
 pub use market_withdraw::*;
 pub use place_limit_order::*;

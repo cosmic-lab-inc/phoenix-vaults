@@ -1,18 +1,19 @@
 use crate::constants::PRICE_PRECISION_U64;
 use crate::error::ErrorCode;
 use crate::math::{
-    base_lots_to_raw_base_units_precision, quote_lots_to_quote_units_precision, sol_to_usdc_denom,
-    ticks_to_price_precision,
+    base_lots_to_raw_base_units_precision, quote_atoms_to_quote_lots_rounded_down,
+    quote_lots_to_quote_units_precision, sol_to_usdc_denom, ticks_to_price_precision,
 };
-use crate::state::MarketRegistry;
+use crate::state::{Investor, MarketRegistry};
 use crate::validate;
 use anchor_lang::prelude::*;
+use anchor_spl::token::TokenAccount;
 use heapless::LinearMap;
 use phoenix::program::{load_with_dispatch, MarketHeader};
 use phoenix::quantities::WrapperU64;
 use sokoban::ZeroCopy;
 use solana_program::address_lookup_table::state::AddressLookupTable;
-use std::cell::RefMut;
+use std::cell::{Ref, RefMut};
 
 const SOL_USDC_MARKET_INDEX: usize = 0;
 
@@ -35,6 +36,14 @@ pub trait MarketMapProvider<'a> {
         registry: RefMut<MarketRegistry>,
         market_lut: MarketLookupTable,
     ) -> Result<u64>;
+
+    fn check_cant_withdraw(
+        &self,
+        investor: &Investor,
+        vault_usdc_token_account: &Account<TokenAccount>,
+        registry: &RefMut<MarketRegistry>,
+        lut: &AddressLookupTable,
+    ) -> Result<()>;
 }
 
 pub struct MarketLookupTable<'a> {
@@ -198,7 +207,6 @@ impl<'a: 'info, 'info, T: anchor_lang::Bumps> MarketMapProvider<'a>
                 .map_or(0, |ask| ask.price_in_ticks);
             let price = ticks_to_price_precision(&header, tick_price);
 
-            // todo: calculate equity based on token accounts and not active orders on Phoenix?
             if let Some(trader_state) = market.inner.get_trader_state(vault_key) {
                 let quote_mint = header.quote_params.mint_key;
                 let usdc_price_precision = if quote_mint == usdc_mint {
@@ -229,5 +237,59 @@ impl<'a: 'info, 'info, T: anchor_lang::Bumps> MarketMapProvider<'a>
             }
         }
         Ok(equity)
+    }
+
+    fn check_cant_withdraw(
+        &self,
+        investor: &Investor,
+        vault_usdc_token_account: &Account<TokenAccount>,
+        registry: &RefMut<MarketRegistry>,
+        lut: &AddressLookupTable,
+    ) -> Result<()> {
+        let lut_key_at_index = lut
+            .addresses
+            .get(SOL_USDC_MARKET_INDEX)
+            .map_or(Pubkey::default(), |key| *key);
+
+        let account = self
+            .remaining_accounts
+            .get(SOL_USDC_MARKET_INDEX)
+            .ok_or(anchor_lang::error::Error::from(ErrorCode::SolMarketMissing))?;
+
+        validate!(
+            *account.key == lut_key_at_index,
+            ErrorCode::MarketRegistryMismatch,
+            &format!(
+                "SOL/USDC MarketRegistryMismatch: {:?} != {:?}",
+                account.key, lut_key_at_index
+            )
+        )?;
+
+        let account = account.to_account_info();
+        let account_data = account.try_borrow_data()?;
+
+        let (header_bytes, bytes) = account_data.split_at(std::mem::size_of::<MarketHeader>());
+        let header = Box::new(MarketHeader::load_bytes(header_bytes).ok_or(
+            anchor_lang::error::Error::from(ErrorCode::MarketDeserializationError),
+        )?);
+        if header.quote_params.mint_key != registry.usdc_mint
+            || header.base_params.mint_key != registry.sol_mint
+        {
+            return Err(anchor_lang::error::Error::from(ErrorCode::SolMarketMissing));
+        }
+
+        let quote_lots_available =
+            quote_atoms_to_quote_lots_rounded_down(&header, vault_usdc_token_account.amount);
+        let quote_lots_requested =
+            quote_atoms_to_quote_lots_rounded_down(&header, investor.last_withdraw_request.value);
+        let cant_withdraw = quote_lots_available < quote_lots_requested;
+
+        validate!(
+            cant_withdraw,
+            ErrorCode::InvestorCanWithdraw,
+            "Investor does not require liquidation to fulfill withdraw request"
+        )?;
+
+        Ok(())
     }
 }

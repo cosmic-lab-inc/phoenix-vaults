@@ -771,10 +771,17 @@ export type PhoenixVaults = {
 						type: 'publicKey';
 					},
 					{
+						name: 'liquidator';
+						docs: [
+							'The delegate (investor) handling liquidation for an investor to withdraw their funds.'
+						];
+						type: 'publicKey';
+					},
+					{
 						name: 'delegate';
 						docs: [
-							'The delegate is the "portfolio manager", "trader", or "bot" that manages the vault\'s assets.',
-							'They can swap 100% of vault tokens.',
+							'The delegate is the "portfolio manager", "trader", or "bot" that trades the vault assets.',
+							'It can swap 100% of vault tokens.',
 							'This is the manager by default.'
 						];
 						type: 'publicKey';
@@ -795,6 +802,11 @@ export type PhoenixVaults = {
 					{
 						name: 'lastFeeUpdateTs';
 						docs: ['Last fee update unix timestamp'];
+						type: 'i64';
+					},
+					{
+						name: 'liquidationStartTs';
+						docs: ['When the liquidation starts'];
 						type: 'i64';
 					},
 					{
@@ -1341,141 +1353,151 @@ export type PhoenixVaults = {
 		},
 		{
 			code: 6012;
+			name: 'InvalidLiquidator';
+			msg: 'InvalidLiquidator';
+		},
+		{
+			code: 6013;
+			name: 'LiquidationExpired';
+			msg: 'LiquidationExpired';
+		},
+		{
+			code: 6014;
 			name: 'InvalidEquityValue';
 			msg: 'InvalidEquityValue';
 		},
 		{
-			code: 6013;
+			code: 6015;
 			name: 'VaultInLiquidation';
 			msg: 'VaultInLiquidation';
 		},
 		{
-			code: 6014;
-			name: 'DriftError';
-			msg: 'DriftError';
+			code: 6016;
+			name: 'InvestorCanWithdraw';
+			msg: 'InvestorCanWithdraw';
 		},
 		{
-			code: 6015;
+			code: 6017;
 			name: 'InvalidVaultInitialization';
 			msg: 'InvalidVaultInitialization';
 		},
 		{
-			code: 6016;
+			code: 6018;
 			name: 'InvalidVaultUpdate';
 			msg: 'InvalidVaultUpdate';
 		},
 		{
-			code: 6017;
+			code: 6019;
 			name: 'PermissionedVault';
 			msg: 'PermissionedVault';
 		},
 		{
-			code: 6018;
+			code: 6020;
 			name: 'WithdrawInProgress';
 			msg: 'WithdrawInProgress';
 		},
 		{
-			code: 6019;
+			code: 6021;
 			name: 'SharesPercentTooLarge';
 			msg: 'SharesPercentTooLarge';
 		},
 		{
-			code: 6020;
+			code: 6022;
 			name: 'InvalidVaultDeposit';
 			msg: 'InvalidVaultDeposit';
 		},
 		{
-			code: 6021;
+			code: 6023;
 			name: 'OngoingLiquidation';
 			msg: 'OngoingLiquidation';
 		},
 		{
-			code: 6022;
+			code: 6024;
 			name: 'VaultProtocolMissing';
 			msg: 'VaultProtocolMissing';
 		},
 		{
-			code: 6023;
+			code: 6025;
 			name: 'BnConversion';
 			msg: 'BnConversion';
 		},
 		{
-			code: 6024;
+			code: 6026;
 			name: 'MathError';
 			msg: 'MathError';
 		},
 		{
-			code: 6025;
+			code: 6027;
 			name: 'CastError';
 			msg: 'CastError';
 		},
 		{
-			code: 6026;
+			code: 6028;
 			name: 'UnwrapError';
 			msg: 'UnwrapError';
 		},
 		{
-			code: 6027;
+			code: 6029;
 			name: 'MarketDeserializationError';
 			msg: 'MarketDeserializationError';
 		},
 		{
-			code: 6028;
+			code: 6030;
 			name: 'UnrecognizedQuoteMint';
 			msg: 'UnrecognizedQuoteMint';
 		},
 		{
-			code: 6029;
+			code: 6031;
 			name: 'SolMarketMissing';
 			msg: 'SolMarketMissing';
 		},
 		{
-			code: 6030;
+			code: 6032;
 			name: 'MarketMapFull';
 			msg: 'MarketMapFull';
 		},
 		{
-			code: 6031;
+			code: 6033;
 			name: 'InvalidAddressLookupTableData';
 			msg: 'InvalidAddressLookupTableData';
 		},
 		{
-			code: 6032;
+			code: 6034;
 			name: 'AddressLookupTableAuthorityMissing';
 			msg: 'AddressLookupTableAuthorityMissing';
 		},
 		{
-			code: 6033;
+			code: 6035;
 			name: 'AddressLookupTableAuthorityInvalid';
 			msg: 'AddressLookupTableAuthorityInvalid';
 		},
 		{
-			code: 6034;
+			code: 6036;
 			name: 'MarketRegistryLookupTableMismatch';
 			msg: 'MarketRegistryLookupTableMismatch';
 		},
 		{
-			code: 6035;
+			code: 6037;
 			name: 'MarketRegistryLength';
 			msg: 'MarketRegistryLength';
 		},
 		{
-			code: 6036;
+			code: 6038;
 			name: 'MarketRegistryMismatch';
 			msg: 'MarketRegistryMismatch';
 		},
 		{
-			code: 6037;
+			code: 6039;
 			name: 'OrderPacketDeserialization';
 			msg: 'OrderPacketDeserialization';
 		},
 		{
-			code: 6038;
+			code: 6040;
 			name: 'OrderPacketMustUseDepositedFunds';
 			msg: 'OrderPacketMustUseDepositedFunds';
 		},
 		{
-			code: 6039;
+			code: 6041;
 			name: 'InvalidPhoenixInstruction';
 			msg: 'InvalidPhoenixInstruction';
 		}
@@ -2255,10 +2277,17 @@ export const IDL: PhoenixVaults = {
 						type: 'publicKey',
 					},
 					{
+						name: 'liquidator',
+						docs: [
+							'The delegate (investor) handling liquidation for an investor to withdraw their funds.',
+						],
+						type: 'publicKey',
+					},
+					{
 						name: 'delegate',
 						docs: [
-							'The delegate is the "portfolio manager", "trader", or "bot" that manages the vault\'s assets.',
-							'They can swap 100% of vault tokens.',
+							'The delegate is the "portfolio manager", "trader", or "bot" that trades the vault assets.',
+							'It can swap 100% of vault tokens.',
 							'This is the manager by default.',
 						],
 						type: 'publicKey',
@@ -2279,6 +2308,11 @@ export const IDL: PhoenixVaults = {
 					{
 						name: 'lastFeeUpdateTs',
 						docs: ['Last fee update unix timestamp'],
+						type: 'i64',
+					},
+					{
+						name: 'liquidationStartTs',
+						docs: ['When the liquidation starts'],
 						type: 'i64',
 					},
 					{
@@ -2825,141 +2859,151 @@ export const IDL: PhoenixVaults = {
 		},
 		{
 			code: 6012,
+			name: 'InvalidLiquidator',
+			msg: 'InvalidLiquidator',
+		},
+		{
+			code: 6013,
+			name: 'LiquidationExpired',
+			msg: 'LiquidationExpired',
+		},
+		{
+			code: 6014,
 			name: 'InvalidEquityValue',
 			msg: 'InvalidEquityValue',
 		},
 		{
-			code: 6013,
+			code: 6015,
 			name: 'VaultInLiquidation',
 			msg: 'VaultInLiquidation',
 		},
 		{
-			code: 6014,
-			name: 'DriftError',
-			msg: 'DriftError',
+			code: 6016,
+			name: 'InvestorCanWithdraw',
+			msg: 'InvestorCanWithdraw',
 		},
 		{
-			code: 6015,
+			code: 6017,
 			name: 'InvalidVaultInitialization',
 			msg: 'InvalidVaultInitialization',
 		},
 		{
-			code: 6016,
+			code: 6018,
 			name: 'InvalidVaultUpdate',
 			msg: 'InvalidVaultUpdate',
 		},
 		{
-			code: 6017,
+			code: 6019,
 			name: 'PermissionedVault',
 			msg: 'PermissionedVault',
 		},
 		{
-			code: 6018,
+			code: 6020,
 			name: 'WithdrawInProgress',
 			msg: 'WithdrawInProgress',
 		},
 		{
-			code: 6019,
+			code: 6021,
 			name: 'SharesPercentTooLarge',
 			msg: 'SharesPercentTooLarge',
 		},
 		{
-			code: 6020,
+			code: 6022,
 			name: 'InvalidVaultDeposit',
 			msg: 'InvalidVaultDeposit',
 		},
 		{
-			code: 6021,
+			code: 6023,
 			name: 'OngoingLiquidation',
 			msg: 'OngoingLiquidation',
 		},
 		{
-			code: 6022,
+			code: 6024,
 			name: 'VaultProtocolMissing',
 			msg: 'VaultProtocolMissing',
 		},
 		{
-			code: 6023,
+			code: 6025,
 			name: 'BnConversion',
 			msg: 'BnConversion',
 		},
 		{
-			code: 6024,
+			code: 6026,
 			name: 'MathError',
 			msg: 'MathError',
 		},
 		{
-			code: 6025,
+			code: 6027,
 			name: 'CastError',
 			msg: 'CastError',
 		},
 		{
-			code: 6026,
+			code: 6028,
 			name: 'UnwrapError',
 			msg: 'UnwrapError',
 		},
 		{
-			code: 6027,
+			code: 6029,
 			name: 'MarketDeserializationError',
 			msg: 'MarketDeserializationError',
 		},
 		{
-			code: 6028,
+			code: 6030,
 			name: 'UnrecognizedQuoteMint',
 			msg: 'UnrecognizedQuoteMint',
 		},
 		{
-			code: 6029,
+			code: 6031,
 			name: 'SolMarketMissing',
 			msg: 'SolMarketMissing',
 		},
 		{
-			code: 6030,
+			code: 6032,
 			name: 'MarketMapFull',
 			msg: 'MarketMapFull',
 		},
 		{
-			code: 6031,
+			code: 6033,
 			name: 'InvalidAddressLookupTableData',
 			msg: 'InvalidAddressLookupTableData',
 		},
 		{
-			code: 6032,
+			code: 6034,
 			name: 'AddressLookupTableAuthorityMissing',
 			msg: 'AddressLookupTableAuthorityMissing',
 		},
 		{
-			code: 6033,
+			code: 6035,
 			name: 'AddressLookupTableAuthorityInvalid',
 			msg: 'AddressLookupTableAuthorityInvalid',
 		},
 		{
-			code: 6034,
+			code: 6036,
 			name: 'MarketRegistryLookupTableMismatch',
 			msg: 'MarketRegistryLookupTableMismatch',
 		},
 		{
-			code: 6035,
+			code: 6037,
 			name: 'MarketRegistryLength',
 			msg: 'MarketRegistryLength',
 		},
 		{
-			code: 6036,
+			code: 6038,
 			name: 'MarketRegistryMismatch',
 			msg: 'MarketRegistryMismatch',
 		},
 		{
-			code: 6037,
+			code: 6039,
 			name: 'OrderPacketDeserialization',
 			msg: 'OrderPacketDeserialization',
 		},
 		{
-			code: 6038,
+			code: 6040,
 			name: 'OrderPacketMustUseDepositedFunds',
 			msg: 'OrderPacketMustUseDepositedFunds',
 		},
 		{
-			code: 6039,
+			code: 6041,
 			name: 'InvalidPhoenixInstruction',
 			msg: 'InvalidPhoenixInstruction',
 		},

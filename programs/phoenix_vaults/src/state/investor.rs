@@ -6,6 +6,7 @@ use crate::constants::PERCENTAGE_PRECISION;
 use crate::math::casting::Cast;
 use crate::math::{amount_to_shares, shares_to_amount, SafeMath};
 use anchor_lang::prelude::*;
+use anchor_spl::token::TokenAccount;
 use drift_macros::assert_no_slop;
 use static_assertions::const_assert_eq;
 
