@@ -31,7 +31,7 @@ pub trait MarketMapProvider<'a> {
 
     fn equity(
         &self,
-        trader: &Pubkey,
+        vault_key: &Pubkey,
         registry: RefMut<MarketRegistry>,
         market_lut: MarketLookupTable,
     ) -> Result<u64>;
@@ -110,7 +110,7 @@ impl<'a: 'info, 'info, T: anchor_lang::Bumps> MarketMapProvider<'a>
     }
 
     /// Process the SOL/USDC to cover all quote mints (SOL and USDC) on Phoenix.
-    /// This enables for equity calculation in either SOL or USDC denomination.
+    /// This enables equity calculation in either SOL or USDC denomination.
     fn load_sol_usdc_market(
         &self,
         registry: RefMut<MarketRegistry>,
@@ -157,7 +157,7 @@ impl<'a: 'info, 'info, T: anchor_lang::Bumps> MarketMapProvider<'a>
 
     fn equity(
         &self,
-        trader: &Pubkey,
+        vault_key: &Pubkey,
         registry: RefMut<MarketRegistry>,
         market_lut: MarketLookupTable,
     ) -> Result<u64> {
@@ -199,7 +199,7 @@ impl<'a: 'info, 'info, T: anchor_lang::Bumps> MarketMapProvider<'a>
             let price = ticks_to_price_precision(&header, tick_price);
 
             // todo: calculate equity based on token accounts and not active orders on Phoenix?
-            if let Some(trader_state) = market.inner.get_trader_state(trader) {
+            if let Some(trader_state) = market.inner.get_trader_state(vault_key) {
                 let quote_mint = header.quote_params.mint_key;
                 let usdc_price_precision = if quote_mint == usdc_mint {
                     price

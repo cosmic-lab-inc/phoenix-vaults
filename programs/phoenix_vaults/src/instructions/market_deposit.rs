@@ -4,11 +4,11 @@ use phoenix::program::deposit::DepositParams;
 use solana_program::program::invoke_signed;
 
 use crate::constraints::{
-    is_delegate_for_vault, is_lut_for_registry, is_sol_mint, is_usdc_mint, is_usdc_token_for_vault,
+    is_delegate_for_vault, is_sol_mint, is_usdc_mint, is_usdc_token_for_vault,
 };
 use crate::cpis::PhoenixDepositCPI;
 use crate::declare_vault_seeds;
-use crate::state::{Investor, MarketRegistry, MarketTransferParams, PhoenixProgram, Vault};
+use crate::state::{MarketTransferParams, PhoenixProgram, Vault};
 
 pub fn market_deposit<'c: 'info, 'info>(
     ctx: Context<'_, '_, 'c, 'info, MarketDeposit<'info>>,
