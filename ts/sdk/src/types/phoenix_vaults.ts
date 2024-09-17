@@ -246,16 +246,6 @@ export type PhoenixVaults = {
 					name: 'tokenProgram';
 					isMut: false;
 					isSigner: false;
-				},
-				{
-					name: 'rent';
-					isMut: false;
-					isSigner: false;
-				},
-				{
-					name: 'systemProgram';
-					isMut: false;
-					isSigner: false;
 				}
 			];
 			args: [
@@ -264,6 +254,97 @@ export type PhoenixVaults = {
 					type: 'u64';
 				}
 			];
+		},
+		{
+			name: 'investorWithdraw';
+			accounts: [
+				{
+					name: 'vault';
+					isMut: true;
+					isSigner: false;
+				},
+				{
+					name: 'investor';
+					isMut: true;
+					isSigner: false;
+				},
+				{
+					name: 'authority';
+					isMut: false;
+					isSigner: true;
+				},
+				{
+					name: 'marketRegistry';
+					isMut: true;
+					isSigner: false;
+				},
+				{
+					name: 'lut';
+					isMut: false;
+					isSigner: false;
+				},
+				{
+					name: 'investorQuoteTokenAccount';
+					isMut: true;
+					isSigner: false;
+				},
+				{
+					name: 'phoenix';
+					isMut: false;
+					isSigner: false;
+				},
+				{
+					name: 'logAuthority';
+					isMut: false;
+					isSigner: false;
+				},
+				{
+					name: 'market';
+					isMut: true;
+					isSigner: false;
+				},
+				{
+					name: 'seat';
+					isMut: false;
+					isSigner: false;
+				},
+				{
+					name: 'baseMint';
+					isMut: false;
+					isSigner: false;
+				},
+				{
+					name: 'quoteMint';
+					isMut: false;
+					isSigner: false;
+				},
+				{
+					name: 'vaultBaseTokenAccount';
+					isMut: true;
+					isSigner: false;
+				},
+				{
+					name: 'vaultQuoteTokenAccount';
+					isMut: true;
+					isSigner: false;
+				},
+				{
+					name: 'marketBaseTokenAccount';
+					isMut: true;
+					isSigner: false;
+				},
+				{
+					name: 'marketQuoteTokenAccount';
+					isMut: true;
+					isSigner: false;
+				},
+				{
+					name: 'tokenProgram';
+					isMut: false;
+					isSigner: false;
+				}
+			];
+			args: [];
 		},
 		{
 			name: 'claimSeat';
@@ -2054,16 +2135,6 @@ export const IDL: PhoenixVaults = {
 					isMut: false,
 					isSigner: false,
 				},
-				{
-					name: 'rent',
-					isMut: false,
-					isSigner: false,
-				},
-				{
-					name: 'systemProgram',
-					isMut: false,
-					isSigner: false,
-				},
 			],
 			args: [
 				{
@@ -2071,6 +2142,97 @@ export const IDL: PhoenixVaults = {
 					type: 'u64',
 				},
 			],
+		},
+		{
+			name: 'investorWithdraw',
+			accounts: [
+				{
+					name: 'vault',
+					isMut: true,
+					isSigner: false,
+				},
+				{
+					name: 'investor',
+					isMut: true,
+					isSigner: false,
+				},
+				{
+					name: 'authority',
+					isMut: false,
+					isSigner: true,
+				},
+				{
+					name: 'marketRegistry',
+					isMut: true,
+					isSigner: false,
+				},
+				{
+					name: 'lut',
+					isMut: false,
+					isSigner: false,
+				},
+				{
+					name: 'investorQuoteTokenAccount',
+					isMut: true,
+					isSigner: false,
+				},
+				{
+					name: 'phoenix',
+					isMut: false,
+					isSigner: false,
+				},
+				{
+					name: 'logAuthority',
+					isMut: false,
+					isSigner: false,
+				},
+				{
+					name: 'market',
+					isMut: true,
+					isSigner: false,
+				},
+				{
+					name: 'seat',
+					isMut: false,
+					isSigner: false,
+				},
+				{
+					name: 'baseMint',
+					isMut: false,
+					isSigner: false,
+				},
+				{
+					name: 'quoteMint',
+					isMut: false,
+					isSigner: false,
+				},
+				{
+					name: 'vaultBaseTokenAccount',
+					isMut: true,
+					isSigner: false,
+				},
+				{
+					name: 'vaultQuoteTokenAccount',
+					isMut: true,
+					isSigner: false,
+				},
+				{
+					name: 'marketBaseTokenAccount',
+					isMut: true,
+					isSigner: false,
+				},
+				{
+					name: 'marketQuoteTokenAccount',
+					isMut: true,
+					isSigner: false,
+				},
+				{
+					name: 'tokenProgram',
+					isMut: false,
+					isSigner: false,
+				},
+			],
+			args: [],
 		},
 		{
 			name: 'claimSeat',

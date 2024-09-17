@@ -136,9 +136,6 @@ pub struct InvestorDeposit<'info> {
     pub market_quote_token_account: Account<'info, TokenAccount>,
 
     pub token_program: Program<'info, Token>,
-
-    pub rent: Sysvar<'info, Rent>,
-    pub system_program: Program<'info, System>,
 }
 
 impl<'info> TokenTransferCPI for Context<'_, '_, '_, 'info, InvestorDeposit<'info>> {

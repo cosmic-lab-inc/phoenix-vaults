@@ -751,6 +751,47 @@ describe('phoenixVaults', () => {
 	// so that the investor may withdraw their funds without forcefully liquidating the vault.
 	//
 
+	//
+	// Now that an ask at $125/SOL is on the book, we can use that price on-chain to measure vault equity
+	//
+
+	it('Request Withdraw', async () => {
+		const investorEquity = await fetchInvestorEquity(
+			program,
+			conn,
+			investor,
+			vaultKey,
+			marketRegistry
+		);
+		console.log(`investor equity: ${investorEquity}`);
+		const usdcBN = new BN(investorEquity * QUOTE_PRECISION.toNumber());
+		try {
+			const markets: AccountMeta[] = marketKeys.map((pubkey) => {
+				return {
+					pubkey,
+					isWritable: false,
+					isSigner: false,
+				};
+			});
+			const ix = await program.methods
+				.requestWithdraw(usdcBN, WithdrawUnit.TOKEN)
+				.accounts({
+					vault: vaultKey,
+					investor,
+					authority: provider.publicKey,
+					marketRegistry,
+					lut,
+				})
+				.remainingAccounts(markets)
+				.instruction();
+
+			await simulate(conn, payer, [ix], [payer]);
+			await sendAndConfirm(conn, payer, [ix], [payer]);
+		} catch (e: any) {
+			throw new Error(e);
+		}
+	});
+
 	it('Vault Withdraw from SOL/USDC Market', async () => {
 		const vaultBaseTokenAccount = getAssociatedTokenAddressSync(
 			solMint,
@@ -850,45 +891,4 @@ describe('phoenixVaults', () => {
 		assert.strictEqual(vaultStateAfter.baseUnitsFree, 0);
 		assert.strictEqual(vaultStateAfter.quoteUnitsFree, 0);
 	});
-
-	//
-	// Now that an ask at $125/SOL is on the book, we can use that price on-chain to measure vault equity
-	//
-
-	// it('Request Withdraw', async () => {
-	// 	const investorEquity = await fetchInvestorEquity(
-	// 		program,
-	// 		conn,
-	// 		investor,
-	// 		vaultKey,
-	// 		marketRegistry
-	// 	);
-	// 	console.log(`investor equity: ${investorEquity}`);
-	// 	const usdcBN = new BN(investorEquity * QUOTE_PRECISION.toNumber());
-	// 	try {
-	// 		const markets: AccountMeta[] = marketKeys.map((pubkey) => {
-	// 			return {
-	// 				pubkey,
-	// 				isWritable: false,
-	// 				isSigner: false,
-	// 			};
-	// 		});
-	// 		const ix = await program.methods
-	// 			.requestWithdraw(usdcBN, WithdrawUnit.TOKEN)
-	// 			.accounts({
-	// 				vault: vaultKey,
-	// 				investor,
-	// 				authority: provider.publicKey,
-	// 				marketRegistry,
-	// 				lut,
-	// 			})
-	// 			.remainingAccounts(markets)
-	// 			.instruction();
-	//
-	// 		await simulate(conn, payer, [ix], [payer]);
-	// 		await sendAndConfirm(conn, payer, [ix], [payer]);
-	// 	} catch (e: any) {
-	// 		throw new Error(e);
-	// 	}
-	// });
 });

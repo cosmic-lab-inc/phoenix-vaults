@@ -43,6 +43,12 @@ pub mod phoenix_vaults {
         instructions::investor_deposit(ctx, amount)
     }
 
+    pub fn investor_withdraw<'c: 'info, 'info>(
+        ctx: Context<'_, '_, 'c, 'info, InvestorWithdraw<'info>>,
+    ) -> Result<()> {
+        instructions::investor_withdraw(ctx)
+    }
+
     pub fn claim_seat<'c: 'info, 'info>(
         ctx: Context<'_, '_, 'c, 'info, ClaimSeat<'info>>,
     ) -> Result<()> {
