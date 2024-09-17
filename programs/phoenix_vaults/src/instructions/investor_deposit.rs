@@ -32,7 +32,8 @@ pub fn investor_deposit<'c: 'info, 'info>(
         lut_key: ctx.accounts.lut.key(),
         lut: &lut,
     };
-    let vault_equity = ctx.equity(&vault_key, &registry, market_lut)?;
+    let vault_usdc = &ctx.accounts.vault_quote_token_account;
+    let vault_equity = ctx.equity(&vault, vault_usdc, &registry, market_lut)?;
 
     investor.deposit(amount, vault_equity, &mut vault, clock.unix_timestamp)?;
 

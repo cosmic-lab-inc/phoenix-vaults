@@ -1,7 +1,7 @@
 use crate::constants::PRICE_PRECISION_U64;
 use crate::error::ErrorCode;
 use crate::math::*;
-use crate::state::{Investor, MarketRegistry};
+use crate::state::{Investor, MarketRegistry, Vault};
 use crate::validate;
 use anchor_lang::prelude::*;
 use anchor_spl::token::TokenAccount;
@@ -28,7 +28,8 @@ pub trait MarketMapProvider<'a> {
 
     fn equity(
         &self,
-        vault_key: &Pubkey,
+        vault: &Vault,
+        vault_usdc: &Account<TokenAccount>,
         registry: &MarketRegistry,
         market_lut: MarketLookupTable,
     ) -> Result<u64>;
@@ -156,7 +157,8 @@ impl<'a: 'info, 'info, T: anchor_lang::Bumps> MarketMapProvider<'a>
 
     fn equity(
         &self,
-        vault_key: &Pubkey,
+        vault: &Vault,
+        vault_usdc: &Account<TokenAccount>,
         registry: &MarketRegistry,
         market_lut: MarketLookupTable,
     ) -> Result<u64> {
@@ -168,6 +170,12 @@ impl<'a: 'info, 'info, T: anchor_lang::Bumps> MarketMapProvider<'a>
         let usdc_mint = registry.usdc_mint;
         let (_, sol_tick_price, sol_header) = self.load_sol_usdc_market(registry, lut)?;
         let sol_price = ticks_to_price_precision(&sol_header, sol_tick_price);
+
+        let vault_usdc_units_precision = quote_lots_to_quote_units_precision(
+            &sol_header,
+            quote_atoms_to_quote_lots_rounded_down(&sol_header, vault_usdc.amount),
+        );
+        equity += vault_usdc_units_precision;
 
         let remaining_accounts_iter = &mut self.remaining_accounts.iter().peekable();
         for (account, lut_key) in remaining_accounts_iter.zip(lut.addresses.iter()) {
@@ -192,7 +200,7 @@ impl<'a: 'info, 'info, T: anchor_lang::Bumps> MarketMapProvider<'a>
                 .map_or(0, |ask| ask.price_in_ticks);
             let price = ticks_to_price_precision(&header, tick_price);
 
-            if let Some(trader_state) = market.inner.get_trader_state(vault_key) {
+            if let Some(trader_state) = market.inner.get_trader_state(&vault.pubkey) {
                 let quote_mint = header.quote_params.mint_key;
                 let usdc_price_precision = if quote_mint == usdc_mint {
                     price

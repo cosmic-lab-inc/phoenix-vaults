@@ -528,6 +528,11 @@ export type PhoenixVaults = {
 					name: 'lut';
 					isMut: false;
 					isSigner: false;
+				},
+				{
+					name: 'vaultUsdcTokenAccount';
+					isMut: true;
+					isSigner: false;
 				}
 			];
 			args: [
@@ -2415,6 +2420,11 @@ export const IDL: PhoenixVaults = {
 				{
 					name: 'lut',
 					isMut: false,
+					isSigner: false,
+				},
+				{
+					name: 'vaultUsdcTokenAccount',
+					isMut: true,
 					isSigner: false,
 				},
 			],

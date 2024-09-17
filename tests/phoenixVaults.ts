@@ -220,12 +220,12 @@ describe('phoenixVaults', () => {
 			maxTokens: new BN(0),
 			managementFee: new BN(0),
 			minDepositAmount: new BN(0),
-			profitShare: 100_000, // 10%
+			profitShare: 0, //100_000,
 			hurdleRate: 0,
 			permissioned: false,
 			protocol: protocol.publicKey,
 			protocolFee: new BN(0),
-			protocolProfitShare: 100_000, // 10%
+			protocolProfitShare: 0, //100_000,
 		};
 		await program.methods
 			.initializeVault(config)
@@ -756,15 +756,18 @@ describe('phoenixVaults', () => {
 	//
 
 	it('Request Withdraw', async () => {
-		const investorEquity = await fetchInvestorEquity(
+		const investorEquityBefore = await fetchInvestorEquity(
 			program,
 			conn,
 			investor,
 			vaultKey,
 			marketRegistry
 		);
-		console.log(`investor equity: ${investorEquity}`);
-		const usdcBN = new BN(investorEquity * QUOTE_PRECISION.toNumber());
+		console.log(
+			`investor equity before withdraw request: ${investorEquityBefore}`
+		);
+		assert.strictEqual(investorEquityBefore, 1249.75002);
+		const usdcBN = new BN(investorEquityBefore * QUOTE_PRECISION.toNumber());
 		try {
 			const markets: AccountMeta[] = marketKeys.map((pubkey) => {
 				return {
@@ -781,6 +784,7 @@ describe('phoenixVaults', () => {
 					authority: provider.publicKey,
 					marketRegistry,
 					lut,
+					vaultUsdcTokenAccount: vaultUsdcAta,
 				})
 				.remainingAccounts(markets)
 				.instruction();
@@ -836,7 +840,9 @@ describe('phoenixVaults', () => {
 			vaultKey,
 			marketRegistry
 		);
-		console.log(`investor equity: ${investorEquity}`);
+		console.log(`investor equity before market withdraw: ${investorEquity}`);
+		assert.strictEqual(investorEquity, 1249.75002);
+
 		const investorEquityLots = phoenix.quoteUnitsToQuoteLots(
 			investorEquity,
 			solUsdcMarket.toString()
@@ -890,5 +896,12 @@ describe('phoenixVaults', () => {
 		);
 		assert.strictEqual(vaultStateAfter.baseUnitsFree, 0);
 		assert.strictEqual(vaultStateAfter.quoteUnitsFree, 0);
+
+		const investorAcct = await program.account.investor.fetch(investor);
+		const withdrawRequestValue =
+			investorAcct.lastWithdrawRequest.value.toNumber() /
+			QUOTE_PRECISION.toNumber();
+		console.log(`investor withdraw request: ${withdrawRequestValue}`);
+		assert.strictEqual(withdrawRequestValue, 1249.75002);
 	});
 });

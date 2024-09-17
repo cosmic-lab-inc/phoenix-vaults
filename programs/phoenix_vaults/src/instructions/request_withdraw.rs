@@ -1,6 +1,7 @@
 use anchor_lang::prelude::*;
+use anchor_spl::token::TokenAccount;
 
-use crate::constraints::{is_authority_for_investor, is_lut_for_registry};
+use crate::constraints::*;
 use crate::math::Cast;
 use crate::state::{
     Investor, MarketLookupTable, MarketMapProvider, MarketRegistry, Vault, WithdrawUnit,
@@ -19,7 +20,6 @@ pub fn request_withdraw<'c: 'info, 'info>(
     withdraw_unit: WithdrawUnit,
 ) -> Result<()> {
     let clock = &Clock::get()?;
-    let vault_key = ctx.accounts.vault.key();
     let vault = &mut ctx.accounts.vault.load_mut()?;
     let mut investor = ctx.accounts.investor.load_mut()?;
 
@@ -32,7 +32,8 @@ pub fn request_withdraw<'c: 'info, 'info>(
         lut_key: ctx.accounts.lut.key(),
         lut: &lut,
     };
-    let vault_equity = ctx.equity(&vault_key, &registry, market_lut)?;
+    let vault_usdc = &ctx.accounts.vault_usdc_token_account;
+    let vault_equity = ctx.equity(vault, vault_usdc, &registry, market_lut)?;
 
     investor.request_withdraw(
         withdraw_amount.cast()?,
@@ -54,10 +55,10 @@ pub struct RequestWithdraw<'info> {
         mut,
         seeds = [b"investor", vault.key().as_ref(), authority.key().as_ref()],
         bump,
-        constraint = is_authority_for_investor(&investor, &authority)?
+        constraint = is_authority_for_investor(&investor, &authority)?,
+        constraint = is_vault_for_investor(&investor, &vault)?
     )]
     pub investor: AccountLoader<'info, Investor>,
-
     pub authority: Signer<'info>,
 
     #[account(
@@ -67,7 +68,12 @@ pub struct RequestWithdraw<'info> {
         constraint = is_lut_for_registry(&market_registry, &lut)?
     )]
     pub market_registry: AccountLoader<'info, MarketRegistry>,
-
     /// CHECK: Deserialized into [`AddressLookupTable`] within instruction
     pub lut: UncheckedAccount<'info>,
+
+    #[account(
+        mut,
+        constraint = is_usdc_token_for_vault(&vault, &vault_usdc_token_account)?,
+    )]
+    pub vault_usdc_token_account: Account<'info, TokenAccount>,
 }
