@@ -80,3 +80,20 @@ export type MarketTransferParams = {
 	quoteLots: BN;
 	baseLots: BN;
 };
+
+export type Investor = {
+	vault: PublicKey;
+	pubkey: PublicKey;
+	authority: PublicKey;
+	vaultShares: BN;
+	lastWithdrawRequest: WithdrawRequest;
+	lastValidTs: BN;
+	netDeposits: BN;
+	totalDeposits: BN;
+	totalWithdraws: BN;
+	cumulativeProfitShareAmount: BN;
+	profitShareFeePaid: BN;
+	vaultSharesBase: number;
+	padding1: number;
+	padding: BN[];
+};

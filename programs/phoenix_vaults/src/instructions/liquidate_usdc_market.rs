@@ -38,7 +38,7 @@ pub fn liquidate_usdc_market<'c: 'info, 'info>(
         return Err(e.into());
     }
 
-    let registry = ctx.accounts.market_registry.load_mut()?;
+    let registry = ctx.accounts.market_registry.load()?;
     let lut_acct_info = ctx.accounts.lut.to_account_info();
     let lut_data = lut_acct_info.data.borrow();
     let lut = MarketRegistry::deserialize_lookup_table(registry.lut_auth, lut_data.as_ref())?;
@@ -160,7 +160,6 @@ pub struct LiquidateUsdcMarket<'info> {
     pub authority: Signer<'info>,
 
     #[account(
-        mut,
         seeds = [b"market_registry"],
         bump,
         constraint = is_lut_for_registry(&market_registry, &lut)?

@@ -85,7 +85,7 @@ impl Investor {
         validate!(
             self.vault_shares_base == vault.shares_base,
             ErrorCode::InvalidVaultRebase,
-            "vault depositor bases mismatch. user base: {} vault base {}",
+            "investor bases mismatch. user base: {} vault base {}",
             self.vault_shares_base,
             vault.shares_base
         )?;
@@ -317,12 +317,18 @@ impl Investor {
         validate!(
             n_shares > 0,
             ErrorCode::InvalidVaultWithdrawSize,
-            "Requested n_shares = 0"
+            "Requested shares = 0"
         )?;
 
         let vault_shares_before: u128 = self.checked_vault_shares(vault)?;
         let total_vault_shares_before = vault.total_shares;
         let user_vault_shares_before = vault.investor_shares;
+
+        msg!("manager_profit_share: {}", manager_profit_share);
+        msg!("protocol_profit_share: {}", protocol_profit_share);
+        msg!("investor_shares: {}", self.vault_shares);
+        msg!("vault_shares: {}", vault_shares_before);
+        msg!("requested_shares: {}", n_shares);
 
         self.last_withdraw_request.set(
             vault_shares_before,
@@ -519,7 +525,7 @@ impl Investor {
         validate!(
             !self.last_withdraw_request.pending(),
             ErrorCode::InvalidVaultDeposit,
-            "Cannot apply profit share to depositor with pending withdraw request"
+            "Cannot apply profit share to investor with pending withdraw request"
         )?;
 
         let total_amount = shares_to_amount(self.vault_shares, vault.total_shares, vault_equity)?;

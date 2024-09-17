@@ -16,11 +16,10 @@ pub fn investor_withdraw<'c: 'info, 'info>(
     ctx: Context<'_, '_, 'c, 'info, InvestorWithdraw<'info>>,
 ) -> Result<()> {
     let clock = &Clock::get()?;
-    let vault_key = ctx.accounts.vault.key();
     let mut vault = ctx.accounts.vault.load_mut()?;
     let mut investor = ctx.accounts.investor.load_mut()?;
 
-    let registry = ctx.accounts.market_registry.load_mut()?;
+    let registry = ctx.accounts.market_registry.load()?;
 
     let lut_acct_info = ctx.accounts.lut.to_account_info();
     let lut_data = lut_acct_info.data.borrow();
@@ -35,11 +34,10 @@ pub fn investor_withdraw<'c: 'info, 'info>(
     let investor_withdraw_amount =
         investor.withdraw(vault_equity, &mut vault, clock.unix_timestamp)?;
 
-    msg!("investor_withdraw_amount: {}", investor_withdraw_amount);
-
     drop(vault);
 
     let (_, _, sol_usdc_header) = ctx.load_sol_usdc_market(&registry, &lut)?;
+
     let quote_lots =
         quote_atoms_to_quote_lots_rounded_down(&sol_usdc_header, investor_withdraw_amount);
     ctx.phoenix_withdraw(MarketTransferParams {
@@ -67,7 +65,6 @@ pub struct InvestorWithdraw<'info> {
     pub authority: Signer<'info>,
 
     #[account(
-        mut,
         seeds = [b"market_registry"],
         bump,
         constraint = is_lut_for_registry(&market_registry, &lut)?

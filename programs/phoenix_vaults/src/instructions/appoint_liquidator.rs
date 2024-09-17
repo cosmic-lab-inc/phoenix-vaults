@@ -15,7 +15,7 @@ pub fn appoint_liquidator<'c: 'info, 'info>(
 
     let mut vault = ctx.accounts.vault.load_mut()?;
     let investor = ctx.accounts.investor.load()?;
-    let registry = ctx.accounts.market_registry.load_mut()?;
+    let registry = ctx.accounts.market_registry.load()?;
     let vault_usdc_ata = &ctx.accounts.vault_quote_token_account;
 
     let lut_acct_info = ctx.accounts.lut.to_account_info();
@@ -55,7 +55,6 @@ pub struct AppointLiquidator<'info> {
     pub authority: Signer<'info>,
 
     #[account(
-        mut,
         seeds = [b"market_registry"],
         bump,
         constraint = is_lut_for_registry(&market_registry, &lut)?

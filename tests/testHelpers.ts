@@ -33,11 +33,15 @@ import { assert } from 'chai';
 import buffer from 'buffer';
 import { BN } from '@coral-xyz/anchor';
 import {
+	Investor,
 	MOCK_SOL_MINT,
 	MOCK_SOL_USDC_MARKET,
 	MOCK_USDC_MINT,
+	PERCENTAGE_PRECISION,
 	PhoenixVaults,
 	PRICE_PRECISION,
+	Vault,
+	ZERO,
 } from '../ts/sdk';
 import {
 	deserializeMarketData,
@@ -1112,4 +1116,91 @@ export async function fetchInvestorEquityRoundedDown(
 		registry
 	);
 	return Math.floor(equity);
+}
+
+export function amountToShares(
+	amount: BN,
+	totalShares: BN,
+	totalEquity: BN
+): BN {
+	let nShares: BN;
+	if (totalEquity.gt(ZERO)) {
+		nShares = amount.mul(totalShares).div(totalEquity);
+	} else {
+		nShares = amount;
+	}
+
+	return nShares;
+}
+
+export function sharesToAmount(
+	nShares: BN,
+	totalShares: BN,
+	totalEquity: BN
+): BN {
+	let amount: BN;
+	if (totalShares.gt(ZERO)) {
+		amount = BN.max(ZERO, nShares.mul(totalEquity).div(totalShares));
+	} else {
+		amount = ZERO;
+	}
+
+	return amount;
+}
+
+function calculateApplyProfitShare(
+	investor: Investor,
+	vaultEquity: BN,
+	vault: Vault
+): {
+	profitShareAmount: BN;
+	profitShareShares: BN;
+} {
+	const amount = sharesToAmount(
+		investor.vaultShares,
+		vault.totalShares,
+		vaultEquity
+	);
+	const profitShareAmount = calculateProfitShare(investor, amount, vault);
+	const profitShareShares = amountToShares(
+		profitShareAmount,
+		vault.totalShares,
+		vaultEquity
+	);
+	return {
+		profitShareAmount,
+		profitShareShares,
+	};
+}
+
+function calculateProfitShare(
+	investor: Investor,
+	totalAmount: BN,
+	vault: Vault
+) {
+	const profit = totalAmount.sub(
+		investor.netDeposits.add(investor.cumulativeProfitShareAmount)
+	);
+	const profitShare = vault.profitShare + vault.protocolProfitShare;
+	if (profit.gt(ZERO)) {
+		const profitShareAmount = profit
+			.mul(new BN(profitShare))
+			.div(PERCENTAGE_PRECISION);
+		return profitShareAmount;
+	}
+	return ZERO;
+}
+
+export function calculateRealizedInvestorEquity(
+	investor: Investor,
+	vaultEquity: BN,
+	vault: Vault
+): BN {
+	const vdAmount = sharesToAmount(
+		investor.vaultShares,
+		vault.totalShares,
+		vaultEquity
+	);
+	const profitShareAmount = calculateProfitShare(investor, vdAmount, vault);
+	return vdAmount.sub(profitShareAmount);
 }

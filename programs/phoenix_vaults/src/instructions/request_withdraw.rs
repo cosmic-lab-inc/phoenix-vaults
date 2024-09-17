@@ -23,7 +23,7 @@ pub fn request_withdraw<'c: 'info, 'info>(
     let vault = &mut ctx.accounts.vault.load_mut()?;
     let mut investor = ctx.accounts.investor.load_mut()?;
 
-    let registry = ctx.accounts.market_registry.load_mut()?;
+    let registry = ctx.accounts.market_registry.load()?;
 
     let lut_acct_info = ctx.accounts.lut.to_account_info();
     let lut_data = lut_acct_info.data.borrow();
@@ -34,6 +34,7 @@ pub fn request_withdraw<'c: 'info, 'info>(
     };
     let vault_usdc = &ctx.accounts.vault_usdc_token_account;
     let vault_equity = ctx.equity(vault, vault_usdc, &registry, market_lut)?;
+    msg!("investor_withdraw_amount: {}", withdraw_amount);
 
     investor.request_withdraw(
         withdraw_amount.cast()?,
@@ -62,7 +63,6 @@ pub struct RequestWithdraw<'info> {
     pub authority: Signer<'info>,
 
     #[account(
-        mut,
         seeds = [b"market_registry"],
         bump,
         constraint = is_lut_for_registry(&market_registry, &lut)?

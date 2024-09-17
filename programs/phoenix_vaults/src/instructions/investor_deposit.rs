@@ -19,11 +19,10 @@ pub fn investor_deposit<'c: 'info, 'info>(
 ) -> Result<()> {
     let clock = &Clock::get()?;
 
-    let vault_key = ctx.accounts.vault.key();
     let mut vault = ctx.accounts.vault.load_mut()?;
     let mut investor = ctx.accounts.investor.load_mut()?;
 
-    let registry = ctx.accounts.market_registry.load_mut()?;
+    let registry = ctx.accounts.market_registry.load()?;
 
     let lut_acct_info = ctx.accounts.lut.to_account_info();
     let lut_data = lut_acct_info.data.borrow();
@@ -73,7 +72,6 @@ pub struct InvestorDeposit<'info> {
     pub authority: Signer<'info>,
 
     #[account(
-        mut,
         seeds = [b"market_registry"],
         bump,
         constraint = is_lut_for_registry(&market_registry, &lut)?

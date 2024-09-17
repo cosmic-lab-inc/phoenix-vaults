@@ -223,8 +223,7 @@ impl<'a: 'info, 'info, T: anchor_lang::Bumps> MarketMapProvider<'a>
                     quote_lots_to_quote_units_precision(&header, quote_lots);
                 let total_quote_units_precision =
                     base_quote_units_precision + quote_units_precision;
-                // both are multiplied by PRICE_PRECISION so divide once to make it multiplied once in total.
-                equity += total_quote_units_precision * usdc_price_precision / PRICE_PRECISION_U64;
+                equity += total_quote_units_precision;
             }
         }
         Ok(equity)

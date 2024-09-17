@@ -179,7 +179,7 @@ export type PhoenixVaults = {
 				},
 				{
 					name: 'marketRegistry';
-					isMut: true;
+					isMut: false;
 					isSigner: false;
 				},
 				{
@@ -275,7 +275,7 @@ export type PhoenixVaults = {
 				},
 				{
 					name: 'marketRegistry';
-					isMut: true;
+					isMut: false;
 					isSigner: false;
 				},
 				{
@@ -521,7 +521,7 @@ export type PhoenixVaults = {
 				},
 				{
 					name: 'marketRegistry';
-					isMut: true;
+					isMut: false;
 					isSigner: false;
 				},
 				{
@@ -735,7 +735,7 @@ export type PhoenixVaults = {
 				},
 				{
 					name: 'marketRegistry';
-					isMut: true;
+					isMut: false;
 					isSigner: false;
 				},
 				{
@@ -771,7 +771,7 @@ export type PhoenixVaults = {
 				},
 				{
 					name: 'marketRegistry';
-					isMut: true;
+					isMut: false;
 					isSigner: false;
 				},
 				{
@@ -867,7 +867,7 @@ export type PhoenixVaults = {
 				},
 				{
 					name: 'marketRegistry';
-					isMut: true;
+					isMut: false;
 					isSigner: false;
 				},
 				{
@@ -2072,7 +2072,7 @@ export const IDL: PhoenixVaults = {
 				},
 				{
 					name: 'marketRegistry',
-					isMut: true,
+					isMut: false,
 					isSigner: false,
 				},
 				{
@@ -2168,7 +2168,7 @@ export const IDL: PhoenixVaults = {
 				},
 				{
 					name: 'marketRegistry',
-					isMut: true,
+					isMut: false,
 					isSigner: false,
 				},
 				{
@@ -2414,7 +2414,7 @@ export const IDL: PhoenixVaults = {
 				},
 				{
 					name: 'marketRegistry',
-					isMut: true,
+					isMut: false,
 					isSigner: false,
 				},
 				{
@@ -2628,7 +2628,7 @@ export const IDL: PhoenixVaults = {
 				},
 				{
 					name: 'marketRegistry',
-					isMut: true,
+					isMut: false,
 					isSigner: false,
 				},
 				{
@@ -2664,7 +2664,7 @@ export const IDL: PhoenixVaults = {
 				},
 				{
 					name: 'marketRegistry',
-					isMut: true,
+					isMut: false,
 					isSigner: false,
 				},
 				{
@@ -2760,7 +2760,7 @@ export const IDL: PhoenixVaults = {
 				},
 				{
 					name: 'marketRegistry',
-					isMut: true,
+					isMut: false,
 					isSigner: false,
 				},
 				{

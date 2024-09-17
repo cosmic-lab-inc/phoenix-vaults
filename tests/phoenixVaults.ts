@@ -48,6 +48,7 @@ import {
 	encodeLimitOrderPacketWithFreeFunds,
 	fetchTraderState,
 	fetchInvestorEquity,
+	calculateRealizedInvestorEquity,
 } from './testHelpers';
 import {
 	Client as PhoenixClient,
@@ -220,12 +221,12 @@ describe('phoenixVaults', () => {
 			maxTokens: new BN(0),
 			managementFee: new BN(0),
 			minDepositAmount: new BN(0),
-			profitShare: 0, //100_000,
+			profitShare: 100_000,
 			hurdleRate: 0,
 			permissioned: false,
 			protocol: protocol.publicKey,
 			protocolFee: new BN(0),
-			protocolProfitShare: 0, //100_000,
+			protocolProfitShare: 100_000,
 		};
 		await program.methods
 			.initializeVault(config)
@@ -767,7 +768,25 @@ describe('phoenixVaults', () => {
 			`investor equity before withdraw request: ${investorEquityBefore}`
 		);
 		assert.strictEqual(investorEquityBefore, 1249.75002);
-		const usdcBN = new BN(investorEquityBefore * QUOTE_PRECISION.toNumber());
+
+		// todo: vaultEquity function that replicates MarketMapProvider::equity()
+
+		const vaultEquity = new BN(
+			investorEquityBefore * QUOTE_PRECISION.toNumber()
+		);
+		const investorAcct = await program.account.investor.fetch(investor);
+		const vaultAcct = await program.account.vault.fetch(vaultKey);
+		const withdrawRequestEquity = calculateRealizedInvestorEquity(
+			investorAcct,
+			vaultEquity,
+			vaultAcct
+		);
+		console.log(
+			`withdraw request equity: ${
+				withdrawRequestEquity.toNumber() / QUOTE_PRECISION.toNumber()
+			}`
+		);
+
 		try {
 			const markets: AccountMeta[] = marketKeys.map((pubkey) => {
 				return {
@@ -777,7 +796,7 @@ describe('phoenixVaults', () => {
 				};
 			});
 			const ix = await program.methods
-				.requestWithdraw(usdcBN, WithdrawUnit.TOKEN)
+				.requestWithdraw(withdrawRequestEquity, WithdrawUnit.TOKEN)
 				.accounts({
 					vault: vaultKey,
 					investor,
@@ -794,6 +813,30 @@ describe('phoenixVaults', () => {
 		} catch (e: any) {
 			throw new Error(e);
 		}
+
+		// amount before 20% total profit share = $1249.75002
+		// profit is $249.75002
+		// $249.75002 - 20% = $199.80001619964
+		// withdrawal amount = $1199.80001619964
+
+		const investorEquityAfter = await fetchInvestorEquity(
+			program,
+			conn,
+			investor,
+			vaultKey,
+			marketRegistry
+		);
+		console.log(
+			`investor equity after withdraw request: ${investorEquityAfter}`
+		);
+		assert.strictEqual(investorEquityAfter, 1199.80001619964);
+
+		const investorAcctAfter = await program.account.investor.fetch(investor);
+		const withdrawRequestValue =
+			investorAcctAfter.lastWithdrawRequest.value.toNumber() /
+			QUOTE_PRECISION.toNumber();
+		console.log(`investor withdraw request: ${withdrawRequestValue}`);
+		assert.strictEqual(withdrawRequestValue, 1199.800016);
 	});
 
 	it('Vault Withdraw from SOL/USDC Market', async () => {
@@ -841,7 +884,7 @@ describe('phoenixVaults', () => {
 			marketRegistry
 		);
 		console.log(`investor equity before market withdraw: ${investorEquity}`);
-		assert.strictEqual(investorEquity, 1249.75002);
+		assert.strictEqual(investorEquity, 1199.80001619964);
 
 		const investorEquityLots = phoenix.quoteUnitsToQuoteLots(
 			investorEquity,
@@ -884,7 +927,7 @@ describe('phoenixVaults', () => {
 			`vault atas after market withdraw, sol: ${vaultSolAfter}, usdc: ${vaultUsdcAfter}`
 		);
 		assert.strictEqual(vaultSolAfter, 0);
-		assert.strictEqual(vaultUsdcAfter, 1249.75002);
+		assert.strictEqual(vaultUsdcAfter, 1199.80002);
 
 		const vaultStateAfter = await fetchTraderState(
 			conn,
@@ -895,13 +938,52 @@ describe('phoenixVaults', () => {
 			`vault trader state after market withdraw, sol: ${vaultStateAfter.baseUnitsFree}, usdc: ${vaultStateAfter.quoteUnitsFree}`
 		);
 		assert.strictEqual(vaultStateAfter.baseUnitsFree, 0);
-		assert.strictEqual(vaultStateAfter.quoteUnitsFree, 0);
+		// $249.75002 in profit, ~$199.8 can be withdrawn after 20% profit share,
+		// leaving $49.95 in the vault to be claimed by the manager and protocol
+		assert.strictEqual(vaultStateAfter.quoteUnitsFree, 49.95);
+	});
 
-		const investorAcct = await program.account.investor.fetch(investor);
-		const withdrawRequestValue =
-			investorAcct.lastWithdrawRequest.value.toNumber() /
-			QUOTE_PRECISION.toNumber();
-		console.log(`investor withdraw request: ${withdrawRequestValue}`);
-		assert.strictEqual(withdrawRequestValue, 1249.75002);
+	it('Withdraw', async () => {
+		const markets: AccountMeta[] = marketKeys.map((pubkey) => {
+			return {
+				pubkey,
+				isWritable: false,
+				isSigner: false,
+			};
+		});
+
+		const ix = await program.methods
+			.investorWithdraw()
+			.accounts({
+				vault: vaultKey,
+				investor,
+				authority: provider.publicKey,
+				marketRegistry,
+				lut,
+				investorQuoteTokenAccount: investorUsdcAta,
+				phoenix: PHOENIX_PROGRAM_ID,
+				logAuthority: getLogAuthority(),
+				market: solUsdcMarket,
+				seat: getSeatAddress(solUsdcMarket, vaultKey),
+				baseMint: solMint,
+				quoteMint: usdcMint,
+				vaultBaseTokenAccount: vaultSolAta,
+				vaultQuoteTokenAccount: vaultUsdcAta,
+				marketBaseTokenAccount: phoenix.getBaseVaultKey(
+					solUsdcMarket.toString()
+				),
+				marketQuoteTokenAccount: phoenix.getQuoteVaultKey(
+					solUsdcMarket.toString()
+				),
+				tokenProgram: TOKEN_PROGRAM_ID,
+			})
+			.remainingAccounts(markets)
+			.instruction();
+		try {
+			// await simulate(conn, payer, [ix]);
+			await sendAndConfirm(conn, payer, [ix]);
+		} catch (e: any) {
+			throw new Error(e);
+		}
 	});
 });
