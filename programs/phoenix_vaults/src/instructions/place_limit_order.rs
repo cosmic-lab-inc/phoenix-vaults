@@ -1,20 +1,21 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{Mint, Token, TokenAccount};
 use phoenix::program::PhoenixInstruction;
-use phoenix::state::{decode_order_packet, OrderPacketMetadata};
+use phoenix::state::{decode_order_packet, OrderPacket, OrderPacketMetadata};
 use solana_program::program::invoke_signed;
 
 use crate::constraints::{
     is_delegate_for_vault, is_sol_mint, is_sol_token_for_vault, is_usdc_mint,
     is_usdc_token_for_vault,
 };
+use crate::cpis::PhoenixTradeCPI;
 use crate::error::ErrorCode;
 use crate::state::{PhoenixProgram, Vault};
 use crate::{declare_vault_seeds, validate};
 
 pub fn place_limit_order<'c: 'info, 'info>(
     ctx: Context<'_, '_, 'c, 'info, PlaceLimitOrder<'info>>,
-    params: PlaceLimitOrderParams,
+    params: PlaceOrderParams,
 ) -> Result<()> {
     let (tag, data) = params
         .order
@@ -32,51 +33,13 @@ pub fn place_limit_order<'c: 'info, 'info>(
     )?;
 
     let order = decode_order_packet(data).ok_or(ErrorCode::OrderPacketDeserialization)?;
-    validate!(
-        order.no_deposit_or_withdrawal(),
-        ErrorCode::OrderPacketMustUseDepositedFunds,
-        "OrderPacket must use deposited funds"
-    )?;
-
-    let trader_index = 3;
-    let mut ix =
-        phoenix::program::instruction_builders::create_new_order_with_free_funds_instruction(
-            &ctx.accounts.market.key(),
-            &ctx.accounts.vault.key(),
-            &order,
-        );
-    ix.accounts[trader_index].is_signer = true;
-
-    // #[account(0, name = "phoenix_program", desc = "Phoenix program")]
-    // #[account(1, name = "log_authority", desc = "Phoenix log authority")]
-    // #[account(2, writable, name = "market", desc = "This account holds the market state")]
-    // #[account(3, signer, name = "trader")]
-    // #[account(4, name = "seat")]
-    // #[account(5, writable, name = "base_account", desc = "Trader base token account")]
-    // #[account(6, writable, name = "quote_account", desc = "Trader quote token account")]
-    // #[account(7, writable, name = "base_vault", desc = "Base vault PDA, seeds are [b'vault', market_address, base_mint_address]")]
-    // #[account(8, writable, name = "quote_vault", desc = "Quote vault PDA, seeds are [b'vault', market_address, quote_mint_address]")]
-    // #[account(9, name = "token_program", desc = "Token program")]
-    let accounts = [
-        ctx.accounts.phoenix.to_account_info(),
-        ctx.accounts.log_authority.to_account_info(),
-        ctx.accounts.market.to_account_info(),
-        ctx.accounts.vault.to_account_info(),
-        ctx.accounts.seat.to_account_info(),
-        ctx.accounts.vault_base_token_account.to_account_info(),
-        ctx.accounts.vault_quote_token_account.to_account_info(),
-        ctx.accounts.market_base_token_account.to_account_info(),
-        ctx.accounts.market_quote_token_account.to_account_info(),
-        ctx.accounts.token_program.to_account_info(),
-    ];
-    declare_vault_seeds!(ctx.accounts.vault, seeds);
-    invoke_signed(&ix, &accounts, seeds)?;
+    ctx.phoenix_trade(order)?;
 
     Ok(())
 }
 
 #[derive(AnchorDeserialize, AnchorSerialize, Clone, PartialEq, Eq, Debug)]
-pub struct PlaceLimitOrderParams {
+pub struct PlaceOrderParams {
     pub order: Vec<u8>,
 }
 
@@ -132,4 +95,50 @@ pub struct PlaceLimitOrder<'info> {
     pub market_quote_token_account: Account<'info, TokenAccount>,
 
     pub token_program: Program<'info, Token>,
+}
+
+impl<'info> PhoenixTradeCPI for Context<'_, '_, '_, 'info, PlaceLimitOrder<'info>> {
+    fn phoenix_trade(&self, order: OrderPacket) -> Result<()> {
+        validate!(
+            order.no_deposit_or_withdrawal(),
+            ErrorCode::OrderPacketMustUseDepositedFunds,
+            "OrderPacket must use deposited funds"
+        )?;
+
+        let trader_index = 3;
+        let mut ix =
+            phoenix::program::instruction_builders::create_new_order_with_free_funds_instruction(
+                &self.accounts.market.key(),
+                &self.accounts.vault.key(),
+                &order,
+            );
+        ix.accounts[trader_index].is_signer = true;
+
+        // #[account(0, name = "phoenix_program", desc = "Phoenix program")]
+        // #[account(1, name = "log_authority", desc = "Phoenix log authority")]
+        // #[account(2, writable, name = "market", desc = "This account holds the market state")]
+        // #[account(3, signer, name = "trader")]
+        // #[account(4, name = "seat")]
+        // #[account(5, writable, name = "base_account", desc = "Trader base token account")]
+        // #[account(6, writable, name = "quote_account", desc = "Trader quote token account")]
+        // #[account(7, writable, name = "base_vault", desc = "Base vault PDA, seeds are [b'vault', market_address, base_mint_address]")]
+        // #[account(8, writable, name = "quote_vault", desc = "Quote vault PDA, seeds are [b'vault', market_address, quote_mint_address]")]
+        // #[account(9, name = "token_program", desc = "Token program")]
+        let accounts = [
+            self.accounts.phoenix.to_account_info(),
+            self.accounts.log_authority.to_account_info(),
+            self.accounts.market.to_account_info(),
+            self.accounts.vault.to_account_info(),
+            self.accounts.seat.to_account_info(),
+            self.accounts.vault_base_token_account.to_account_info(),
+            self.accounts.vault_quote_token_account.to_account_info(),
+            self.accounts.market_base_token_account.to_account_info(),
+            self.accounts.market_quote_token_account.to_account_info(),
+            self.accounts.token_program.to_account_info(),
+        ];
+        declare_vault_seeds!(self.accounts.vault, seeds);
+        invoke_signed(&ix, &accounts, seeds)?;
+
+        Ok(())
+    }
 }

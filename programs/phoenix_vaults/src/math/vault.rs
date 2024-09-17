@@ -4,21 +4,17 @@ use crate::math::{Cast, SafeMath};
 use crate::{math_error, validate};
 use anchor_lang::solana_program::msg;
 
-pub fn shares_to_amount(
-    n_shares: u128,
-    total_vault_shares: u128,
-    vault_balance: u64,
-) -> VaultResult<u64> {
+pub fn shares_to_amount(n_shares: u128, total_shares: u128, total_equity: u64) -> VaultResult<u64> {
     validate!(
-        n_shares <= total_vault_shares,
+        n_shares <= total_shares,
         ErrorCode::InvalidVaultWithdrawSize,
-        "n_shares({}) > total_vault_shares({})",
+        "n_shares({}) > total_shares({})",
         n_shares,
-        total_vault_shares
+        total_shares
     )?;
 
-    let amount = if total_vault_shares > 0 {
-        get_proportion_u128(vault_balance as u128, n_shares, total_vault_shares)?.cast::<u64>()?
+    let amount = if total_shares > 0 {
+        get_proportion_u128(total_equity as u128, n_shares, total_shares)?.cast::<u64>()?
     } else {
         0
     };
@@ -26,24 +22,20 @@ pub fn shares_to_amount(
     Ok(amount)
 }
 
-pub fn amount_to_shares(
-    amount: u64,
-    total_vault_shares: u128,
-    insurance_fund_vault_balance: u64,
-) -> VaultResult<u128> {
+pub fn amount_to_shares(amount: u64, total_shares: u128, total_equity: u64) -> VaultResult<u128> {
     // relative to the entire pool + total amount minted
-    let n_shares = if insurance_fund_vault_balance > 0 {
-        // assumes total_vault_shares != 0 (in most cases) for nice result for user
+    let n_shares = if total_equity > 0 {
+        // assumes total_shares != 0 (in most cases) for nice result for user
 
         get_proportion_u128(
             amount.cast::<u128>()?,
-            total_vault_shares,
-            insurance_fund_vault_balance.cast::<u128>()?,
+            total_shares,
+            total_equity.cast::<u128>()?,
         )?
     } else {
-        // must be case that total_vault_shares == 0 for nice result for user
+        // must be case that total_shares == 0 for nice result for user
         validate!(
-            total_vault_shares == 0,
+            total_shares == 0,
             ErrorCode::InsufficientVaultShares,
             "assumes total_vault_shares == 0",
         )?;

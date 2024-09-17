@@ -51,7 +51,7 @@ pub mod phoenix_vaults {
 
     pub fn place_limit_order<'c: 'info, 'info>(
         ctx: Context<'_, '_, 'c, 'info, PlaceLimitOrder<'info>>,
-        params: PlaceLimitOrderParams,
+        params: PlaceOrderParams,
     ) -> Result<()> {
         instructions::place_limit_order(ctx, params)
     }
@@ -76,5 +76,18 @@ pub mod phoenix_vaults {
         params: MarketTransferParams,
     ) -> Result<()> {
         instructions::market_withdraw(ctx, params)
+    }
+
+    pub fn appoint_liquidator<'c: 'info, 'info>(
+        ctx: Context<'_, '_, 'c, 'info, AppointLiquidator<'info>>,
+    ) -> Result<()> {
+        instructions::appoint_liquidator(ctx)
+    }
+
+    pub fn liquidate_market<'c: 'info, 'info>(
+        ctx: Context<'_, '_, 'c, 'info, LiquidateMarket<'info>>,
+        market_index: u8,
+    ) -> Result<()> {
+        instructions::liquidate_market(ctx, market_index)
     }
 }

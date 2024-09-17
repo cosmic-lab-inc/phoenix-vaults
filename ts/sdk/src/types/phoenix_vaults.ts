@@ -370,7 +370,7 @@ export type PhoenixVaults = {
 				{
 					name: 'params';
 					type: {
-						defined: 'PlaceLimitOrderParams';
+						defined: 'PlaceOrderParams';
 					};
 				}
 			];
@@ -581,6 +581,138 @@ export type PhoenixVaults = {
 					type: {
 						defined: 'MarketTransferParams';
 					};
+				}
+			];
+		},
+		{
+			name: 'appointLiquidator';
+			accounts: [
+				{
+					name: 'vault';
+					isMut: true;
+					isSigner: false;
+				},
+				{
+					name: 'investor';
+					isMut: true;
+					isSigner: false;
+				},
+				{
+					name: 'authority';
+					isMut: false;
+					isSigner: true;
+				},
+				{
+					name: 'marketRegistry';
+					isMut: true;
+					isSigner: false;
+				},
+				{
+					name: 'lut';
+					isMut: false;
+					isSigner: false;
+				},
+				{
+					name: 'vaultQuoteTokenAccount';
+					isMut: true;
+					isSigner: false;
+				}
+			];
+			args: [];
+		},
+		{
+			name: 'liquidateMarket';
+			accounts: [
+				{
+					name: 'vault';
+					isMut: true;
+					isSigner: false;
+				},
+				{
+					name: 'investor';
+					isMut: true;
+					isSigner: false;
+				},
+				{
+					name: 'authority';
+					isMut: false;
+					isSigner: true;
+				},
+				{
+					name: 'marketRegistry';
+					isMut: true;
+					isSigner: false;
+				},
+				{
+					name: 'lut';
+					isMut: false;
+					isSigner: false;
+				},
+				{
+					name: 'investorQuoteTokenAccount';
+					isMut: true;
+					isSigner: false;
+				},
+				{
+					name: 'phoenix';
+					isMut: false;
+					isSigner: false;
+				},
+				{
+					name: 'logAuthority';
+					isMut: false;
+					isSigner: false;
+				},
+				{
+					name: 'market';
+					isMut: true;
+					isSigner: false;
+				},
+				{
+					name: 'seat';
+					isMut: false;
+					isSigner: false;
+				},
+				{
+					name: 'baseMint';
+					isMut: false;
+					isSigner: false;
+				},
+				{
+					name: 'quoteMint';
+					isMut: false;
+					isSigner: false;
+				},
+				{
+					name: 'vaultBaseTokenAccount';
+					isMut: true;
+					isSigner: false;
+				},
+				{
+					name: 'vaultQuoteTokenAccount';
+					isMut: true;
+					isSigner: false;
+				},
+				{
+					name: 'marketBaseTokenAccount';
+					isMut: true;
+					isSigner: false;
+				},
+				{
+					name: 'marketQuoteTokenAccount';
+					isMut: true;
+					isSigner: false;
+				},
+				{
+					name: 'tokenProgram';
+					isMut: false;
+					isSigner: false;
+				}
+			];
+			args: [
+				{
+					name: 'marketIndex';
+					type: 'u8';
 				}
 			];
 		}
@@ -1068,7 +1200,7 @@ export type PhoenixVaults = {
 			};
 		},
 		{
-			name: 'PlaceLimitOrderParams';
+			name: 'PlaceOrderParams';
 			type: {
 				kind: 'struct';
 				fields: [
@@ -1107,9 +1239,7 @@ export type PhoenixVaults = {
 					},
 					{
 						name: 'value';
-						docs: [
-							'requested value (in vault spot_market_index) of shares for withdraw'
-						];
+						docs: ['requested value in USDC of shares for withdraw'];
 						type: 'u64';
 					},
 					{
@@ -1500,6 +1630,11 @@ export type PhoenixVaults = {
 			code: 6041;
 			name: 'InvalidPhoenixInstruction';
 			msg: 'InvalidPhoenixInstruction';
+		},
+		{
+			code: 6042;
+			name: 'OrderPacketMustBeTakeOnly';
+			msg: 'OrderPacketMustBeTakeOnly';
 		}
 	];
 };
@@ -1876,7 +2011,7 @@ export const IDL: PhoenixVaults = {
 				{
 					name: 'params',
 					type: {
-						defined: 'PlaceLimitOrderParams',
+						defined: 'PlaceOrderParams',
 					},
 				},
 			],
@@ -2087,6 +2222,138 @@ export const IDL: PhoenixVaults = {
 					type: {
 						defined: 'MarketTransferParams',
 					},
+				},
+			],
+		},
+		{
+			name: 'appointLiquidator',
+			accounts: [
+				{
+					name: 'vault',
+					isMut: true,
+					isSigner: false,
+				},
+				{
+					name: 'investor',
+					isMut: true,
+					isSigner: false,
+				},
+				{
+					name: 'authority',
+					isMut: false,
+					isSigner: true,
+				},
+				{
+					name: 'marketRegistry',
+					isMut: true,
+					isSigner: false,
+				},
+				{
+					name: 'lut',
+					isMut: false,
+					isSigner: false,
+				},
+				{
+					name: 'vaultQuoteTokenAccount',
+					isMut: true,
+					isSigner: false,
+				},
+			],
+			args: [],
+		},
+		{
+			name: 'liquidateMarket',
+			accounts: [
+				{
+					name: 'vault',
+					isMut: true,
+					isSigner: false,
+				},
+				{
+					name: 'investor',
+					isMut: true,
+					isSigner: false,
+				},
+				{
+					name: 'authority',
+					isMut: false,
+					isSigner: true,
+				},
+				{
+					name: 'marketRegistry',
+					isMut: true,
+					isSigner: false,
+				},
+				{
+					name: 'lut',
+					isMut: false,
+					isSigner: false,
+				},
+				{
+					name: 'investorQuoteTokenAccount',
+					isMut: true,
+					isSigner: false,
+				},
+				{
+					name: 'phoenix',
+					isMut: false,
+					isSigner: false,
+				},
+				{
+					name: 'logAuthority',
+					isMut: false,
+					isSigner: false,
+				},
+				{
+					name: 'market',
+					isMut: true,
+					isSigner: false,
+				},
+				{
+					name: 'seat',
+					isMut: false,
+					isSigner: false,
+				},
+				{
+					name: 'baseMint',
+					isMut: false,
+					isSigner: false,
+				},
+				{
+					name: 'quoteMint',
+					isMut: false,
+					isSigner: false,
+				},
+				{
+					name: 'vaultBaseTokenAccount',
+					isMut: true,
+					isSigner: false,
+				},
+				{
+					name: 'vaultQuoteTokenAccount',
+					isMut: true,
+					isSigner: false,
+				},
+				{
+					name: 'marketBaseTokenAccount',
+					isMut: true,
+					isSigner: false,
+				},
+				{
+					name: 'marketQuoteTokenAccount',
+					isMut: true,
+					isSigner: false,
+				},
+				{
+					name: 'tokenProgram',
+					isMut: false,
+					isSigner: false,
+				},
+			],
+			args: [
+				{
+					name: 'marketIndex',
+					type: 'u8',
 				},
 			],
 		},
@@ -2574,7 +2841,7 @@ export const IDL: PhoenixVaults = {
 			},
 		},
 		{
-			name: 'PlaceLimitOrderParams',
+			name: 'PlaceOrderParams',
 			type: {
 				kind: 'struct',
 				fields: [
@@ -2613,9 +2880,7 @@ export const IDL: PhoenixVaults = {
 					},
 					{
 						name: 'value',
-						docs: [
-							'requested value (in vault spot_market_index) of shares for withdraw',
-						],
+						docs: ['requested value in USDC of shares for withdraw'],
 						type: 'u64',
 					},
 					{
@@ -3006,6 +3271,11 @@ export const IDL: PhoenixVaults = {
 			code: 6041,
 			name: 'InvalidPhoenixInstruction',
 			msg: 'InvalidPhoenixInstruction',
+		},
+		{
+			code: 6042,
+			name: 'OrderPacketMustBeTakeOnly',
+			msg: 'OrderPacketMustBeTakeOnly',
 		},
 	],
 };

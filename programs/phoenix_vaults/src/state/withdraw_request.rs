@@ -16,7 +16,7 @@ use static_assertions::const_assert_eq;
 pub struct WithdrawRequest {
     /// request shares of vault withdraw
     pub shares: u128,
-    /// requested value (in vault spot_market_index) of shares for withdraw
+    /// requested value in USDC of shares for withdraw
     pub value: u64,
     /// request ts of vault withdraw
     pub ts: i64,
@@ -116,6 +116,33 @@ impl WithdrawRequest {
             ErrorCode::CannotWithdrawBeforeRedeemPeriodEnd
         )?;
 
+        Ok(())
+    }
+
+    pub fn reduce_by_value(&mut self, value: u64) -> VaultResult {
+        let total_value = self.value;
+        let shares_to_reduce = amount_to_shares(value, self.shares, total_value)?;
+        validate!(
+            shares_to_reduce <= self.shares,
+            ErrorCode::InvalidVaultWithdrawSize,
+            "shares to reduce exceeds total shares to withdraw: {} > {}",
+            shares_to_reduce,
+            self.shares
+        )?;
+        validate!(
+            value <= total_value,
+            ErrorCode::InvalidVaultWithdrawSize,
+            "Requested withdraw value is zero",
+        )?;
+        validate!(
+            value <= total_value,
+            ErrorCode::InvalidVaultWithdrawSize,
+            "Requested withdraw value is greater than total value to withdraw: {} > {}",
+            value,
+            total_value
+        )?;
+        self.shares -= shares_to_reduce;
+        self.value -= value;
         Ok(())
     }
 }

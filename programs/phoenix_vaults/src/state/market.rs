@@ -1,9 +1,6 @@
 use crate::constants::PRICE_PRECISION_U64;
 use crate::error::ErrorCode;
-use crate::math::{
-    base_lots_to_raw_base_units_precision, quote_atoms_to_quote_lots_rounded_down,
-    quote_lots_to_quote_units_precision, sol_to_usdc_denom, ticks_to_price_precision,
-};
+use crate::math::*;
 use crate::state::{Investor, MarketRegistry};
 use crate::validate;
 use anchor_lang::prelude::*;
@@ -13,7 +10,7 @@ use phoenix::program::{load_with_dispatch, MarketHeader};
 use phoenix::quantities::WrapperU64;
 use sokoban::ZeroCopy;
 use solana_program::address_lookup_table::state::AddressLookupTable;
-use std::cell::{Ref, RefMut};
+use std::cell::RefMut;
 
 const SOL_USDC_MARKET_INDEX: usize = 0;
 
@@ -51,7 +48,6 @@ pub struct MarketLookupTable<'a> {
     pub lut: &'a AddressLookupTable<'a>,
 }
 
-// todo: validate remaining accounts against keys in MarketRegistry to prevent invalid accounts from being passed in.
 impl<'a: 'info, 'info, T: anchor_lang::Bumps> MarketMapProvider<'a>
     for Context<'_, '_, 'a, 'info, T>
 {
@@ -62,18 +58,13 @@ impl<'a: 'info, 'info, T: anchor_lang::Bumps> MarketMapProvider<'a>
         registry: RefMut<MarketRegistry>,
         market_lut: MarketLookupTable,
     ) -> Result<LinearMap<Pubkey, u64, 32>> {
-        let MarketLookupTable { lut_key, lut } = market_lut;
-        validate!(
-            registry.lut == lut_key,
-            ErrorCode::MarketRegistryLookupTableMismatch,
-            "MarketRegistry lookup table key mismatch"
-        )?;
+        let MarketLookupTable { lut, .. } = market_lut;
 
         let mut market_prices = LinearMap::new();
 
         let sol_mint = registry.sol_mint;
         let usdc_mint = registry.usdc_mint;
-        let (_, sol_price) = self.load_sol_usdc_market(registry, &lut)?;
+        let (_, sol_price) = self.load_sol_usdc_market(registry, lut)?;
 
         let remaining_accounts_iter = &mut self.remaining_accounts.iter().peekable();
         for (account, lut_key) in remaining_accounts_iter.zip(lut.addresses.iter()) {
@@ -110,9 +101,7 @@ impl<'a: 'info, 'info, T: anchor_lang::Bumps> MarketMapProvider<'a>
                     .insert(market_key, sol_price * price)
                     .map_err(|_| anchor_lang::error::Error::from(ErrorCode::MarketMapFull))?;
             } else {
-                return Err(anchor_lang::error::Error::from(
-                    ErrorCode::UnrecognizedQuoteMint,
-                ));
+                return Err(ErrorCode::UnrecognizedQuoteMint.into());
             }
         }
         Ok(market_prices)
@@ -144,9 +133,7 @@ impl<'a: 'info, 'info, T: anchor_lang::Bumps> MarketMapProvider<'a>
             )
         )?;
 
-        let account = account.to_account_info();
         let account_data = account.try_borrow_data()?;
-
         let (header_bytes, bytes) = account_data.split_at(std::mem::size_of::<MarketHeader>());
         let header = Box::new(MarketHeader::load_bytes(header_bytes).ok_or(
             anchor_lang::error::Error::from(ErrorCode::MarketDeserializationError),
@@ -154,7 +141,7 @@ impl<'a: 'info, 'info, T: anchor_lang::Bumps> MarketMapProvider<'a>
         if header.quote_params.mint_key != registry.usdc_mint
             || header.base_params.mint_key != registry.sol_mint
         {
-            return Err(anchor_lang::error::Error::from(ErrorCode::SolMarketMissing));
+            return Err(ErrorCode::SolMarketMissing.into());
         }
         let market = load_with_dispatch(&header.market_size_params, bytes)?;
         let ladder = market.inner.get_ladder(1);
@@ -170,18 +157,13 @@ impl<'a: 'info, 'info, T: anchor_lang::Bumps> MarketMapProvider<'a>
         registry: RefMut<MarketRegistry>,
         market_lut: MarketLookupTable,
     ) -> Result<u64> {
-        let MarketLookupTable { lut_key, lut } = market_lut;
-        validate!(
-            registry.lut == lut_key,
-            ErrorCode::MarketRegistryLookupTableMismatch,
-            "MarketRegistry lookup table key mismatch"
-        )?;
+        let MarketLookupTable { lut, .. } = market_lut;
 
         let mut equity = 0;
 
         let sol_mint = registry.sol_mint;
         let usdc_mint = registry.usdc_mint;
-        let (_, sol_price) = self.load_sol_usdc_market(registry, &lut)?;
+        let (_, sol_price) = self.load_sol_usdc_market(registry, lut)?;
 
         let remaining_accounts_iter = &mut self.remaining_accounts.iter().peekable();
         for (account, lut_key) in remaining_accounts_iter.zip(lut.addresses.iter()) {
@@ -192,7 +174,6 @@ impl<'a: 'info, 'info, T: anchor_lang::Bumps> MarketMapProvider<'a>
                 &format!("MarketRegistryMismatch: {:?} != {:?}", account.key, lut_key)
             )?;
 
-            let account = account.to_account_info();
             let account_data = account.try_borrow_data()?;
             let (header_bytes, bytes) = account_data.split_at(std::mem::size_of::<MarketHeader>());
             let header = Box::new(MarketHeader::load_bytes(header_bytes).ok_or(
@@ -214,9 +195,7 @@ impl<'a: 'info, 'info, T: anchor_lang::Bumps> MarketMapProvider<'a>
                 } else if quote_mint == sol_mint {
                     sol_to_usdc_denom(price, sol_price)
                 } else {
-                    return Err(anchor_lang::error::Error::from(
-                        ErrorCode::UnrecognizedQuoteMint,
-                    ));
+                    return Err(ErrorCode::UnrecognizedQuoteMint.into());
                 };
                 let base_lots =
                     trader_state.base_lots_locked.as_u64() + trader_state.base_lots_free.as_u64();
@@ -265,17 +244,15 @@ impl<'a: 'info, 'info, T: anchor_lang::Bumps> MarketMapProvider<'a>
             )
         )?;
 
-        let account = account.to_account_info();
         let account_data = account.try_borrow_data()?;
-
-        let (header_bytes, bytes) = account_data.split_at(std::mem::size_of::<MarketHeader>());
+        let (header_bytes, _) = account_data.split_at(std::mem::size_of::<MarketHeader>());
         let header = Box::new(MarketHeader::load_bytes(header_bytes).ok_or(
             anchor_lang::error::Error::from(ErrorCode::MarketDeserializationError),
         )?);
         if header.quote_params.mint_key != registry.usdc_mint
             || header.base_params.mint_key != registry.sol_mint
         {
-            return Err(anchor_lang::error::Error::from(ErrorCode::SolMarketMissing));
+            return Err(ErrorCode::SolMarketMissing.into());
         }
 
         let quote_lots_available =
@@ -287,7 +264,7 @@ impl<'a: 'info, 'info, T: anchor_lang::Bumps> MarketMapProvider<'a>
         validate!(
             cant_withdraw,
             ErrorCode::InvestorCanWithdraw,
-            "Investor does not require liquidation to fulfill withdraw request"
+            "Investor can withdraw without liquidating the vault"
         )?;
 
         Ok(())

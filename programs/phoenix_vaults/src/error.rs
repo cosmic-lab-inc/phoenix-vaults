@@ -89,6 +89,8 @@ pub enum ErrorCode {
     OrderPacketMustUseDepositedFunds,
     #[msg("InvalidPhoenixInstruction")]
     InvalidPhoenixInstruction,
+    #[msg("OrderPacketMustBeTakeOnly")]
+    OrderPacketMustBeTakeOnly,
 }
 
 #[macro_export]

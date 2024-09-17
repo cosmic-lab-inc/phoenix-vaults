@@ -17,6 +17,13 @@ then market swap base lots into quote lots as needed until zero or investor with
 whichever comes first.
 
 
+### Investor Deposit/Withdraw
+
+* investor transfer to vault ata
+* vault ata transfers to SOL/USDC market
+investor to market transfer settled atomically
+
+
 ### Client Liquidation Process
 
 * `appoint_liquidator`: client acquires liquidation authority
