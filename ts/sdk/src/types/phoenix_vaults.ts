@@ -666,7 +666,7 @@ export type PhoenixVaults = {
 			args: [];
 		},
 		{
-			name: 'liquidateMarket';
+			name: 'liquidateUsdcMarket';
 			accounts: [
 				{
 					name: 'vault';
@@ -694,7 +694,7 @@ export type PhoenixVaults = {
 					isSigner: false;
 				},
 				{
-					name: 'investorQuoteTokenAccount';
+					name: 'investorUsdcTokenAccount';
 					isMut: true;
 					isSigner: false;
 				},
@@ -724,7 +724,7 @@ export type PhoenixVaults = {
 					isSigner: false;
 				},
 				{
-					name: 'quoteMint';
+					name: 'usdcMint';
 					isMut: false;
 					isSigner: false;
 				},
@@ -734,7 +734,7 @@ export type PhoenixVaults = {
 					isSigner: false;
 				},
 				{
-					name: 'vaultQuoteTokenAccount';
+					name: 'vaultUsdcTokenAccount';
 					isMut: true;
 					isSigner: false;
 				},
@@ -744,7 +744,123 @@ export type PhoenixVaults = {
 					isSigner: false;
 				},
 				{
-					name: 'marketQuoteTokenAccount';
+					name: 'marketUsdcTokenAccount';
+					isMut: true;
+					isSigner: false;
+				},
+				{
+					name: 'tokenProgram';
+					isMut: false;
+					isSigner: false;
+				}
+			];
+			args: [
+				{
+					name: 'marketIndex';
+					type: 'u8';
+				}
+			];
+		},
+		{
+			name: 'liquidateSolMarket';
+			accounts: [
+				{
+					name: 'vault';
+					isMut: true;
+					isSigner: false;
+				},
+				{
+					name: 'investor';
+					isMut: true;
+					isSigner: false;
+				},
+				{
+					name: 'authority';
+					isMut: false;
+					isSigner: true;
+				},
+				{
+					name: 'marketRegistry';
+					isMut: true;
+					isSigner: false;
+				},
+				{
+					name: 'lut';
+					isMut: false;
+					isSigner: false;
+				},
+				{
+					name: 'investorUsdcTokenAccount';
+					isMut: true;
+					isSigner: false;
+				},
+				{
+					name: 'phoenix';
+					isMut: false;
+					isSigner: false;
+				},
+				{
+					name: 'logAuthority';
+					isMut: false;
+					isSigner: false;
+				},
+				{
+					name: 'market';
+					isMut: true;
+					isSigner: false;
+				},
+				{
+					name: 'seat';
+					isMut: false;
+					isSigner: false;
+				},
+				{
+					name: 'baseMint';
+					isMut: false;
+					isSigner: false;
+				},
+				{
+					name: 'solMint';
+					isMut: false;
+					isSigner: false;
+				},
+				{
+					name: 'usdcMint';
+					isMut: false;
+					isSigner: false;
+				},
+				{
+					name: 'vaultBaseTokenAccount';
+					isMut: true;
+					isSigner: false;
+				},
+				{
+					name: 'vaultSolTokenAccount';
+					isMut: true;
+					isSigner: false;
+				},
+				{
+					name: 'vaultUsdcTokenAccount';
+					isMut: true;
+					isSigner: false;
+				},
+				{
+					name: 'marketBaseTokenAccount';
+					isMut: true;
+					isSigner: false;
+				},
+				{
+					name: 'marketSolTokenAccount';
+					isMut: true;
+					isSigner: false;
+				},
+				{
+					name: 'solUsdcMarketSolTokenAccount';
+					isMut: true;
+					isSigner: false;
+				},
+				{
+					name: 'solUsdcMarketUsdcTokenAccount';
 					isMut: true;
 					isSigner: false;
 				},
@@ -2357,7 +2473,7 @@ export const IDL: PhoenixVaults = {
 			args: [],
 		},
 		{
-			name: 'liquidateMarket',
+			name: 'liquidateUsdcMarket',
 			accounts: [
 				{
 					name: 'vault',
@@ -2385,7 +2501,7 @@ export const IDL: PhoenixVaults = {
 					isSigner: false,
 				},
 				{
-					name: 'investorQuoteTokenAccount',
+					name: 'investorUsdcTokenAccount',
 					isMut: true,
 					isSigner: false,
 				},
@@ -2415,7 +2531,7 @@ export const IDL: PhoenixVaults = {
 					isSigner: false,
 				},
 				{
-					name: 'quoteMint',
+					name: 'usdcMint',
 					isMut: false,
 					isSigner: false,
 				},
@@ -2425,7 +2541,7 @@ export const IDL: PhoenixVaults = {
 					isSigner: false,
 				},
 				{
-					name: 'vaultQuoteTokenAccount',
+					name: 'vaultUsdcTokenAccount',
 					isMut: true,
 					isSigner: false,
 				},
@@ -2435,7 +2551,123 @@ export const IDL: PhoenixVaults = {
 					isSigner: false,
 				},
 				{
-					name: 'marketQuoteTokenAccount',
+					name: 'marketUsdcTokenAccount',
+					isMut: true,
+					isSigner: false,
+				},
+				{
+					name: 'tokenProgram',
+					isMut: false,
+					isSigner: false,
+				},
+			],
+			args: [
+				{
+					name: 'marketIndex',
+					type: 'u8',
+				},
+			],
+		},
+		{
+			name: 'liquidateSolMarket',
+			accounts: [
+				{
+					name: 'vault',
+					isMut: true,
+					isSigner: false,
+				},
+				{
+					name: 'investor',
+					isMut: true,
+					isSigner: false,
+				},
+				{
+					name: 'authority',
+					isMut: false,
+					isSigner: true,
+				},
+				{
+					name: 'marketRegistry',
+					isMut: true,
+					isSigner: false,
+				},
+				{
+					name: 'lut',
+					isMut: false,
+					isSigner: false,
+				},
+				{
+					name: 'investorUsdcTokenAccount',
+					isMut: true,
+					isSigner: false,
+				},
+				{
+					name: 'phoenix',
+					isMut: false,
+					isSigner: false,
+				},
+				{
+					name: 'logAuthority',
+					isMut: false,
+					isSigner: false,
+				},
+				{
+					name: 'market',
+					isMut: true,
+					isSigner: false,
+				},
+				{
+					name: 'seat',
+					isMut: false,
+					isSigner: false,
+				},
+				{
+					name: 'baseMint',
+					isMut: false,
+					isSigner: false,
+				},
+				{
+					name: 'solMint',
+					isMut: false,
+					isSigner: false,
+				},
+				{
+					name: 'usdcMint',
+					isMut: false,
+					isSigner: false,
+				},
+				{
+					name: 'vaultBaseTokenAccount',
+					isMut: true,
+					isSigner: false,
+				},
+				{
+					name: 'vaultSolTokenAccount',
+					isMut: true,
+					isSigner: false,
+				},
+				{
+					name: 'vaultUsdcTokenAccount',
+					isMut: true,
+					isSigner: false,
+				},
+				{
+					name: 'marketBaseTokenAccount',
+					isMut: true,
+					isSigner: false,
+				},
+				{
+					name: 'marketSolTokenAccount',
+					isMut: true,
+					isSigner: false,
+				},
+				{
+					name: 'solUsdcMarketSolTokenAccount',
+					isMut: true,
+					isSigner: false,
+				},
+				{
+					name: 'solUsdcMarketUsdcTokenAccount',
 					isMut: true,
 					isSigner: false,
 				},

@@ -1,11 +1,8 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{Mint, Token, TokenAccount};
-use phoenix::program::deposit::DepositParams;
 use solana_program::program::invoke_signed;
 
-use crate::constraints::{
-    is_delegate_for_vault, is_sol_mint, is_usdc_mint, is_usdc_token_for_vault,
-};
+use crate::constraints::*;
 use crate::cpis::PhoenixWithdrawCPI;
 use crate::declare_vault_seeds;
 use crate::state::{MarketTransferParams, PhoenixProgram, Vault};
@@ -43,7 +40,7 @@ pub struct MarketWithdraw<'info> {
 
     pub base_mint: Account<'info, Mint>,
     #[account(
-        constraint = is_usdc_mint(&vault, &quote_mint.key())? || is_sol_mint(&vault, &quote_mint.key())?,
+        constraint = is_vault_mint(&vault, &quote_mint.key())?
     )]
     pub quote_mint: Account<'info, Mint>,
 
@@ -54,7 +51,7 @@ pub struct MarketWithdraw<'info> {
     pub vault_base_token_account: Account<'info, TokenAccount>,
     #[account(
         mut,
-        constraint = is_usdc_token_for_vault(&vault, &vault_quote_token_account)?,
+        constraint = is_vault_token(&vault, &vault_quote_token_account)?,
         token::mint = quote_mint
     )]
     pub vault_quote_token_account: Account<'info, TokenAccount>,
@@ -65,7 +62,7 @@ pub struct MarketWithdraw<'info> {
     pub market_base_token_account: Account<'info, TokenAccount>,
     #[account(
         mut,
-        constraint = is_usdc_mint(&vault, &market_quote_token_account.mint)? || is_sol_mint(&vault, &market_quote_token_account.mint)?,
+        constraint = is_vault_mint(&vault, &market_quote_token_account.mint)?,
         token::mint = quote_mint
     )]
     pub market_quote_token_account: Account<'info, TokenAccount>,

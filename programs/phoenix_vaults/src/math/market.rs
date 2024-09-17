@@ -87,3 +87,8 @@ pub fn quote_lots_to_base_lots(header: &MarketHeader, quote_lots: u64, price_in_
     let quote_atoms = quote_lots_to_quote_atoms(header, quote_lots);
     quote_atoms_and_price_to_base_lots(header, quote_atoms, price_in_ticks)
 }
+
+pub fn base_atoms_to_base_lots_rounded_down(header: &MarketHeader, base_atoms: u64) -> u64 {
+    let base_atoms_per_base_lot = header.get_base_lot_size().as_u64();
+    base_atoms / base_atoms_per_base_lot
+}

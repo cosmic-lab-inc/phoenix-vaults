@@ -10,10 +10,18 @@ pub trait PhoenixDepositCPI {
     fn phoenix_deposit(&self, params: MarketTransferParams) -> Result<()>;
 }
 
+pub trait PhoenixTradeCPI {
+    fn phoenix_trade(&self, order: OrderPacket) -> Result<()>;
+}
+
 pub trait PhoenixWithdrawCPI {
     fn phoenix_withdraw(&self, params: MarketTransferParams) -> Result<()>;
 }
 
-pub trait PhoenixTradeCPI {
-    fn phoenix_trade(&self, order: OrderPacket) -> Result<()>;
+pub trait PhoenixWithdrawSolUsdcMarketCPI {
+    fn phoenix_withdraw_sol_usdc_market(&self, params: MarketTransferParams) -> Result<()>;
+}
+
+pub trait PhoenixDepositSolUsdcMarketCPI {
+    fn phoenix_deposit_sol_usdc_market(&self, params: MarketTransferParams) -> Result<()>;
 }

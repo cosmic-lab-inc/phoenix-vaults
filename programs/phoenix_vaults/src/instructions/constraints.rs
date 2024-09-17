@@ -48,12 +48,24 @@ pub fn is_sol_token_for_vault(
     Ok(owner && vault_ref.sol_token_account.eq(&token.key()))
 }
 
+pub fn is_vault_token(vault: &AccountLoader<Vault>, token: &Account<TokenAccount>) -> Result<bool> {
+    let is_usdc = is_usdc_token_for_vault(vault, token)?;
+    let is_sol = is_sol_token_for_vault(vault, token)?;
+    Ok(is_usdc || is_sol)
+}
+
 pub fn is_usdc_mint(vault: &AccountLoader<Vault>, mint: &Pubkey) -> Result<bool> {
     Ok(vault.load()?.usdc_mint.eq(mint))
 }
 
 pub fn is_sol_mint(vault: &AccountLoader<Vault>, mint: &Pubkey) -> Result<bool> {
     Ok(vault.load()?.sol_mint.eq(mint))
+}
+
+pub fn is_vault_mint(vault: &AccountLoader<Vault>, mint: &Pubkey) -> Result<bool> {
+    let is_usdc_mint = is_usdc_mint(vault, mint)?;
+    let is_sol_mint = is_sol_mint(vault, mint)?;
+    Ok(is_usdc_mint || is_sol_mint)
 }
 
 pub fn is_lut_for_registry(

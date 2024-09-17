@@ -16,14 +16,12 @@ const SOL_USDC_MARKET_INDEX: usize = 0;
 pub trait MarketMapProvider<'a> {
     fn load_markets(
         &self,
-        // registry: RefMut<MarketRegistry>,
         registry: &MarketRegistry,
         market_lut: MarketLookupTable,
     ) -> Result<LinearMap<Pubkey, u64, 32>>;
 
     fn load_sol_usdc_market(
         &self,
-        // registry: RefMut<MarketRegistry>,
         registry: &MarketRegistry,
         lut: &AddressLookupTable,
     ) -> Result<(Pubkey, u64, Box<MarketHeader>)>;
@@ -31,7 +29,6 @@ pub trait MarketMapProvider<'a> {
     fn equity(
         &self,
         vault_key: &Pubkey,
-        // registry: RefMut<MarketRegistry>,
         registry: &MarketRegistry,
         market_lut: MarketLookupTable,
     ) -> Result<u64>;
@@ -40,7 +37,6 @@ pub trait MarketMapProvider<'a> {
         &self,
         investor: &Investor,
         vault_usdc_token_account: &Account<TokenAccount>,
-        // registry: &RefMut<MarketRegistry>,
         registry: &MarketRegistry,
         lut: &AddressLookupTable,
     ) -> Result<()>;
@@ -58,7 +54,6 @@ impl<'a: 'info, 'info, T: anchor_lang::Bumps> MarketMapProvider<'a>
     /// The remaining accounts in this Context should directly correspond to the addresses in the lookup table.
     fn load_markets(
         &self,
-        // registry: RefMut<MarketRegistry>,
         registry: &MarketRegistry,
         market_lut: MarketLookupTable,
     ) -> Result<LinearMap<Pubkey, u64, 32>> {
@@ -68,7 +63,8 @@ impl<'a: 'info, 'info, T: anchor_lang::Bumps> MarketMapProvider<'a>
 
         let sol_mint = registry.sol_mint;
         let usdc_mint = registry.usdc_mint;
-        let (_, sol_price, _) = self.load_sol_usdc_market(registry, lut)?;
+        let (_, sol_tick_price, sol_header) = self.load_sol_usdc_market(registry, lut)?;
+        let sol_price = ticks_to_price_precision(&sol_header, sol_tick_price);
 
         let remaining_accounts_iter = &mut self.remaining_accounts.iter().peekable();
         for (account, lut_key) in remaining_accounts_iter.zip(lut.addresses.iter()) {
@@ -115,7 +111,6 @@ impl<'a: 'info, 'info, T: anchor_lang::Bumps> MarketMapProvider<'a>
     /// This enables equity calculation in either SOL or USDC denomination.
     fn load_sol_usdc_market(
         &self,
-        // registry: RefMut<MarketRegistry>,
         registry: &MarketRegistry,
         lut: &AddressLookupTable,
     ) -> Result<(Pubkey, u64, Box<MarketHeader>)> {
@@ -155,15 +150,13 @@ impl<'a: 'info, 'info, T: anchor_lang::Bumps> MarketMapProvider<'a>
         let market = load_with_dispatch(&header.market_size_params, bytes)?;
         let ladder = market.inner.get_ladder(1);
         let tick_price = ladder.asks.first().map_or(0, |ask| ask.price_in_ticks);
-        let price = ticks_to_price_precision(&header, tick_price);
-        msg!("sol ask price: {}/1_000_000", price);
-        Ok((account.key(), price, header))
+
+        Ok((account.key(), tick_price, header))
     }
 
     fn equity(
         &self,
         vault_key: &Pubkey,
-        // registry: RefMut<MarketRegistry>,
         registry: &MarketRegistry,
         market_lut: MarketLookupTable,
     ) -> Result<u64> {
@@ -173,7 +166,8 @@ impl<'a: 'info, 'info, T: anchor_lang::Bumps> MarketMapProvider<'a>
 
         let sol_mint = registry.sol_mint;
         let usdc_mint = registry.usdc_mint;
-        let (_, sol_price, _) = self.load_sol_usdc_market(registry, lut)?;
+        let (_, sol_tick_price, sol_header) = self.load_sol_usdc_market(registry, lut)?;
+        let sol_price = ticks_to_price_precision(&sol_header, sol_tick_price);
 
         let remaining_accounts_iter = &mut self.remaining_accounts.iter().peekable();
         for (account, lut_key) in remaining_accounts_iter.zip(lut.addresses.iter()) {

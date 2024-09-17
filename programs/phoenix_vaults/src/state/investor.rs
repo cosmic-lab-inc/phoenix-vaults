@@ -538,8 +538,6 @@ impl Investor {
             vault.total_shares
         );
         msg!("investor_equity: {}/{}", total_amount, vault_equity);
-        msg!("manager_profit_share: {}", manager_profit_share);
-        msg!("protocol_profit_share: {}", protocol_profit_share);
 
         let profit_share_shares: u128 =
             amount_to_shares(profit_share, vault.total_shares, vault_equity)?;

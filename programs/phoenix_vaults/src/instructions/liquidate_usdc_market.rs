@@ -20,8 +20,12 @@ use crate::{declare_vault_seeds, validate};
 
 /// Investor has authority to liquidate vault position in any market if they can't withdraw their equity.
 /// This instruction liquidates up to the amount the investor has unfulfilled in its last withdraw request.
-pub fn liquidate_market<'c: 'info, 'info>(
-    ctx: Context<'_, '_, 'c, 'info, LiquidateMarket<'info>>,
+/// If the market is USDC denominated:
+///     * if not enough quote USDC to fulfill withdraw request, swap base to USDC as needed
+///     * withdraw quote USDC to `vault_usdc_token_account`
+/// * transfer quote USDC to `investor_quote_token_account`
+pub fn liquidate_usdc_market<'c: 'info, 'info>(
+    ctx: Context<'_, '_, 'c, 'info, LiquidateUsdcMarket<'info>>,
     market_index: u8,
 ) -> Result<()> {
     let now = Clock::get()?.unix_timestamp;
@@ -38,20 +42,13 @@ pub fn liquidate_market<'c: 'info, 'info>(
     let lut_acct_info = ctx.accounts.lut.to_account_info();
     let lut_data = lut_acct_info.data.borrow();
     let lut = MarketRegistry::deserialize_lookup_table(registry.lut_auth, lut_data.as_ref())?;
-    let vault_usdc_ata = &ctx.accounts.vault_quote_token_account;
+    let vault_usdc_ata = &ctx.accounts.vault_usdc_token_account;
 
     if let Err(e) = ctx.check_cant_withdraw(&investor, vault_usdc_ata, &registry, &lut) {
         vault.reset_liquidation_delegate();
         return Err(e);
     }
 
-    /*
-        Instruction executes:
-        * debits quote lots from vault position in market.
-        * if quote lots are insufficient to fulfill investor withdraw request,
-          then market swap base lots into quote lots until withdraw request
-          is fulfilled or vault is empty,which ever comes first.
-    */
     let vault_key = ctx.accounts.vault.key();
 
     let lut_key_at_index = lut
@@ -86,6 +83,11 @@ pub fn liquidate_market<'c: 'info, 'info>(
         .map_or(0, |ask| ask.price_in_ticks);
 
     if let Some(trader_state) = market.inner.get_trader_state(&vault_key) {
+        let quote_mint = header.quote_params.mint_key;
+        if quote_mint != registry.usdc_mint {
+            return Err(ErrorCode::UnrecognizedQuoteMint.into());
+        }
+
         let vault_bl = trader_state.base_lots_free.as_u64();
         let vault_ql = trader_state.quote_lots_free.as_u64();
 
@@ -100,7 +102,7 @@ pub fn liquidate_market<'c: 'info, 'info>(
             })?;
             let quote_atoms = quote_lots_to_quote_atoms(&header, withdraw_ql);
             msg!(
-                "sufficient quote atoms to fulfill withdraw request: {}",
+                "sufficient USDC quote atoms to fulfill withdraw request: {}",
                 quote_atoms
             );
             quote_atoms
@@ -108,10 +110,11 @@ pub fn liquidate_market<'c: 'info, 'info>(
             // sell base lots to quote lots
             let ql_to_sell = withdraw_ql - vault_ql;
             let bl_to_sell = quote_lots_to_base_lots(&header, ql_to_sell, tick_price).min(vault_bl);
-            let params = LiquidateMarket::build_swap_params(bl_to_sell)?;
+            let params = LiquidateUsdcMarket::build_swap_params(bl_to_sell)?;
             ctx.phoenix_trade(params)?;
 
             // withdraw existing quote_lots plus liquidated quote lots from market to vault
+            // todo: account for taker fee
             let ql_to_withdraw = vault_ql + ql_to_sell;
             ctx.phoenix_withdraw(MarketTransferParams {
                 base_lots: 0,
@@ -119,7 +122,7 @@ pub fn liquidate_market<'c: 'info, 'info>(
             })?;
             let quote_atoms = quote_lots_to_quote_atoms(&header, ql_to_withdraw);
             msg!(
-                "liquidated quote atoms to fulfill withdraw request: {}",
+                "liquidated USDC quote atoms to fulfill withdraw request: {}",
                 quote_atoms
             );
             quote_atoms
@@ -139,7 +142,7 @@ pub fn liquidate_market<'c: 'info, 'info>(
 }
 
 #[derive(Accounts)]
-pub struct LiquidateMarket<'info> {
+pub struct LiquidateUsdcMarket<'info> {
     #[account(
         mut,
         constraint = is_liquidator_for_vault(&vault, &authority)?
@@ -168,11 +171,11 @@ pub struct LiquidateMarket<'info> {
 
     #[account(
         mut,
-        constraint = is_usdc_mint(&vault, &investor_quote_token_account.mint)? || is_sol_mint(&vault, &investor_quote_token_account.mint)?,
-        token::mint = quote_mint,
+        constraint = is_usdc_mint(&vault, &investor_usdc_token_account.mint)?,
+        token::mint = usdc_mint,
         token::authority = authority,
     )]
-    pub investor_quote_token_account: Account<'info, TokenAccount>,
+    pub investor_usdc_token_account: Account<'info, TokenAccount>,
 
     //
     // Phoenix CPI accounts
@@ -188,9 +191,9 @@ pub struct LiquidateMarket<'info> {
 
     pub base_mint: Account<'info, Mint>,
     #[account(
-        constraint = is_usdc_mint(&vault, &quote_mint.key())? || is_sol_mint(&vault, &quote_mint.key())?,
+        constraint = is_usdc_mint(&vault, &usdc_mint.key())?
     )]
-    pub quote_mint: Account<'info, Mint>,
+    pub usdc_mint: Account<'info, Mint>,
 
     #[account(
         mut,
@@ -199,10 +202,10 @@ pub struct LiquidateMarket<'info> {
     pub vault_base_token_account: Account<'info, TokenAccount>,
     #[account(
         mut,
-        constraint = is_usdc_token_for_vault(&vault, &vault_quote_token_account)? || is_sol_token_for_vault(&vault, &vault_quote_token_account)?,
-        token::mint = quote_mint
+        constraint = is_usdc_token_for_vault(&vault, &vault_usdc_token_account)?,
+        token::mint = usdc_mint
     )]
-    pub vault_quote_token_account: Account<'info, TokenAccount>,
+    pub vault_usdc_token_account: Account<'info, TokenAccount>,
 
     #[account(
         mut,
@@ -211,15 +214,15 @@ pub struct LiquidateMarket<'info> {
     pub market_base_token_account: Account<'info, TokenAccount>,
     #[account(
         mut,
-        constraint = is_usdc_mint(&vault, &market_quote_token_account.mint)? || is_sol_mint(&vault, &market_quote_token_account.mint)?,
-        token::mint = quote_mint
+        constraint = is_usdc_mint(&vault, &market_usdc_token_account.mint)?,
+        token::mint = usdc_mint
     )]
-    pub market_quote_token_account: Account<'info, TokenAccount>,
+    pub market_usdc_token_account: Account<'info, TokenAccount>,
 
     pub token_program: Program<'info, Token>,
 }
 
-impl<'info> LiquidateMarket<'info> {
+impl<'info> LiquidateUsdcMarket<'info> {
     pub fn build_swap_params(bl_to_sell: u64) -> Result<OrderPacket> {
         Ok(OrderPacket::new_ioc(
             Side::Ask,
@@ -238,14 +241,14 @@ impl<'info> LiquidateMarket<'info> {
     }
 }
 
-impl<'info> PhoenixWithdrawCPI for Context<'_, '_, '_, 'info, LiquidateMarket<'info>> {
+impl<'info> PhoenixWithdrawCPI for Context<'_, '_, '_, 'info, LiquidateUsdcMarket<'info>> {
     fn phoenix_withdraw(&self, params: MarketTransferParams) -> Result<()> {
         let trader_index = 3;
         let mut ix = phoenix::program::instruction_builders::create_withdraw_funds_with_custom_amounts_instruction(
             &self.accounts.market.key(),
             &self.accounts.vault.key(),
             &self.accounts.base_mint.key(),
-            &self.accounts.quote_mint.key(),
+            &self.accounts.usdc_mint.key(),
             params.base_lots,
             params.quote_lots
         );
@@ -266,9 +269,9 @@ impl<'info> PhoenixWithdrawCPI for Context<'_, '_, '_, 'info, LiquidateMarket<'i
             self.accounts.market.to_account_info(),
             self.accounts.vault.to_account_info(),
             self.accounts.vault_base_token_account.to_account_info(),
-            self.accounts.vault_quote_token_account.to_account_info(),
+            self.accounts.vault_usdc_token_account.to_account_info(),
             self.accounts.market_base_token_account.to_account_info(),
-            self.accounts.market_quote_token_account.to_account_info(),
+            self.accounts.market_usdc_token_account.to_account_info(),
             self.accounts.token_program.to_account_info(),
         ];
         declare_vault_seeds!(self.accounts.vault, seeds);
@@ -278,7 +281,7 @@ impl<'info> PhoenixWithdrawCPI for Context<'_, '_, '_, 'info, LiquidateMarket<'i
     }
 }
 
-impl<'info> PhoenixTradeCPI for Context<'_, '_, '_, 'info, LiquidateMarket<'info>> {
+impl<'info> PhoenixTradeCPI for Context<'_, '_, '_, 'info, LiquidateUsdcMarket<'info>> {
     fn phoenix_trade(&self, order: OrderPacket) -> Result<()> {
         validate!(
             order.is_take_only(),
@@ -317,9 +320,9 @@ impl<'info> PhoenixTradeCPI for Context<'_, '_, '_, 'info, LiquidateMarket<'info
             self.accounts.vault.to_account_info(),
             self.accounts.seat.to_account_info(),
             self.accounts.vault_base_token_account.to_account_info(),
-            self.accounts.vault_quote_token_account.to_account_info(),
+            self.accounts.vault_usdc_token_account.to_account_info(),
             self.accounts.market_base_token_account.to_account_info(),
-            self.accounts.market_quote_token_account.to_account_info(),
+            self.accounts.market_usdc_token_account.to_account_info(),
             self.accounts.token_program.to_account_info(),
         ];
         declare_vault_seeds!(self.accounts.vault, seeds);
@@ -328,17 +331,17 @@ impl<'info> PhoenixTradeCPI for Context<'_, '_, '_, 'info, LiquidateMarket<'info
     }
 }
 
-impl<'info> TokenTransferCPI for Context<'_, '_, '_, 'info, LiquidateMarket<'info>> {
+impl<'info> TokenTransferCPI for Context<'_, '_, '_, 'info, LiquidateUsdcMarket<'info>> {
     fn token_transfer(&self, amount: u64) -> Result<()> {
         let cpi_accounts = Transfer {
             from: self
                 .accounts
-                .vault_quote_token_account
+                .vault_usdc_token_account
                 .to_account_info()
                 .clone(),
             to: self
                 .accounts
-                .investor_quote_token_account
+                .investor_usdc_token_account
                 .to_account_info()
                 .clone(),
             authority: self.accounts.vault.to_account_info().clone(),

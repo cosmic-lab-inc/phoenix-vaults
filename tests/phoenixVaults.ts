@@ -362,7 +362,6 @@ describe('phoenixVaults', () => {
 			.remainingAccounts(markets)
 			.instruction();
 		try {
-			await simulate(conn, payer, [ix]);
 			await sendAndConfirm(conn, payer, [ix]);
 		} catch (e: any) {
 			throw new Error(e);
@@ -379,12 +378,15 @@ describe('phoenixVaults', () => {
 		console.log(
 			`vault atas after investor deposit, sol: ${vaultSol}, usdc: ${vaultUsdc}`
 		);
-		// assert.equal(vaultAtaBalance, 1000);
+		assert.equal(vaultSol, 0);
+		assert.equal(vaultUsdc, 0);
 
 		const vaultState = await fetchTraderState(conn, solUsdcMarket, vaultKey);
 		console.log(
 			`vault trader state after investor deposit, sol: ${vaultState.baseUnitsFree}, usdc: ${vaultState.quoteUnitsFree}`
 		);
+		assert.equal(vaultState.baseUnitsFree, 0);
+		assert.equal(vaultState.quoteUnitsFree, 1000);
 	});
 
 	//
@@ -530,7 +532,6 @@ describe('phoenixVaults', () => {
 					tokenProgram: TOKEN_PROGRAM_ID,
 				})
 				.instruction();
-			await simulate(conn, payer, [ix], [manager]);
 			await sendAndConfirm(conn, payer, [ix], [manager]);
 		} catch (e: any) {
 			throw new Error(e);

@@ -2,10 +2,7 @@ use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Transfer};
 use anchor_spl::token::{Token, TokenAccount};
 
-use crate::constraints::{
-    is_authority_for_investor, is_lut_for_registry, is_sol_mint, is_sol_token_for_vault,
-    is_usdc_mint, is_usdc_token_for_vault,
-};
+use crate::constraints::*;
 use crate::cpis::TokenTransferCPI;
 use crate::declare_vault_seeds;
 use crate::state::{Investor, MarketLookupTable, MarketMapProvider, MarketRegistry, Vault};
@@ -69,12 +66,12 @@ pub struct InvestorWithdraw<'info> {
 
     #[account(
         mut,
-        constraint = is_usdc_token_for_vault(&vault, &vault_token_account)? || is_sol_token_for_vault(&vault, &vault_token_account)?,
+        constraint = is_vault_token(&vault, &vault_token_account)?,
     )]
     pub vault_token_account: Box<Account<'info, TokenAccount>>,
     #[account(
         mut,
-        constraint = is_usdc_mint(&vault, &investor_token_account.mint)? || is_sol_mint(&vault, &investor_token_account.mint)?,
+        constraint = is_vault_mint(&vault, &investor_token_account.mint)?,
         token::authority = authority,
         token::mint = vault_token_account.mint,
     )]

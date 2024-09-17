@@ -15,14 +15,16 @@ fi
 agave-install init 1.18.8
 solana-install init 1.18.8
 
-CXX=/opt/homebrew/bin/c++-14 cargo build
+CXX=/opt/homebrew/bin/c++-14 cargo build || exit 1
 
-cargo fmt
+cargo fmt || exit 1
 
-anchor build
+anchor build || exit 1
 
-yarn && cd ts/sdk && yarn && yarn build && home
+yarn && cd ts/sdk && yarn && yarn build || exit 1
 
-yarn prettify:fix
+home
 
-yarn idl
+yarn prettify:fix || exit 1
+
+yarn idl || exit 1

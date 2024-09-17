@@ -84,10 +84,17 @@ pub mod phoenix_vaults {
         instructions::appoint_liquidator(ctx)
     }
 
-    pub fn liquidate_market<'c: 'info, 'info>(
-        ctx: Context<'_, '_, 'c, 'info, LiquidateMarket<'info>>,
+    pub fn liquidate_usdc_market<'c: 'info, 'info>(
+        ctx: Context<'_, '_, 'c, 'info, LiquidateUsdcMarket<'info>>,
         market_index: u8,
     ) -> Result<()> {
-        instructions::liquidate_market(ctx, market_index)
+        instructions::liquidate_usdc_market(ctx, market_index)
+    }
+
+    pub fn liquidate_sol_market<'c: 'info, 'info>(
+        ctx: Context<'_, '_, 'c, 'info, LiquidateSolMarket<'info>>,
+        market_index: u8,
+    ) -> Result<()> {
+        instructions::liquidate_sol_market(ctx, market_index)
     }
 }
