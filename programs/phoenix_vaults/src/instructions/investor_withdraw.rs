@@ -27,7 +27,7 @@ pub fn investor_withdraw<'c: 'info, 'info>(
         lut_key: ctx.accounts.lut.key(),
         lut: &lut,
     };
-    let vault_equity = ctx.equity(&vault_key, registry, market_lut)?;
+    let vault_equity = ctx.equity(&vault_key, &registry, market_lut)?;
 
     let investor_withdraw_amount =
         investor.withdraw(vault_equity, &mut vault, clock.unix_timestamp)?;

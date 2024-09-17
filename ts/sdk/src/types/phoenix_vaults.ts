@@ -188,12 +188,57 @@ export type PhoenixVaults = {
 					isSigner: false;
 				},
 				{
-					name: 'vaultTokenAccount';
+					name: 'investorQuoteTokenAccount';
 					isMut: true;
 					isSigner: false;
 				},
 				{
-					name: 'investorTokenAccount';
+					name: 'phoenix';
+					isMut: false;
+					isSigner: false;
+				},
+				{
+					name: 'logAuthority';
+					isMut: false;
+					isSigner: false;
+				},
+				{
+					name: 'market';
+					isMut: true;
+					isSigner: false;
+				},
+				{
+					name: 'seat';
+					isMut: false;
+					isSigner: false;
+				},
+				{
+					name: 'baseMint';
+					isMut: false;
+					isSigner: false;
+				},
+				{
+					name: 'quoteMint';
+					isMut: false;
+					isSigner: false;
+				},
+				{
+					name: 'vaultBaseTokenAccount';
+					isMut: true;
+					isSigner: false;
+				},
+				{
+					name: 'vaultQuoteTokenAccount';
+					isMut: true;
+					isSigner: false;
+				},
+				{
+					name: 'marketBaseTokenAccount';
+					isMut: true;
+					isSigner: false;
+				},
+				{
+					name: 'marketQuoteTokenAccount';
 					isMut: true;
 					isSigner: false;
 				},
@@ -1635,6 +1680,11 @@ export type PhoenixVaults = {
 			code: 6042;
 			name: 'OrderPacketMustBeTakeOnly';
 			msg: 'OrderPacketMustBeTakeOnly';
+		},
+		{
+			code: 6043;
+			name: 'BaseLotsMustBeZero';
+			msg: 'BaseLotsMustBeZero';
 		}
 	];
 };
@@ -1829,12 +1879,57 @@ export const IDL: PhoenixVaults = {
 					isSigner: false,
 				},
 				{
-					name: 'vaultTokenAccount',
+					name: 'investorQuoteTokenAccount',
 					isMut: true,
 					isSigner: false,
 				},
 				{
-					name: 'investorTokenAccount',
+					name: 'phoenix',
+					isMut: false,
+					isSigner: false,
+				},
+				{
+					name: 'logAuthority',
+					isMut: false,
+					isSigner: false,
+				},
+				{
+					name: 'market',
+					isMut: true,
+					isSigner: false,
+				},
+				{
+					name: 'seat',
+					isMut: false,
+					isSigner: false,
+				},
+				{
+					name: 'baseMint',
+					isMut: false,
+					isSigner: false,
+				},
+				{
+					name: 'quoteMint',
+					isMut: false,
+					isSigner: false,
+				},
+				{
+					name: 'vaultBaseTokenAccount',
+					isMut: true,
+					isSigner: false,
+				},
+				{
+					name: 'vaultQuoteTokenAccount',
+					isMut: true,
+					isSigner: false,
+				},
+				{
+					name: 'marketBaseTokenAccount',
+					isMut: true,
+					isSigner: false,
+				},
+				{
+					name: 'marketQuoteTokenAccount',
 					isMut: true,
 					isSigner: false,
 				},
@@ -3276,6 +3371,11 @@ export const IDL: PhoenixVaults = {
 			code: 6042,
 			name: 'OrderPacketMustBeTakeOnly',
 			msg: 'OrderPacketMustBeTakeOnly',
+		},
+		{
+			code: 6043,
+			name: 'BaseLotsMustBeZero',
+			msg: 'BaseLotsMustBeZero',
 		},
 	],
 };

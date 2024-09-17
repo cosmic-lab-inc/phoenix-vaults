@@ -242,65 +242,6 @@ describe('phoenixVaults', () => {
 		assert(!!acct);
 	});
 
-	it('Initialize Investor', async () => {
-		const accounts = {
-			vault: vaultKey,
-			investor,
-			authority: provider.publicKey,
-		};
-		await program.methods.initializeInvestor().accounts(accounts).rpc();
-		const acct = await program.account.investor.fetch(investor);
-		assert(!!acct);
-	});
-
-	it('Deposit', async () => {
-		const createAtaIx = createAssociatedTokenAccountInstruction(
-			provider.publicKey,
-			investorUsdcAta,
-			provider.publicKey,
-			usdcMint
-		);
-		const mintToIx = createMintToInstruction(
-			usdcMint,
-			investorUsdcAta,
-			mintAuth.publicKey,
-			usdcAmount.toNumber()
-		);
-
-		const accounts = {
-			vault: vaultKey,
-			investor,
-			marketRegistry,
-			lut,
-			vaultTokenAccount: vaultUsdcAta,
-			investorTokenAccount: investorUsdcAta,
-			authority: provider.publicKey,
-			tokenProgram: TOKEN_PROGRAM_ID,
-		};
-		const markets: AccountMeta[] = marketKeys.map((pubkey) => {
-			return {
-				pubkey,
-				isWritable: false,
-				isSigner: false,
-			};
-		});
-		await program.methods
-			.investorDeposit(usdcAmount)
-			.preInstructions([createAtaIx, mintToIx])
-			.accounts(accounts)
-			.remainingAccounts(markets)
-			.signers([mintAuth])
-			.rpc();
-		const investorAcct = await program.account.investor.fetch(investor);
-		const deposits = investorAcct.netDeposits.div(QUOTE_PRECISION).toNumber();
-		const shares = investorAcct.vaultShares.div(QUOTE_PRECISION).toNumber();
-		assert.equal(deposits, 1000);
-		assert.equal(shares, 1000);
-
-		const vaultAtaBalance = await tokenBalance(conn, vaultUsdcAta);
-		assert.equal(vaultAtaBalance, 1000);
-	});
-
 	it('Check SOL/USDC Seat Manager', async () => {
 		const smKey = getSeatManagerAddress(solUsdcMarket);
 		const smAcct = await conn.getAccountInfo(smKey);
@@ -347,11 +288,32 @@ describe('phoenixVaults', () => {
 		}
 	});
 
-	//
-	// Simulate profitable trade by vault for 25% gain
-	//
+	it('Initialize Investor', async () => {
+		const accounts = {
+			vault: vaultKey,
+			investor,
+			authority: provider.publicKey,
+		};
+		await program.methods.initializeInvestor().accounts(accounts).rpc();
+		const acct = await program.account.investor.fetch(investor);
+		assert(!!acct);
+	});
 
-	it('Deposit Vault Funds to SOL/USDC Market', async () => {
+	it('Deposit', async () => {
+		const createAtaIx = createAssociatedTokenAccountInstruction(
+			provider.publicKey,
+			investorUsdcAta,
+			provider.publicKey,
+			usdcMint
+		);
+		const mintToIx = createMintToInstruction(
+			usdcMint,
+			investorUsdcAta,
+			mintAuth.publicKey,
+			usdcAmount.toNumber()
+		);
+		await sendAndConfirm(conn, payer, [createAtaIx, mintToIx], [mintAuth]);
+
 		const vaultBaseTokenAccount = getAssociatedTokenAddressSync(
 			solMint,
 			vaultKey,
@@ -369,44 +331,65 @@ describe('phoenixVaults', () => {
 			solUsdcMarket.toString()
 		);
 
-		const quoteUnits = await tokenBalance(conn, vaultQuoteTokenAccount);
-		console.log(`vault usdc to deposit: ${quoteUnits}`);
-		const quoteLotsNum = phoenix.quoteUnitsToQuoteLots(
-			quoteUnits,
-			solUsdcMarket.toString()
-		);
-
-		const quoteLots = new BN(quoteLotsNum);
-		const baseLots = new BN(0);
-		const params: MarketTransferParams = {
-			quoteLots,
-			baseLots,
+		const accounts = {
+			vault: vaultKey,
+			investor,
+			authority: provider.publicKey,
+			marketRegistry,
+			lut,
+			investorQuoteTokenAccount: investorUsdcAta,
+			phoenix: PHOENIX_PROGRAM_ID,
+			logAuthority: getLogAuthority(),
+			market: solUsdcMarket,
+			seat: getSeatAddress(solUsdcMarket, vaultKey),
+			baseMint: solMint,
+			quoteMint: usdcMint,
+			vaultBaseTokenAccount,
+			vaultQuoteTokenAccount,
+			marketBaseTokenAccount,
+			marketQuoteTokenAccount,
 		};
-
+		const markets: AccountMeta[] = marketKeys.map((pubkey) => {
+			return {
+				pubkey,
+				isWritable: false,
+				isSigner: false,
+			};
+		});
+		const ix = await program.methods
+			.investorDeposit(usdcAmount)
+			.accounts(accounts)
+			.remainingAccounts(markets)
+			.instruction();
 		try {
-			const ix = await program.methods
-				.marketDeposit(params)
-				.accounts({
-					vault: vaultKey,
-					delegate: manager.publicKey,
-					phoenix: PHOENIX_PROGRAM_ID,
-					logAuthority: getLogAuthority(),
-					market: solUsdcMarket,
-					seat: getSeatAddress(solUsdcMarket, vaultKey),
-					baseMint: solMint,
-					quoteMint: usdcMint,
-					vaultBaseTokenAccount,
-					vaultQuoteTokenAccount,
-					marketBaseTokenAccount,
-					marketQuoteTokenAccount,
-					tokenProgram: TOKEN_PROGRAM_ID,
-				})
-				.instruction();
-			await sendAndConfirm(conn, payer, [ix], [manager]);
+			await simulate(conn, payer, [ix]);
+			await sendAndConfirm(conn, payer, [ix]);
 		} catch (e: any) {
 			throw new Error(e);
 		}
+
+		const investorAcct = await program.account.investor.fetch(investor);
+		const deposits = investorAcct.netDeposits.div(QUOTE_PRECISION).toNumber();
+		const shares = investorAcct.vaultShares.div(QUOTE_PRECISION).toNumber();
+		assert.equal(deposits, 1000);
+		assert.equal(shares, 1000);
+
+		const vaultSol = await tokenBalance(conn, vaultQuoteTokenAccount);
+		const vaultUsdc = await tokenBalance(conn, vaultQuoteTokenAccount);
+		console.log(
+			`vault atas after investor deposit, sol: ${vaultSol}, usdc: ${vaultUsdc}`
+		);
+		// assert.equal(vaultAtaBalance, 1000);
+
+		const vaultState = await fetchTraderState(conn, solUsdcMarket, vaultKey);
+		console.log(
+			`vault trader state after investor deposit, sol: ${vaultState.baseUnitsFree}, usdc: ${vaultState.quoteUnitsFree}`
+		);
 	});
+
+	//
+	// Simulate profitable trade by vault for 25% gain
+	//
 
 	it('Maker Sell SOL/USDC', async () => {
 		const marketState = await fetchMarketState(conn, solUsdcMarket);

@@ -32,7 +32,7 @@ pub fn request_withdraw<'c: 'info, 'info>(
         lut_key: ctx.accounts.lut.key(),
         lut: &lut,
     };
-    let vault_equity = ctx.equity(&vault_key, registry, market_lut)?;
+    let vault_equity = ctx.equity(&vault_key, &registry, market_lut)?;
 
     investor.request_withdraw(
         withdraw_amount.cast()?,

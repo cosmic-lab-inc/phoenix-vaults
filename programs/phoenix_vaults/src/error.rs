@@ -91,6 +91,8 @@ pub enum ErrorCode {
     InvalidPhoenixInstruction,
     #[msg("OrderPacketMustBeTakeOnly")]
     OrderPacketMustBeTakeOnly,
+    #[msg("BaseLotsMustBeZero")]
+    BaseLotsMustBeZero,
 }
 
 #[macro_export]

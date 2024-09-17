@@ -8,6 +8,7 @@ use crate::constraints::{
 };
 use crate::cpis::PhoenixDepositCPI;
 use crate::declare_vault_seeds;
+use crate::error::ErrorCode;
 use crate::state::{MarketTransferParams, PhoenixProgram, Vault};
 
 pub fn market_deposit<'c: 'info, 'info>(

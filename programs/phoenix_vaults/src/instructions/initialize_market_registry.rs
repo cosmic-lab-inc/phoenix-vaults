@@ -26,7 +26,7 @@ pub fn initialize_market_registry<'c: 'info, 'info>(
         lut: &lut,
     };
     let markets: Vec<Pubkey> = ctx
-        .load_markets(registry, market_lut)?
+        .load_markets(&registry, market_lut)?
         .keys()
         .cloned()
         .collect();
