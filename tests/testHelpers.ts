@@ -57,7 +57,6 @@ import {
 	PlaceLimitOrderWithFreeFundsStruct,
 	RawMarketConfig,
 	Side,
-	toNum,
 } from '@cosmic-lab/phoenix-sdk';
 
 export const MARKET_CONFIG: RawMarketConfig = {
