@@ -59,56 +59,6 @@ import {
 	Side,
 } from '@ellipsis-labs/phoenix-sdk';
 
-export const MARKET_CONFIG: RawMarketConfig = {
-	['localhost']: {
-		tokens: [
-			{
-				name: 'SOL',
-				symbol: 'SOL',
-				mint: MOCK_SOL_MINT.publicKey.toString(),
-				logoUri: '',
-			},
-			{
-				name: 'USDC',
-				symbol: 'USDC',
-				mint: MOCK_USDC_MINT.publicKey.toString(),
-				logoUri: '',
-			},
-			// {
-			// 	name: 'JUP',
-			// 	symbol: 'JUP',
-			// 	mint: MOCK_JUP_MINT.publicKey.toString(),
-			// 	logoUri: '',
-			// },
-		],
-		markets: [
-			{
-				market: MOCK_SOL_USDC_MARKET.publicKey.toString(),
-				baseMint: MOCK_SOL_MINT.publicKey.toString(),
-				quoteMint: MOCK_USDC_MINT.publicKey.toString(),
-			},
-			// {
-			// 	market: MOCK_JUP_SOL_MARKET.publicKey.toString(),
-			// 	baseMint: MOCK_JUP_MINT.publicKey.toString(),
-			// 	quoteMint: MOCK_SOL_MINT.publicKey.toString(),
-			// },
-			// {
-			// 	market: MOCK_JUP_USDC_MARKET.publicKey.toString(),
-			// 	baseMint: MOCK_JUP_MINT.publicKey.toString(),
-			// 	quoteMint: MOCK_USDC_MINT.publicKey.toString(),
-			// },
-		],
-	},
-	['devnet']: {
-		tokens: [],
-		markets: [],
-	},
-	['mainnet-beta']: {
-		tokens: [],
-		markets: [],
-	},
-};
-
 export type OraclePriceData = {
 	price: BN;
 	slot: BN;

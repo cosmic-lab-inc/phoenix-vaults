@@ -1,5 +1,6 @@
 import { BN } from '@coral-xyz/anchor';
 import { Keypair, PublicKey } from '@solana/web3.js';
+import { RawMarketConfig } from '@ellipsis-labs/phoenix-sdk';
 
 export const ZERO = new BN(0);
 export const QUOTE_PRECISION_EXP = new BN(6);
@@ -84,3 +85,53 @@ export const PHOENIX_PROGRAM_ID = new PublicKey(
 export const PHOENIX_SEAT_MANAGER_PROGRAM_ID = new PublicKey(
 	'PSMxQbAoDWDbvd9ezQJgARyq6R9L5kJAasaLDVcZwf1'
 );
+
+export const LOCALNET_MARKET_CONFIG: RawMarketConfig = {
+	['localhost']: {
+		tokens: [
+			{
+				name: 'SOL',
+				symbol: 'SOL',
+				mint: MOCK_SOL_MINT.publicKey.toString(),
+				logoUri: '',
+			},
+			{
+				name: 'USDC',
+				symbol: 'USDC',
+				mint: MOCK_USDC_MINT.publicKey.toString(),
+				logoUri: '',
+			},
+			// {
+			// 	name: 'JUP',
+			// 	symbol: 'JUP',
+			// 	mint: MOCK_JUP_MINT.publicKey.toString(),
+			// 	logoUri: '',
+			// },
+		],
+		markets: [
+			{
+				market: MOCK_SOL_USDC_MARKET.publicKey.toString(),
+				baseMint: MOCK_SOL_MINT.publicKey.toString(),
+				quoteMint: MOCK_USDC_MINT.publicKey.toString(),
+			},
+			// {
+			// 	market: MOCK_JUP_SOL_MARKET.publicKey.toString(),
+			// 	baseMint: MOCK_JUP_MINT.publicKey.toString(),
+			// 	quoteMint: MOCK_SOL_MINT.publicKey.toString(),
+			// },
+			// {
+			// 	market: MOCK_JUP_USDC_MARKET.publicKey.toString(),
+			// 	baseMint: MOCK_JUP_MINT.publicKey.toString(),
+			// 	quoteMint: MOCK_USDC_MINT.publicKey.toString(),
+			// },
+		],
+	},
+	['devnet']: {
+		tokens: [],
+		markets: [],
+	},
+	['mainnet-beta']: {
+		tokens: [],
+		markets: [],
+	},
+};

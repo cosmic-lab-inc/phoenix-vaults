@@ -29,6 +29,7 @@ import {
 	PHOENIX_SEAT_MANAGER_PROGRAM_ID,
 	WithdrawUnit,
 	MarketTransferParams,
+	LOCALNET_MARKET_CONFIG,
 } from '../ts/sdk';
 import { BN } from '@coral-xyz/anchor';
 import {
@@ -40,7 +41,6 @@ import {
 import {
 	createMarketTokenAccountIxs,
 	sendAndConfirm,
-	MARKET_CONFIG,
 	tokenBalance,
 	fetchMarketState,
 	simulate,
@@ -107,9 +107,9 @@ describe('phoenixVaults', () => {
 		provider.publicKey
 	);
 
-	const marketKeys: PublicKey[] = MARKET_CONFIG['localhost'].markets.map(
-		(m) => new PublicKey(m.market)
-	);
+	const marketKeys: PublicKey[] = LOCALNET_MARKET_CONFIG[
+		'localhost'
+	].markets.map((m) => new PublicKey(m.market));
 	const startSolUsdcPrice = 100;
 	const endSolUsdcPrice = 125;
 	const usdcUiAmount = 1_000;
@@ -120,11 +120,11 @@ describe('phoenixVaults', () => {
 	before(async () => {
 		phoenix = await PhoenixClient.createFromConfig(
 			conn,
-			MARKET_CONFIG,
-			true,
+			LOCALNET_MARKET_CONFIG,
+			false,
 			false
 		);
-		await phoenix.addMarket(solUsdcMarket.toBase58(), true, false);
+		// await phoenix.addMarket(solUsdcMarket.toBase58(), true, false);
 
 		await conn.requestAirdrop(maker.publicKey, LAMPORTS_PER_SOL * 10);
 
