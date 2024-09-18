@@ -10,7 +10,7 @@
     },
     "dependencies": {
         "@coral-xyz/anchor": "0.28.0",
-        "@cosmic-lab/phoenix-sdk": "^2.0.7",
+        "@ellipsis-labs/phoenix-sdk": "2.0.3",
         "@solana/spl-token": "0.4.8",
         "@solana/web3.js": "1.91.6"
     },

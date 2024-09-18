@@ -60,7 +60,7 @@ import {
 	getLogAuthority,
 	getSeatAddress,
 	getSeatDepositCollectorAddress,
-} from '@cosmic-lab/phoenix-sdk';
+} from '@ellipsis-labs/phoenix-sdk';
 
 describe('phoenixVaults', () => {
 	const opts: ConfirmOptions = {
@@ -420,8 +420,7 @@ describe('phoenixVaults', () => {
 			const claimMakerSeatIxs = await confirmOrCreateClaimSeatIxs(
 				conn,
 				marketState,
-				maker.publicKey,
-				payer.publicKey
+				maker.publicKey
 			);
 			await sendAndConfirm(conn, payer, claimMakerSeatIxs, [maker]);
 		} catch (e: any) {

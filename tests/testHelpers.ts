@@ -57,7 +57,7 @@ import {
 	PlaceLimitOrderWithFreeFundsStruct,
 	RawMarketConfig,
 	Side,
-} from '@cosmic-lab/phoenix-sdk';
+} from '@ellipsis-labs/phoenix-sdk';
 
 export const MARKET_CONFIG: RawMarketConfig = {
 	['localhost']: {
