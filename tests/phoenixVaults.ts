@@ -151,7 +151,7 @@ describe('phoenixVaults', () => {
 		const lutAcctInfo = await conn.getAccountInfo(lut, 'processed');
 		assert(lutAcctInfo !== null);
 		const lutAcct = AddressLookupTableAccount.deserialize(lutAcctInfo.data);
-		assert(lutAcct.authority.toString() === provider.publicKey.toString());
+		assert(lutAcct.authority?.toString() === provider.publicKey.toString());
 	});
 
 	it('Fill Address Lookup Table', async () => {
