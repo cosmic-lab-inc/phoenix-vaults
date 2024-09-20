@@ -27,9 +27,11 @@ pub struct InvestorRecord {
 
     pub user_vault_shares_before: u128,
     pub total_vault_shares_before: u128,
+    pub protocol_shares_before: u128,
 
     pub user_vault_shares_after: u128,
     pub total_vault_shares_after: u128,
+    pub protocol_shares_after: u128,
 
     pub protocol_profit_share: u64,
     pub protocol_fee: i64,

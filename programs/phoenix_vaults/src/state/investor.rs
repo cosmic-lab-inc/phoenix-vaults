@@ -1,12 +1,9 @@
 #![allow(dead_code)]
 
-use std::cell::RefMut;
-
 use crate::constants::PERCENTAGE_PRECISION;
 use crate::math::casting::Cast;
 use crate::math::{amount_to_shares, shares_to_amount, SafeMath};
 use anchor_lang::prelude::*;
-use anchor_spl::token::TokenAccount;
 use drift_macros::assert_no_slop;
 use static_assertions::const_assert_eq;
 
@@ -237,6 +234,7 @@ impl Investor {
         let vault_shares_before = self.checked_vault_shares(vault)?;
         let total_vault_shares_before = vault.total_shares;
         let user_vault_shares_before = vault.investor_shares;
+        let protocol_shares_before = vault.get_protocol_shares();
 
         let VaultFee {
             management_fee_payment,
@@ -261,6 +259,7 @@ impl Investor {
         vault.investor_shares = vault.investor_shares.safe_add(n_shares)?;
 
         let vault_shares_after = self.checked_vault_shares(vault)?;
+        let protocol_shares_after = vault.get_protocol_shares();
 
         emit!(InvestorRecord {
             ts: now,
@@ -283,6 +282,8 @@ impl Investor {
             manager_profit_share,
             management_fee: management_fee_payment,
             management_fee_shares,
+            protocol_shares_before,
+            protocol_shares_after
         });
 
         Ok(())
@@ -323,12 +324,7 @@ impl Investor {
         let vault_shares_before: u128 = self.checked_vault_shares(vault)?;
         let total_vault_shares_before = vault.total_shares;
         let user_vault_shares_before = vault.investor_shares;
-
-        msg!("manager_profit_share: {}", manager_profit_share);
-        msg!("protocol_profit_share: {}", protocol_profit_share);
-        msg!("investor_shares: {}", self.vault_shares);
-        msg!("vault_shares: {}", vault_shares_before);
-        msg!("requested_shares: {}", n_shares);
+        let protocol_shares_before = vault.get_protocol_shares();
 
         self.last_withdraw_request.set(
             vault_shares_before,
@@ -340,6 +336,7 @@ impl Investor {
         vault.total_withdraw_requested = vault.total_withdraw_requested.safe_add(withdraw_value)?;
 
         let vault_shares_after = self.checked_vault_shares(vault)?;
+        let protocol_shares_after = vault.get_protocol_shares();
 
         emit!(InvestorRecord {
             ts: now,
@@ -362,6 +359,8 @@ impl Investor {
             manager_profit_share,
             management_fee: management_fee_payment,
             management_fee_shares,
+            protocol_shares_before,
+            protocol_shares_after
         });
 
         Ok(())
@@ -378,6 +377,7 @@ impl Investor {
         let vault_shares_before: u128 = self.checked_vault_shares(vault)?;
         let total_vault_shares_before = vault.total_shares;
         let user_vault_shares_before = vault.investor_shares;
+        let protocol_shares_before = vault.get_protocol_shares();
 
         let VaultFee {
             management_fee_payment,
@@ -393,8 +393,12 @@ impl Investor {
 
         vault.total_shares = vault.total_shares.safe_sub(vault_shares_lost)?;
         vault.investor_shares = vault.investor_shares.safe_sub(vault_shares_lost)?;
+        vault.protocol_profit_and_fee_shares = vault
+            .protocol_profit_and_fee_shares
+            .safe_sub(vault_shares_lost)?;
 
         let vault_shares_after = self.checked_vault_shares(vault)?;
+        let protocol_shares_after = vault.get_protocol_shares();
 
         emit!(InvestorRecord {
             ts: now,
@@ -417,6 +421,8 @@ impl Investor {
             manager_profit_share: 0,
             management_fee: management_fee_payment,
             management_fee_shares,
+            protocol_shares_before,
+            protocol_shares_after
         });
 
         vault.total_withdraw_requested = vault
@@ -437,6 +443,7 @@ impl Investor {
         let vault_shares_before: u128 = self.checked_vault_shares(vault)?;
         let total_vault_shares_before = vault.total_shares;
         let user_vault_shares_before = vault.investor_shares;
+        let protocol_shares_before = vault.get_protocol_shares();
 
         let n_shares = self.last_withdraw_request.shares;
 
@@ -490,6 +497,7 @@ impl Investor {
         self.last_withdraw_request.reset(now)?;
 
         let vault_shares_after = self.checked_vault_shares(vault)?;
+        let protocol_shares_after = vault.get_protocol_shares();
 
         emit!(InvestorRecord {
             ts: now,
@@ -512,6 +520,8 @@ impl Investor {
             manager_profit_share: 0,
             management_fee: management_fee_payment,
             management_fee_shares,
+            protocol_shares_before,
+            protocol_shares_after
         });
 
         Ok(withdraw_amount)
@@ -586,10 +596,12 @@ impl Investor {
         let vault_shares_before = self.checked_vault_shares(vault)?;
         let total_vault_shares_before = vault.total_shares;
         let user_vault_shares_before = vault.investor_shares;
+        let protocol_shares_before = vault.get_protocol_shares();
 
         let (manager_profit_share, protocol_profit_share) =
             self.apply_profit_share(vault_equity, vault)?;
         let profit_share = manager_profit_share.saturating_add(protocol_profit_share);
+        let protocol_shares_after = vault.get_protocol_shares();
 
         emit!(InvestorRecord {
             ts: now,
@@ -612,6 +624,8 @@ impl Investor {
             manager_profit_share,
             management_fee: management_fee_payment,
             management_fee_shares,
+            protocol_shares_before,
+            protocol_shares_after
         });
 
         Ok(profit_share)

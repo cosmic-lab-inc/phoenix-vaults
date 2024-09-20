@@ -1625,12 +1625,22 @@ export type PhoenixVaults = {
 					index: false;
 				},
 				{
+					name: 'protocolSharesBefore';
+					type: 'u128';
+					index: false;
+				},
+				{
 					name: 'userVaultSharesAfter';
 					type: 'u128';
 					index: false;
 				},
 				{
 					name: 'totalVaultSharesAfter';
+					type: 'u128';
+					index: false;
+				},
+				{
+					name: 'protocolSharesAfter';
 					type: 'u128';
 					index: false;
 				},
@@ -3518,12 +3528,22 @@ export const IDL: PhoenixVaults = {
 					index: false,
 				},
 				{
+					name: 'protocolSharesBefore',
+					type: 'u128',
+					index: false,
+				},
+				{
 					name: 'userVaultSharesAfter',
 					type: 'u128',
 					index: false,
 				},
 				{
 					name: 'totalVaultSharesAfter',
+					type: 'u128',
+					index: false,
+				},
+				{
+					name: 'protocolSharesAfter',
 					type: 'u128',
 					index: false,
 				},
