@@ -1026,12 +1026,15 @@ export type PhoenixVaults = {
 					{
 						name: 'cumulativeProfitShareAmount';
 						docs: [
-							'the token amount of gains the vault depositor has paid performance fees on'
+							'the token amount of gains the vault depositor has paid performance fees on (in other words, cumulative profit)'
 						];
 						type: 'i64';
 					},
 					{
 						name: 'profitShareFeePaid';
+						docs: [
+							'the token amount profit share paid out to the manager and protocol'
+						];
 						type: 'u64';
 					},
 					{
@@ -2929,12 +2932,15 @@ export const IDL: PhoenixVaults = {
 					{
 						name: 'cumulativeProfitShareAmount',
 						docs: [
-							'the token amount of gains the vault depositor has paid performance fees on',
+							'the token amount of gains the vault depositor has paid performance fees on (in other words, cumulative profit)',
 						],
 						type: 'i64',
 					},
 					{
 						name: 'profitShareFeePaid',
+						docs: [
+							'the token amount profit share paid out to the manager and protocol',
+						],
 						type: 'u64',
 					},
 					{

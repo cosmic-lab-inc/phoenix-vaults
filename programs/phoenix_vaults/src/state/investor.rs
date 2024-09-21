@@ -38,8 +38,9 @@ pub struct Investor {
     pub total_deposits: u64,
     /// lifetime total withdraws
     pub total_withdraws: u64,
-    /// the token amount of gains the vault depositor has paid performance fees on
+    /// the token amount of gains the vault depositor has paid performance fees on (in other words, cumulative profit)
     pub cumulative_profit_share_amount: i64,
+    /// the token amount profit share paid out to the manager and protocol
     pub profit_share_fee_paid: u64,
     /// the exponent for vault_shares decimal places
     pub vault_shares_base: u32,
