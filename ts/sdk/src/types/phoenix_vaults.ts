@@ -1900,6 +1900,11 @@ export type PhoenixVaults = {
 			code: 6043;
 			name: 'BaseLotsMustBeZero';
 			msg: 'BaseLotsMustBeZero';
+		},
+		{
+			code: 6044;
+			name: 'TraderStateNotFound';
+			msg: 'TraderStateNotFound';
 		}
 	];
 };
@@ -3806,6 +3811,11 @@ export const IDL: PhoenixVaults = {
 			code: 6043,
 			name: 'BaseLotsMustBeZero',
 			msg: 'BaseLotsMustBeZero',
+		},
+		{
+			code: 6044,
+			name: 'TraderStateNotFound',
+			msg: 'TraderStateNotFound',
 		},
 	],
 };

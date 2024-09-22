@@ -658,7 +658,7 @@ impl Vault {
         )?;
 
         validate!(
-            now.saturating_sub(self.liquidation_start_ts) > TIME_FOR_LIQUIDATION,
+            now.saturating_sub(self.liquidation_start_ts) <= TIME_FOR_LIQUIDATION,
             ErrorCode::LiquidationExpired,
             "Investor liquidation expired"
         )?;
@@ -674,13 +674,13 @@ impl Vault {
         validate!(
             self.liquidator != investor.authority,
             ErrorCode::DelegateNotAvailableForLiquidation,
-            "liquidation delegate is already this investor"
+            "vault in liquidation by another investor"
         )?;
 
         validate!(
             now.saturating_sub(self.liquidation_start_ts) > TIME_FOR_LIQUIDATION,
             ErrorCode::DelegateNotAvailableForLiquidation,
-            "vault is already in liquidation"
+            "vault liquidation not expired"
         )?;
 
         Ok(())

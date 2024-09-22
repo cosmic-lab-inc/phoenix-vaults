@@ -93,6 +93,8 @@ pub enum ErrorCode {
     OrderPacketMustBeTakeOnly,
     #[msg("BaseLotsMustBeZero")]
     BaseLotsMustBeZero,
+    #[msg("TraderStateNotFound")]
+    TraderStateNotFound,
 }
 
 #[macro_export]

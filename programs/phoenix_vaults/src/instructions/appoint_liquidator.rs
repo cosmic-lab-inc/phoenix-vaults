@@ -29,7 +29,7 @@ pub fn appoint_liquidator<'c: 'info, 'info>(
     // 2. Check that the depositor is unable to withdraw
     ctx.check_cant_withdraw(&investor, vault_usdc_ata, &registry, &lut)?;
     // 3. Check that the vault is not already in liquidation for another investor
-    vault.check_liquidator(&investor, now)?;
+    vault.check_delegate_available_for_liquidation(&investor, now)?;
 
     vault.set_liquidation_delegate(investor.authority, now);
 
