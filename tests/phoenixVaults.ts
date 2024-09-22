@@ -376,7 +376,7 @@ describe('phoenixVaults', () => {
 		const vaultSol = await tokenBalance(conn, vaultQuoteTokenAccount);
 		const vaultUsdc = await tokenBalance(conn, vaultQuoteTokenAccount);
 		console.log(
-			`vault atas after investor deposit, sol: ${vaultSol}, usdc: ${vaultUsdc}`
+			`vault after investor deposit, sol: ${vaultSol}, usdc: ${vaultUsdc}`
 		);
 		assert.equal(vaultSol, 0);
 		assert.equal(vaultUsdc, 0);
@@ -857,7 +857,7 @@ describe('phoenixVaults', () => {
 	// 	const vaultSolBefore = await tokenBalance(conn, vaultBaseTokenAccount);
 	// 	const vaultUsdcBefore = await tokenBalance(conn, vaultQuoteTokenAccount);
 	// 	console.log(
-	// 		`vault atas before market withdraw, sol: ${vaultSolBefore}, usdc: ${vaultUsdcBefore}`
+	// 		`vault before market withdraw, sol: ${vaultSolBefore}, usdc: ${vaultUsdcBefore}`
 	// 	);
 	// 	assert.strictEqual(vaultSolBefore, 0);
 	// 	assert.strictEqual(vaultUsdcBefore, 0);
@@ -921,7 +921,7 @@ describe('phoenixVaults', () => {
 	// 	const vaultSolAfter = await tokenBalance(conn, vaultBaseTokenAccount);
 	// 	const vaultUsdcAfter = await tokenBalance(conn, vaultQuoteTokenAccount);
 	// 	console.log(
-	// 		`vault atas after market withdraw, sol: ${vaultSolAfter}, usdc: ${vaultUsdcAfter}`
+	// 		`vault after market withdraw, sol: ${vaultSolAfter}, usdc: ${vaultUsdcAfter}`
 	// 	);
 	// 	assert.strictEqual(vaultSolAfter, 0);
 	// 	assert.strictEqual(vaultUsdcAfter, 1199.80002);
@@ -1033,7 +1033,7 @@ describe('phoenixVaults', () => {
 		const vaultSolBefore = await tokenBalance(conn, vaultBaseTokenAccount);
 		const vaultUsdcBefore = await tokenBalance(conn, vaultUsdcTokenAccount);
 		console.log(
-			`vault atas before liquidation, sol: ${vaultSolBefore}, usdc: ${vaultUsdcBefore}`
+			`vault before liquidation, sol: ${vaultSolBefore}, usdc: ${vaultUsdcBefore}`
 		);
 		assert.strictEqual(vaultSolBefore, 0);
 		assert.strictEqual(vaultUsdcBefore, 0);
@@ -1095,7 +1095,6 @@ describe('phoenixVaults', () => {
 				})
 				.remainingAccounts(markets)
 				.instruction();
-			await simulate(conn, payer, [ix]);
 			await sendAndConfirm(conn, payer, [ix]);
 		} catch (e: any) {
 			throw new Error(e);
@@ -1104,7 +1103,7 @@ describe('phoenixVaults', () => {
 		const vaultSolAfter = await tokenBalance(conn, vaultBaseTokenAccount);
 		const vaultUsdcAfter = await tokenBalance(conn, vaultUsdcTokenAccount);
 		console.log(
-			`vault atas after liquidation, sol: ${vaultSolAfter}, usdc: ${vaultUsdcAfter}`
+			`vault after liquidation, sol: ${vaultSolAfter}, usdc: ${vaultUsdcAfter}`
 		);
 		assert.strictEqual(vaultSolAfter, 0);
 		assert.strictEqual(vaultUsdcAfter, 0);
