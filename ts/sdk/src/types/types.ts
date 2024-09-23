@@ -97,3 +97,14 @@ export type Investor = {
 	padding1: number;
 	padding: BN[];
 };
+
+export type UpdateVaultParams = {
+	redeemPeriod: BN | null;
+	maxTokens: BN | null;
+	minDepositAmount: BN | null;
+	managementFee: BN | null;
+	profitShare: number | null;
+	hurdleRate: number | null;
+	permissioned: boolean | null;
+	delegate: PublicKey | null;
+};

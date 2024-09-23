@@ -12,6 +12,7 @@ mod market_deposit;
 mod market_withdraw;
 mod place_limit_order;
 mod request_withdraw;
+mod update_vault;
 
 pub use appoint_liquidator::*;
 pub use claim_seat::*;
@@ -27,3 +28,4 @@ pub use market_deposit::*;
 pub use market_withdraw::*;
 pub use place_limit_order::*;
 pub use request_withdraw::*;
+pub use update_vault::*;

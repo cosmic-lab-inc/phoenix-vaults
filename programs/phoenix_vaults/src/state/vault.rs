@@ -650,6 +650,16 @@ impl Vault {
         now.saturating_sub(self.liquidation_start_ts) > TIME_FOR_LIQUIDATION
     }
 
+    pub fn check_can_exit_liquidation(&self, now: i64) -> VaultResult {
+        validate!(
+            now.saturating_sub(self.liquidation_start_ts) > TIME_FOR_LIQUIDATION,
+            ErrorCode::VaultInLiquidation,
+            "vault is in liquidation"
+        )?;
+
+        Ok(())
+    }
+
     pub fn check_liquidator(&self, investor: &Investor, now: i64) -> VaultResult {
         validate!(
             self.liquidator == investor.authority,

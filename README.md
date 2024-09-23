@@ -32,3 +32,6 @@ chmod +x ./build.sh && ./build.sh
 ```shell
 chmod +x ./test.sh && ./test.sh
 ```
+
+## TODO
+Vault move markets (withdraw and deposit) with createMarketAtas if needed

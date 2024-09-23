@@ -4,6 +4,14 @@ export type PhoenixVaults = {
 	instructions: [
 		{
 			name: 'initializeVault';
+			docs: [
+				'The wallet that signs this instruction becomes the manager and therefore profits the management fee and profit share.',
+				'The manager can NOT be updated, so be careful who creates the vault.',
+				'',
+				'By default, the manager is also the delegate who has permission to trade on behalf of the vault.',
+				'',
+				'The delegate can be updated at anytime by calling `update_vault`.'
+			];
 			accounts: [
 				{
 					name: 'vault';
@@ -72,6 +80,9 @@ export type PhoenixVaults = {
 		},
 		{
 			name: 'initializeInvestor';
+			docs: [
+				'User creates an [`Investor`] account to invest with a [`Vault`].'
+			];
 			accounts: [
 				{
 					name: 'vault';
@@ -108,6 +119,10 @@ export type PhoenixVaults = {
 		},
 		{
 			name: 'initializeMarketRegistry';
+			docs: [
+				'Admin function to create an on-chain source of truth for list of Phoenix markets.',
+				'This is called once after the first deploy of this program to a network.'
+			];
 			accounts: [
 				{
 					name: 'authority';
@@ -161,6 +176,7 @@ export type PhoenixVaults = {
 		},
 		{
 			name: 'investorDeposit';
+			docs: ['Investor deposits funds to the vault USDC token account.'];
 			accounts: [
 				{
 					name: 'vault';
@@ -257,6 +273,15 @@ export type PhoenixVaults = {
 		},
 		{
 			name: 'investorWithdraw';
+			docs: [
+				'Investor withdraws funds from the vault, assuming funds are in the vault USDC token account.',
+				'',
+				'If insufficient USDC in the vault_usdc_token_account, then the investor must call `appoint_liquidator` to',
+				'acquire permission to liquidate the vault market positions.',
+				'',
+				'Then call `liquidate_usdc_market` or `liquidate_sol_market` to forcefully swap a vault market position back to USDC,',
+				'and then withdraw back to the investor.'
+			];
 			accounts: [
 				{
 					name: 'vault';
@@ -348,6 +373,10 @@ export type PhoenixVaults = {
 		},
 		{
 			name: 'claimSeat';
+			docs: [
+				'Vault delegate claims a seat on a Phoenix market to enable trading.',
+				'Call this before `place_limit_order`.'
+			];
 			accounts: [
 				{
 					name: 'vault';
@@ -417,6 +446,7 @@ export type PhoenixVaults = {
 		},
 		{
 			name: 'placeLimitOrder';
+			docs: ['Vault delegate places a limit order on behalf of the vault.'];
 			accounts: [
 				{
 					name: 'vault';
@@ -503,6 +533,7 @@ export type PhoenixVaults = {
 		},
 		{
 			name: 'requestWithdraw';
+			docs: ['Investor request withdrawal of funds from the vault.'];
 			accounts: [
 				{
 					name: 'vault';
@@ -550,6 +581,9 @@ export type PhoenixVaults = {
 		},
 		{
 			name: 'marketDeposit';
+			docs: [
+				'Vault delegate deposits vault assets from the USDC or SOL token account to a Phoenix market.'
+			];
 			accounts: [
 				{
 					name: 'vault';
@@ -636,6 +670,9 @@ export type PhoenixVaults = {
 		},
 		{
 			name: 'marketWithdraw';
+			docs: [
+				'Vault delegate withdraws vault Phoenix market back to the vault USDC or SOL token accounts.'
+			];
 			accounts: [
 				{
 					name: 'vault';
@@ -717,6 +754,9 @@ export type PhoenixVaults = {
 		},
 		{
 			name: 'appointLiquidator';
+			docs: [
+				'Assign an investor as delegate to enable liquidation of market positions.'
+			];
 			accounts: [
 				{
 					name: 'vault';
@@ -753,6 +793,10 @@ export type PhoenixVaults = {
 		},
 		{
 			name: 'liquidateUsdcMarket';
+			docs: [
+				'After `appoint_liquidator` the investor can liquidate a USDC denominated market position',
+				'to fulfill their withdrawal request.'
+			];
 			accounts: [
 				{
 					name: 'vault';
@@ -849,6 +893,10 @@ export type PhoenixVaults = {
 		},
 		{
 			name: 'liquidateSolMarket';
+			docs: [
+				'After `appoint_liquidator` the investor can liquidate a SOL denominated market position',
+				'to fulfill their withdrawal request.'
+			];
 			accounts: [
 				{
 					name: 'vault';
@@ -960,6 +1008,32 @@ export type PhoenixVaults = {
 				{
 					name: 'marketIndex';
 					type: 'u8';
+				}
+			];
+		},
+		{
+			name: 'updateVault';
+			docs: [
+				'Update the fees, profit share, min deposit, max capacity, delegate, and more.'
+			];
+			accounts: [
+				{
+					name: 'vault';
+					isMut: true;
+					isSigner: false;
+				},
+				{
+					name: 'manager';
+					isMut: false;
+					isSigner: true;
+				}
+			];
+			args: [
+				{
+					name: 'params';
+					type: {
+						defined: 'UpdateVaultParams';
+					};
 				}
 			];
 		}
@@ -1462,6 +1536,62 @@ export type PhoenixVaults = {
 			};
 		},
 		{
+			name: 'UpdateVaultParams';
+			type: {
+				kind: 'struct';
+				fields: [
+					{
+						name: 'redeemPeriod';
+						type: {
+							option: 'i64';
+						};
+					},
+					{
+						name: 'maxTokens';
+						type: {
+							option: 'u64';
+						};
+					},
+					{
+						name: 'managementFee';
+						type: {
+							option: 'i64';
+						};
+					},
+					{
+						name: 'minDepositAmount';
+						type: {
+							option: 'u64';
+						};
+					},
+					{
+						name: 'profitShare';
+						type: {
+							option: 'u32';
+						};
+					},
+					{
+						name: 'hurdleRate';
+						type: {
+							option: 'u32';
+						};
+					},
+					{
+						name: 'permissioned';
+						type: {
+							option: 'bool';
+						};
+					},
+					{
+						name: 'delegate';
+						type: {
+							option: 'publicKey';
+						};
+					}
+				];
+			};
+		},
+		{
 			name: 'MarketTransferParams';
 			type: {
 				kind: 'struct';
@@ -1915,6 +2045,14 @@ export const IDL: PhoenixVaults = {
 	instructions: [
 		{
 			name: 'initializeVault',
+			docs: [
+				'The wallet that signs this instruction becomes the manager and therefore profits the management fee and profit share.',
+				'The manager can NOT be updated, so be careful who creates the vault.',
+				'',
+				'By default, the manager is also the delegate who has permission to trade on behalf of the vault.',
+				'',
+				'The delegate can be updated at anytime by calling `update_vault`.',
+			],
 			accounts: [
 				{
 					name: 'vault',
@@ -1983,6 +2121,9 @@ export const IDL: PhoenixVaults = {
 		},
 		{
 			name: 'initializeInvestor',
+			docs: [
+				'User creates an [`Investor`] account to invest with a [`Vault`].',
+			],
 			accounts: [
 				{
 					name: 'vault',
@@ -2019,6 +2160,10 @@ export const IDL: PhoenixVaults = {
 		},
 		{
 			name: 'initializeMarketRegistry',
+			docs: [
+				'Admin function to create an on-chain source of truth for list of Phoenix markets.',
+				'This is called once after the first deploy of this program to a network.',
+			],
 			accounts: [
 				{
 					name: 'authority',
@@ -2072,6 +2217,7 @@ export const IDL: PhoenixVaults = {
 		},
 		{
 			name: 'investorDeposit',
+			docs: ['Investor deposits funds to the vault USDC token account.'],
 			accounts: [
 				{
 					name: 'vault',
@@ -2168,6 +2314,15 @@ export const IDL: PhoenixVaults = {
 		},
 		{
 			name: 'investorWithdraw',
+			docs: [
+				'Investor withdraws funds from the vault, assuming funds are in the vault USDC token account.',
+				'',
+				'If insufficient USDC in the vault_usdc_token_account, then the investor must call `appoint_liquidator` to',
+				'acquire permission to liquidate the vault market positions.',
+				'',
+				'Then call `liquidate_usdc_market` or `liquidate_sol_market` to forcefully swap a vault market position back to USDC,',
+				'and then withdraw back to the investor.',
+			],
 			accounts: [
 				{
 					name: 'vault',
@@ -2259,6 +2414,10 @@ export const IDL: PhoenixVaults = {
 		},
 		{
 			name: 'claimSeat',
+			docs: [
+				'Vault delegate claims a seat on a Phoenix market to enable trading.',
+				'Call this before `place_limit_order`.',
+			],
 			accounts: [
 				{
 					name: 'vault',
@@ -2328,6 +2487,7 @@ export const IDL: PhoenixVaults = {
 		},
 		{
 			name: 'placeLimitOrder',
+			docs: ['Vault delegate places a limit order on behalf of the vault.'],
 			accounts: [
 				{
 					name: 'vault',
@@ -2414,6 +2574,7 @@ export const IDL: PhoenixVaults = {
 		},
 		{
 			name: 'requestWithdraw',
+			docs: ['Investor request withdrawal of funds from the vault.'],
 			accounts: [
 				{
 					name: 'vault',
@@ -2461,6 +2622,9 @@ export const IDL: PhoenixVaults = {
 		},
 		{
 			name: 'marketDeposit',
+			docs: [
+				'Vault delegate deposits vault assets from the USDC or SOL token account to a Phoenix market.',
+			],
 			accounts: [
 				{
 					name: 'vault',
@@ -2547,6 +2711,9 @@ export const IDL: PhoenixVaults = {
 		},
 		{
 			name: 'marketWithdraw',
+			docs: [
+				'Vault delegate withdraws vault Phoenix market back to the vault USDC or SOL token accounts.',
+			],
 			accounts: [
 				{
 					name: 'vault',
@@ -2628,6 +2795,9 @@ export const IDL: PhoenixVaults = {
 		},
 		{
 			name: 'appointLiquidator',
+			docs: [
+				'Assign an investor as delegate to enable liquidation of market positions.',
+			],
 			accounts: [
 				{
 					name: 'vault',
@@ -2664,6 +2834,10 @@ export const IDL: PhoenixVaults = {
 		},
 		{
 			name: 'liquidateUsdcMarket',
+			docs: [
+				'After `appoint_liquidator` the investor can liquidate a USDC denominated market position',
+				'to fulfill their withdrawal request.',
+			],
 			accounts: [
 				{
 					name: 'vault',
@@ -2760,6 +2934,10 @@ export const IDL: PhoenixVaults = {
 		},
 		{
 			name: 'liquidateSolMarket',
+			docs: [
+				'After `appoint_liquidator` the investor can liquidate a SOL denominated market position',
+				'to fulfill their withdrawal request.',
+			],
 			accounts: [
 				{
 					name: 'vault',
@@ -2871,6 +3049,32 @@ export const IDL: PhoenixVaults = {
 				{
 					name: 'marketIndex',
 					type: 'u8',
+				},
+			],
+		},
+		{
+			name: 'updateVault',
+			docs: [
+				'Update the fees, profit share, min deposit, max capacity, delegate, and more.',
+			],
+			accounts: [
+				{
+					name: 'vault',
+					isMut: true,
+					isSigner: false,
+				},
+				{
+					name: 'manager',
+					isMut: false,
+					isSigner: true,
+				},
+			],
+			args: [
+				{
+					name: 'params',
+					type: {
+						defined: 'UpdateVaultParams',
+					},
 				},
 			],
 		},
@@ -3368,6 +3572,62 @@ export const IDL: PhoenixVaults = {
 					{
 						name: 'order',
 						type: 'bytes',
+					},
+				],
+			},
+		},
+		{
+			name: 'UpdateVaultParams',
+			type: {
+				kind: 'struct',
+				fields: [
+					{
+						name: 'redeemPeriod',
+						type: {
+							option: 'i64',
+						},
+					},
+					{
+						name: 'maxTokens',
+						type: {
+							option: 'u64',
+						},
+					},
+					{
+						name: 'managementFee',
+						type: {
+							option: 'i64',
+						},
+					},
+					{
+						name: 'minDepositAmount',
+						type: {
+							option: 'u64',
+						},
+					},
+					{
+						name: 'profitShare',
+						type: {
+							option: 'u32',
+						},
+					},
+					{
+						name: 'hurdleRate',
+						type: {
+							option: 'u32',
+						},
+					},
+					{
+						name: 'permissioned',
+						type: {
+							option: 'bool',
+						},
+					},
+					{
+						name: 'delegate',
+						type: {
+							option: 'publicKey',
+						},
 					},
 				],
 			},

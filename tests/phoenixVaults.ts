@@ -29,6 +29,7 @@ import {
 	PHOENIX_SEAT_MANAGER_PROGRAM_ID,
 	WithdrawUnit,
 	LOCALNET_MARKET_CONFIG,
+	UpdateVaultParams,
 } from '../ts/sdk';
 import { BN } from '@coral-xyz/anchor';
 import {
@@ -74,7 +75,6 @@ describe('phoenixVaults', () => {
 	const conn = provider.connection;
 	// @ts-ignore
 	const payer: Keypair = provider.wallet.payer as any as Keypair;
-	// const payer = _payer as Keypair;
 	const program = anchor.workspace
 		.PhoenixVaults as anchor.Program<PhoenixVaults>;
 
@@ -240,6 +240,54 @@ describe('phoenixVaults', () => {
 			.rpc();
 		const acct = await program.account.vault.fetch(vaultKey);
 		assert(!!acct);
+	});
+
+	it('Update Delegate', async () => {
+		const delegate = Keypair.generate();
+		const params = {
+			redeemPeriod: null,
+			maxTokens: null,
+			minDepositAmount: null,
+			managementFee: null,
+			profitShare: null,
+			hurdleRate: null,
+			permissioned: null,
+		};
+		try {
+			const changeToDelegate = await program.methods
+				.updateVault({
+					...params,
+					delegate: delegate.publicKey,
+				})
+				.accounts({
+					vault: vaultKey,
+					manager: manager.publicKey,
+				})
+				.instruction();
+			await sendAndConfirm(conn, payer, [changeToDelegate], [manager]);
+		} catch (e: any) {
+			throw new Error(e);
+		}
+		const vaultAfterUpdate = await program.account.vault.fetch(vaultKey);
+		assert(vaultAfterUpdate.delegate.equals(delegate.publicKey));
+
+		try {
+			const revertToManager = await program.methods
+				.updateVault({
+					...params,
+					delegate: manager.publicKey,
+				})
+				.accounts({
+					vault: vaultKey,
+					manager: manager.publicKey,
+				})
+				.instruction();
+			await sendAndConfirm(conn, payer, [revertToManager], [manager]);
+		} catch (e: any) {
+			throw new Error(e);
+		}
+		const vaultAfterRevert = await program.account.vault.fetch(vaultKey);
+		assert(vaultAfterRevert.delegate.equals(manager.publicKey));
 	});
 
 	it('Check SOL/USDC Seat Manager', async () => {
