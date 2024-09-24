@@ -12,9 +12,6 @@ usage() {
 
 usage: $0 [OPTIONS]
 
-Bootstrap a validator to start a network.
-Gossip host must be set to a private or public IP to communicate beyond localhost.
-
 OPTIONS:
   --detach             - Once bootstrap and tests are complete, keep the validator running
   --no-test            - Skip running tests and only bootstrap the validator
@@ -69,16 +66,18 @@ if [[ -n $solana_pid ]]; then
   pkill -f solana
 fi
 
+export ANCHOR_WALLET=~/.config/solana/cosmic_lab_inc.json
+rpc_url=$(solana config get | grep "RPC URL" | cut -d " " -f 3)
+export ANCHOR_PROVIDER_URL=$rpc_url
+
 # suppress output form anchor localnet
 # start anchor localnet in background
 bkg anchor localnet
 
 # run bootstrap.sh
-chmod +x ./bootstrap.sh
-./bootstrap.sh
+cargo test --package phoenix-vaults --test phoenix bootstrap_markets -- --exact --nocapture
 
 if [[ $no_test == false ]]; then
-  export ANCHOR_WALLET=~/.config/solana/id.json
   yarn anchor-tests
 fi
 

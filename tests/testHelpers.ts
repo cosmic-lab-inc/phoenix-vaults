@@ -84,6 +84,52 @@ export async function simulate(
 	}
 }
 
+export async function sendAndConfirmWithLookupTable(
+	connection: Connection,
+	payer: Signer,
+	instructions: TransactionInstruction[],
+	lookupTables: AddressLookupTableAccount[],
+	signers: Signer[] = []
+): Promise<string> {
+	try {
+		instructions = [
+			ComputeBudgetProgram.setComputeUnitLimit({
+				units: 400_000,
+			}),
+			ComputeBudgetProgram.setComputeUnitPrice({
+				microLamports: 10_000,
+			}),
+			...instructions,
+		];
+
+		const recentBlockhash = await connection
+			.getLatestBlockhash()
+			.then((res) => res.blockhash);
+		const msg = new anchor.web3.TransactionMessage({
+			payerKey: payer.publicKey,
+			recentBlockhash,
+			instructions,
+		}).compileToV0Message(lookupTables);
+		const tx = new anchor.web3.VersionedTransaction(msg);
+		tx.sign([payer, ...signers]);
+
+		const sig = await connection.sendTransaction(tx, {
+			skipPreflight: true,
+		});
+		const strategy = {
+			signature: sig,
+		} as TransactionConfirmationStrategy;
+		const confirm = await connection.confirmTransaction(strategy);
+		if (confirm.value.err) {
+			throw new Error(JSON.stringify(confirm.value.err));
+		}
+		return sig;
+	} catch (e: any) {
+		console.error(e);
+		throw new Error(e);
+	}
+}
+
 export async function sendAndConfirm(
 	connection: Connection,
 	payer: Signer,

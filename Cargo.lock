@@ -2610,6 +2610,7 @@ dependencies = [
  "anchor-spl",
  "anyhow",
  "base64 0.22.1",
+ "bincode",
  "borsh 0.10.3",
  "bytemuck",
  "drift-macros",

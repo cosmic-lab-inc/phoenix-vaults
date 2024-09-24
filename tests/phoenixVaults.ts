@@ -29,7 +29,6 @@ import {
 	PHOENIX_SEAT_MANAGER_PROGRAM_ID,
 	WithdrawUnit,
 	LOCALNET_MARKET_CONFIG,
-	UpdateVaultParams,
 } from '../ts/sdk';
 import { BN } from '@coral-xyz/anchor';
 import {
@@ -123,7 +122,6 @@ describe('phoenixVaults', () => {
 			false,
 			false
 		);
-		// await phoenix.addMarket(solUsdcMarket.toBase58(), true, false);
 
 		await conn.requestAirdrop(maker.publicKey, LAMPORTS_PER_SOL * 10);
 
