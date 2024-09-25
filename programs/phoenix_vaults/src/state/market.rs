@@ -10,7 +10,6 @@ use phoenix::quantities::WrapperU64;
 use sokoban::ZeroCopy;
 use std::collections::BTreeMap;
 use std::iter::Peekable;
-use std::panic::Location;
 use std::slice::Iter;
 
 pub trait MarketMapProvider<'a> {
@@ -85,10 +84,13 @@ impl<'a: 'info, 'info, T: anchor_lang::Bumps> MarketMapProvider<'a>
         let (_, sol_tick_price, sol_header) = self.load_sol_usdc_market(registry)?;
         let sol_price = ticks_to_price_precision(&sol_header, sol_tick_price);
 
-        let vault_usdc_units_precision = quote_lots_to_quote_units_precision(
-            &sol_header,
-            quote_atoms_to_quote_lots_rounded_down(&sol_header, vault_usdc.amount),
-        );
+        // let vault_usdc_units_precision = quote_lots_to_quote_units_precision(
+        //     &sol_header,
+        //      quote_atoms_to_quote_lots_rounded_down(&sol_header, vault_usdc.amount),
+        // );
+        // usdc has 6 decimals which is the same as PRICE_PRECISION
+        let vault_usdc_units_precision = vault_usdc.amount;
+        msg!("vault usdc: {}", vault_usdc_units_precision);
         equity += vault_usdc_units_precision;
 
         let remaining_accounts_iter = &mut self.remaining_accounts.iter().peekable();
@@ -136,6 +138,9 @@ impl<'a: 'info, 'info, T: anchor_lang::Bumps> MarketMapProvider<'a>
                     quote_lots_to_quote_units_precision(&header, quote_lots);
                 let total_quote_units_precision =
                     base_quote_units_precision + quote_units_precision;
+                if total_quote_units_precision > 0 {
+                    msg!("market equity: {}", total_quote_units_precision);
+                }
                 equity += total_quote_units_precision;
             }
         }

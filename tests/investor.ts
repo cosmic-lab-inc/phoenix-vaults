@@ -5,7 +5,6 @@ import {
 	Keypair,
 	LAMPORTS_PER_SOL,
 	PublicKey,
-	SystemProgram,
 } from '@solana/web3.js';
 import { assert } from 'chai';
 import { before } from 'mocha';
@@ -25,7 +24,6 @@ import {
 	PHOENIX_PROGRAM_ID,
 	WithdrawUnit,
 	LOCALNET_MARKET_CONFIG,
-	PHOENIX_SEAT_MANAGER_PROGRAM_ID,
 } from '../ts/sdk';
 import { BN } from '@coral-xyz/anchor';
 import {
@@ -38,16 +36,14 @@ import {
 	createMarketTokenAccountIxs,
 	sendAndConfirm,
 	tokenBalance,
-	fetchTraderState,
 	fetchInvestorEquity,
 	calculateRealizedInvestorEquity,
+	fetchVaultEquity,
 } from './testHelpers';
 import {
 	Client as PhoenixClient,
 	getLogAuthority,
 	getSeatAddress,
-	getSeatDepositCollectorAddress,
-	getSeatManagerAddress,
 } from '@ellipsis-labs/phoenix-sdk';
 
 describe('phoenixVaults', () => {
@@ -92,7 +88,7 @@ describe('phoenixVaults', () => {
 		'localhost'
 	].markets.map((m) => new PublicKey(m.market));
 	const usdcUiAmount = 1009.037049;
-	const usdcAmount = new BN(usdcUiAmount).mul(MOCK_USDC_PRECISION);
+	const usdcAmount = new BN(usdcUiAmount * MOCK_USDC_PRECISION.toNumber());
 
 	before(async () => {
 		phoenix = await PhoenixClient.createFromConfig(
@@ -192,40 +188,12 @@ describe('phoenixVaults', () => {
 		);
 		await sendAndConfirm(conn, payer, [createAtaIx, mintToIx], [mintAuth]);
 
-		const vaultBaseTokenAccount = getAssociatedTokenAddressSync(
-			solMint,
-			vaultKey,
-			true
-		);
 		const vaultQuoteTokenAccount = getAssociatedTokenAddressSync(
 			usdcMint,
 			vaultKey,
 			true
 		);
-		const marketBaseTokenAccount = phoenix.getBaseVaultKey(
-			solUsdcMarket.toString()
-		);
-		const marketQuoteTokenAccount = phoenix.getQuoteVaultKey(
-			solUsdcMarket.toString()
-		);
 
-		const accounts = {
-			vault: vaultKey,
-			investor,
-			authority: provider.publicKey,
-			marketRegistry,
-			investorQuoteTokenAccount: investorUsdcAta,
-			phoenix: PHOENIX_PROGRAM_ID,
-			logAuthority: getLogAuthority(),
-			market: solUsdcMarket,
-			seat: getSeatAddress(solUsdcMarket, vaultKey),
-			baseMint: solMint,
-			quoteMint: usdcMint,
-			vaultBaseTokenAccount,
-			vaultQuoteTokenAccount,
-			marketBaseTokenAccount,
-			marketQuoteTokenAccount,
-		};
 		const markets: AccountMeta[] = marketKeys.map((pubkey) => {
 			return {
 				pubkey,
@@ -236,7 +204,14 @@ describe('phoenixVaults', () => {
 
 		const ix = await program.methods
 			.investorDeposit(usdcAmount)
-			.accounts(accounts)
+			.accounts({
+				vault: vaultKey,
+				investor,
+				authority: provider.publicKey,
+				marketRegistry,
+				investorQuoteTokenAccount: investorUsdcAta,
+				vaultQuoteTokenAccount,
+			})
 			.remainingAccounts(markets)
 			.instruction();
 		try {
@@ -246,25 +221,15 @@ describe('phoenixVaults', () => {
 		}
 
 		const investorAcct = await program.account.investor.fetch(investor);
-		const deposits = investorAcct.netDeposits.div(QUOTE_PRECISION).toNumber();
-		const shares = investorAcct.vaultShares.div(QUOTE_PRECISION).toNumber();
+		const deposits =
+			investorAcct.netDeposits.toNumber() / QUOTE_PRECISION.toNumber();
+		const shares =
+			investorAcct.vaultShares.toNumber() / QUOTE_PRECISION.toNumber();
 		assert.equal(deposits, usdcUiAmount);
-		// assert.equal(shares, 1000);
+		assert.equal(shares, usdcUiAmount);
 
-		const vaultSol = await tokenBalance(conn, vaultQuoteTokenAccount);
 		const vaultUsdc = await tokenBalance(conn, vaultQuoteTokenAccount);
-		console.log(
-			`vault after investor deposit, sol: ${vaultSol}, usdc: ${vaultUsdc}`
-		);
-		assert.equal(vaultSol, 0);
-		assert.equal(vaultUsdc, 0);
-
-		const vaultState = await fetchTraderState(conn, solUsdcMarket, vaultKey);
-		console.log(
-			`vault trader state after investor deposit, sol: ${vaultState.baseUnitsFree}, usdc: ${vaultState.quoteUnitsFree}`
-		);
-		assert.equal(vaultState.baseUnitsFree, 0);
-		assert.equal(vaultState.quoteUnitsFree, usdcUiAmount);
+		assert.equal(vaultUsdc, usdcUiAmount);
 	});
 
 	it('Request Withdraw', async () => {
@@ -274,26 +239,22 @@ describe('phoenixVaults', () => {
 			investor,
 			vaultKey
 		);
-		console.log(
-			`investor equity before withdraw request: ${investorEquityBefore}`
-		);
-		// assert.strictEqual(investorEquityBefore, 1249.75002);
+		assert.strictEqual(investorEquityBefore, usdcUiAmount);
 
-		const vaultEquity = new BN(
-			investorEquityBefore * QUOTE_PRECISION.toNumber()
-		);
+		const vaultEquity = await fetchVaultEquity(program, conn, vaultKey);
+		assert.strictEqual(vaultEquity, investorEquityBefore);
+		const vaultEquityBN = new BN(vaultEquity * QUOTE_PRECISION.toNumber());
 		const investorAcct = await program.account.investor.fetch(investor);
 		const vaultAcct = await program.account.vault.fetch(vaultKey);
-		const withdrawRequestEquity = calculateRealizedInvestorEquity(
+		const withdrawRequestEquityBN = calculateRealizedInvestorEquity(
 			investorAcct,
-			vaultEquity,
+			vaultEquityBN,
 			vaultAcct
 		);
-		console.log(
-			`withdraw request equity: ${
-				withdrawRequestEquity.toNumber() / QUOTE_PRECISION.toNumber()
-			}`
-		);
+		const withdrawRequestEquity =
+			withdrawRequestEquityBN.toNumber() / QUOTE_PRECISION.toNumber();
+		console.log('withdraw request equity:', withdrawRequestEquity);
+		assert.strictEqual(withdrawRequestEquity, usdcUiAmount);
 
 		try {
 			const markets: AccountMeta[] = marketKeys.map((pubkey) => {
@@ -304,7 +265,7 @@ describe('phoenixVaults', () => {
 				};
 			});
 			const ix = await program.methods
-				.requestWithdraw(withdrawRequestEquity, WithdrawUnit.TOKEN)
+				.requestWithdraw(withdrawRequestEquityBN, WithdrawUnit.TOKEN)
 				.accounts({
 					vault: vaultKey,
 					investor,

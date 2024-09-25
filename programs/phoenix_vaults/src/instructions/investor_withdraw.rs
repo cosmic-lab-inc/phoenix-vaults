@@ -29,14 +29,6 @@ pub fn investor_withdraw<'c: 'info, 'info>(
 
     drop(vault);
 
-    // let (_, _, sol_usdc_header) = ctx.load_sol_usdc_market(&registry)?;
-    // let quote_lots =
-    //     quote_atoms_to_quote_lots_rounded_down(&sol_usdc_header, investor_withdraw_amount);
-    // ctx.phoenix_withdraw(MarketTransferParams {
-    //     quote_lots,
-    //     base_lots: 0,
-    // })?;
-
     msg!(
         "vault_usdc_balance: {}",
         ctx.accounts.vault_quote_token_account.amount
@@ -45,9 +37,10 @@ pub fn investor_withdraw<'c: 'info, 'info>(
 
     let mut vault = ctx.accounts.vault.load_mut()?;
     let market = ctx.accounts.market.key();
-    let pos = ctx.market_position(&vault, market)?;
-    if let Ok(index) = vault.get_market_position_index(&market) {
-        vault.update_market_position(index, pos)?;
+    if let Ok(pos) = ctx.market_position(&vault, market) {
+        if let Ok(index) = vault.get_market_position_index(&market) {
+            vault.update_market_position(index, pos)?;
+        }
     }
     drop(vault);
 

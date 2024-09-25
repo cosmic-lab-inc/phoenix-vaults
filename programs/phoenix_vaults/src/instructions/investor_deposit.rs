@@ -1,15 +1,10 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token::{self, Mint, Token, TokenAccount, Transfer};
-use phoenix::program::deposit::DepositParams;
-use solana_program::program::invoke_signed;
+use anchor_spl::token::{self, Token, TokenAccount, Transfer};
 
 use crate::constraints::*;
-use crate::cpis::{PhoenixDepositCPI, TokenTransferCPI};
-use crate::declare_vault_seeds;
-use crate::error::ErrorCode;
-use crate::state::{
-    Investor, MarketMapProvider, MarketRegistry, MarketTransferParams, PhoenixProgram, Vault,
-};
+use crate::cpis::TokenTransferCPI;
+
+use crate::state::{Investor, MarketMapProvider, MarketRegistry, Vault};
 // use crate::math::quote_atoms_to_quote_lots_rounded_down;
 
 pub fn investor_deposit<'c: 'info, 'info>(

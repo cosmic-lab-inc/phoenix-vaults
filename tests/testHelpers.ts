@@ -533,10 +533,12 @@ export function calculateRealizedInvestorEquity(
 		vault.totalShares,
 		vaultEquity
 	);
+	console.log('investorAmount:', investorAmount.toNumber());
 	const profitShareAmount = calculateProfitShare(
 		investor,
 		investorAmount,
 		vault
 	);
+	console.log('profitShareAmount:', profitShareAmount.toNumber());
 	return investorAmount.sub(profitShareAmount);
 }

@@ -15,9 +15,10 @@ pub fn market_withdraw<'c: 'info, 'info>(
 
     let mut vault = ctx.accounts.vault.load_mut()?;
     let market = ctx.accounts.market.key();
-    let pos = ctx.market_position(&vault, market)?;
-    if let Ok(index) = vault.get_market_position_index(&market) {
-        vault.update_market_position(index, pos)?;
+    if let Ok(pos) = ctx.market_position(&vault, market) {
+        if let Ok(index) = vault.get_market_position_index(&market) {
+            vault.update_market_position(index, pos)?;
+        }
     }
     drop(vault);
 
