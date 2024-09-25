@@ -38,7 +38,8 @@ pub fn place_limit_order<'c: 'info, 'info>(
     let mut vault = ctx.accounts.vault.load_mut()?;
     let market = ctx.accounts.market.key();
     let pos = ctx.market_position(&vault, market)?;
-    vault.force_update_market_position(pos)?;
+    let index = vault.force_get_market_position_index(market)?;
+    vault.update_market_position(index, pos)?;
     drop(vault);
 
     Ok(())

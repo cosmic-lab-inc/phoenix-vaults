@@ -518,10 +518,7 @@ function calculateProfitShare(
 	);
 	const profitShare = vault.profitShare + vault.protocolProfitShare;
 	if (profit.gt(ZERO)) {
-		const profitShareAmount = profit
-			.mul(new BN(profitShare))
-			.div(PERCENTAGE_PRECISION);
-		return profitShareAmount;
+		return profit.mul(new BN(profitShare)).div(PERCENTAGE_PRECISION);
 	}
 	return ZERO;
 }
@@ -531,11 +528,15 @@ export function calculateRealizedInvestorEquity(
 	vaultEquity: BN,
 	vault: Vault
 ): BN {
-	const vdAmount = sharesToAmount(
+	const investorAmount = sharesToAmount(
 		investor.vaultShares,
 		vault.totalShares,
 		vaultEquity
 	);
-	const profitShareAmount = calculateProfitShare(investor, vdAmount, vault);
-	return vdAmount.sub(profitShareAmount);
+	const profitShareAmount = calculateProfitShare(
+		investor,
+		investorAmount,
+		vault
+	);
+	return investorAmount.sub(profitShareAmount);
 }

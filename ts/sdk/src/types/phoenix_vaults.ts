@@ -992,6 +992,37 @@ export type PhoenixVaults = {
 					};
 				}
 			];
+		},
+		{
+			name: 'cancelWithdrawRequest';
+			accounts: [
+				{
+					name: 'vault';
+					isMut: true;
+					isSigner: false;
+				},
+				{
+					name: 'investor';
+					isMut: true;
+					isSigner: false;
+				},
+				{
+					name: 'authority';
+					isMut: false;
+					isSigner: true;
+				},
+				{
+					name: 'marketRegistry';
+					isMut: false;
+					isSigner: false;
+				},
+				{
+					name: 'vaultUsdcTokenAccount';
+					isMut: true;
+					isSigner: false;
+				}
+			];
+			args: [];
 		}
 	];
 	accounts: [
@@ -3012,6 +3043,37 @@ export const IDL: PhoenixVaults = {
 					},
 				},
 			],
+		},
+		{
+			name: 'cancelWithdrawRequest',
+			accounts: [
+				{
+					name: 'vault',
+					isMut: true,
+					isSigner: false,
+				},
+				{
+					name: 'investor',
+					isMut: true,
+					isSigner: false,
+				},
+				{
+					name: 'authority',
+					isMut: false,
+					isSigner: true,
+				},
+				{
+					name: 'marketRegistry',
+					isMut: false,
+					isSigner: false,
+				},
+				{
+					name: 'vaultUsdcTokenAccount',
+					isMut: true,
+					isSigner: false,
+				},
+			],
+			args: [],
 		},
 	],
 	accounts: [

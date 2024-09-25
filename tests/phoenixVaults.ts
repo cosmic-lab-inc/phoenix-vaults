@@ -137,9 +137,8 @@ describe('phoenixVaults', () => {
 					marketRegistry,
 				})
 				.rpc();
-		} catch (e) {
-			console.error(e);
-			assert(false);
+		} catch (e: any) {
+			throw new Error(e);
 		}
 	});
 

@@ -25,6 +25,7 @@ pub fn investor_withdraw<'c: 'info, 'info>(
 
     let investor_withdraw_amount =
         investor.withdraw(vault_equity, &mut vault, clock.unix_timestamp)?;
+    msg!("investor_withdraw_amount: {}", investor_withdraw_amount);
 
     drop(vault);
 
@@ -37,13 +38,18 @@ pub fn investor_withdraw<'c: 'info, 'info>(
         base_lots: 0,
     })?;
 
+    msg!(
+        "vault_usdc_balance: {}",
+        ctx.accounts.vault_quote_token_account.amount
+    );
     ctx.token_transfer(investor_withdraw_amount)?;
 
     let mut vault = ctx.accounts.vault.load_mut()?;
     let market = ctx.accounts.market.key();
     let pos = ctx.market_position(&vault, market)?;
-    vault.force_update_market_position(pos)?;
-
+    if let Ok(index) = vault.get_market_position_index(&market) {
+        vault.update_market_position(index, pos)?;
+    }
     drop(vault);
 
     Ok(())

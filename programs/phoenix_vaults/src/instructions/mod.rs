@@ -1,4 +1,5 @@
 mod appoint_liquidator;
+mod cancel_withdraw_request;
 mod claim_seat;
 pub mod constraints;
 mod initialize_investor;
@@ -15,6 +16,7 @@ mod request_withdraw;
 mod update_vault;
 
 pub use appoint_liquidator::*;
+pub use cancel_withdraw_request::*;
 pub use claim_seat::*;
 pub use constraints::*;
 pub use initialize_investor::*;

@@ -139,4 +139,10 @@ pub mod phoenix_vaults {
     ) -> Result<()> {
         instructions::update_vault(ctx, params)
     }
+
+    pub fn cancel_withdraw_request<'c: 'info, 'info>(
+        ctx: Context<'_, '_, 'c, 'info, CancelWithdrawRequest<'info>>,
+    ) -> Result<()> {
+        instructions::cancel_withdraw_request(ctx)
+    }
 }

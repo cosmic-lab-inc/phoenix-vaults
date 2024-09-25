@@ -972,22 +972,39 @@ impl Vault {
         Ok(new_spot_position_index)
     }
 
-    pub fn force_get_spot_position_mut(&mut self, market: Pubkey) -> Result<&mut MarketPosition> {
+    pub fn force_get_market_position_mut(&mut self, market: Pubkey) -> Result<&mut MarketPosition> {
         self.get_market_position_index(&market)
             .or_else(|_| self.add_market_position(market))
             .map(move |market_index| &mut self.positions[market_index])
     }
 
-    pub fn force_get_spot_position_index(&mut self, market: Pubkey) -> Result<usize> {
+    pub fn force_get_market_position_index(&mut self, market: Pubkey) -> Result<usize> {
         self.get_market_position_index(&market)
             .or_else(|_| self.add_market_position(market))
     }
 
+    /// Deposit or place order instructions should call this
     pub fn force_update_market_position(&mut self, position: MarketPosition) -> Result<()> {
         if position.is_available() {
             return Ok(());
         }
-        let market_index = self.force_get_spot_position_index(position.market)?;
+        let market_index = self.force_get_market_position_index(position.market)?;
+        self.positions[market_index].quote_lots_free = position.quote_lots_free;
+        self.positions[market_index].quote_lots_locked = position.quote_lots_locked;
+        self.positions[market_index].base_lots_free = position.base_lots_free;
+        self.positions[market_index].base_lots_locked = position.base_lots_locked;
+        Ok(())
+    }
+
+    /// Withdrawal instructions should call this
+    pub fn update_market_position(
+        &mut self,
+        market_index: usize,
+        position: MarketPosition,
+    ) -> Result<()> {
+        if position.is_available() {
+            return Ok(());
+        }
         self.positions[market_index].quote_lots_free = position.quote_lots_free;
         self.positions[market_index].quote_lots_locked = position.quote_lots_locked;
         self.positions[market_index].base_lots_free = position.base_lots_free;
