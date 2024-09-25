@@ -71,9 +71,19 @@ export type Vault = {
 	protocolTotalProfitShare: BN;
 	lastProtocolWithdrawRequest: WithdrawRequest;
 
+	positions: MarketPosition[];
+
 	permissioned: boolean;
 	bump: number;
 	padding: number[];
+};
+
+export type MarketPosition = {
+	market: PublicKey;
+	quoteLotsLocked: BN;
+	quoteLotsFree: BN;
+	baseLotsLocked: BN;
+	baseLotsFree: BN;
 };
 
 export type MarketTransferParams = {

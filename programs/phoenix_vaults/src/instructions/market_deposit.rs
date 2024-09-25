@@ -6,13 +6,18 @@ use solana_program::program::invoke_signed;
 use crate::constraints::*;
 use crate::cpis::PhoenixDepositCPI;
 use crate::declare_vault_seeds;
-use crate::state::{MarketTransferParams, PhoenixProgram, Vault};
+use crate::state::{MarketMapProvider, MarketTransferParams, PhoenixProgram, Vault};
 
 pub fn market_deposit<'c: 'info, 'info>(
     ctx: Context<'_, '_, 'c, 'info, MarketDeposit<'info>>,
     params: MarketTransferParams,
 ) -> Result<()> {
     ctx.phoenix_deposit(params)?;
+
+    let mut vault = ctx.accounts.vault.load_mut()?;
+    let market = ctx.accounts.market.key();
+    let pos = ctx.market_position(&vault, market)?;
+    vault.force_update_market_position(pos)?;
 
     Ok(())
 }

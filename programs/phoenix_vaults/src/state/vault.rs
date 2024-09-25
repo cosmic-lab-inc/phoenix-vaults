@@ -4,7 +4,9 @@ use crate::constants::{
 use crate::error::{ErrorCode, VaultResult};
 use crate::math::{amount_to_shares, calculate_rebase_info, shares_to_amount, Cast, SafeMath};
 use crate::state::withdraw_request::WithdrawRequest;
-use crate::state::{Investor, InvestorAction, InvestorRecord, VaultFee, WithdrawUnit};
+use crate::state::{
+    Investor, InvestorAction, InvestorRecord, MarketPosition, VaultFee, WithdrawUnit,
+};
 use crate::{validate, Size};
 use anchor_lang::prelude::*;
 use drift_macros::assert_no_slop;
@@ -110,6 +112,8 @@ pub struct Vault {
     pub protocol_total_profit_share: u64,
     pub last_protocol_withdraw_request: WithdrawRequest,
 
+    pub positions: [MarketPosition; 8],
+
     /// Whether anyone can be an investor
     pub permissioned: bool,
     /// The bump for the vault PDA
@@ -124,7 +128,7 @@ impl Vault {
 }
 
 impl Size for Vault {
-    const SIZE: usize = 616 + 8;
+    const SIZE: usize = 616 + 64 * 8 + 8;
 }
 const_assert_eq!(Vault::SIZE, std::mem::size_of::<Vault>() + 8);
 
@@ -932,5 +936,62 @@ impl Vault {
 
     pub fn profit_share(&self) -> u32 {
         self.profit_share.saturating_add(self.protocol_profit_share)
+    }
+
+    pub fn get_market_position_index(&self, market: &Pubkey) -> Result<usize> {
+        self.positions
+            .iter()
+            .position(|pos| &pos.market == market)
+            .ok_or(ErrorCode::MarketPositionNotFound.into())
+    }
+
+    pub fn get_market_position(&self, market: &Pubkey) -> Result<&MarketPosition> {
+        self.get_market_position_index(market)
+            .map(|market_index| &self.positions[market_index])
+    }
+
+    pub fn get_market_position_mut(&mut self, market: &Pubkey) -> Result<&mut MarketPosition> {
+        self.get_market_position_index(market)
+            .map(move |market_index| &mut self.positions[market_index])
+    }
+
+    pub fn add_market_position(&mut self, market: Pubkey) -> Result<usize> {
+        let new_spot_position_index = self
+            .positions
+            .iter()
+            .position(|pos| pos.is_available())
+            .ok_or(ErrorCode::MarketPositionNotFound)?;
+
+        let new_spot_position = MarketPosition {
+            market,
+            ..Default::default()
+        };
+
+        self.positions[new_spot_position_index] = new_spot_position;
+
+        Ok(new_spot_position_index)
+    }
+
+    pub fn force_get_spot_position_mut(&mut self, market: Pubkey) -> Result<&mut MarketPosition> {
+        self.get_market_position_index(&market)
+            .or_else(|_| self.add_market_position(market))
+            .map(move |market_index| &mut self.positions[market_index])
+    }
+
+    pub fn force_get_spot_position_index(&mut self, market: Pubkey) -> Result<usize> {
+        self.get_market_position_index(&market)
+            .or_else(|_| self.add_market_position(market))
+    }
+
+    pub fn force_update_market_position(&mut self, position: MarketPosition) -> Result<()> {
+        if position.is_available() {
+            return Ok(());
+        }
+        let market_index = self.force_get_spot_position_index(position.market)?;
+        self.positions[market_index].quote_lots_free = position.quote_lots_free;
+        self.positions[market_index].quote_lots_locked = position.quote_lots_locked;
+        self.positions[market_index].base_lots_free = position.base_lots_free;
+        self.positions[market_index].base_lots_locked = position.base_lots_locked;
+        Ok(())
     }
 }

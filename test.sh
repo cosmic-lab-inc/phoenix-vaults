@@ -2,6 +2,7 @@
 
 detach=false
 no_test=false
+no_build=false
 
 usage() {
   if [[ -n $1 ]]; then
@@ -15,6 +16,7 @@ usage: $0 [OPTIONS]
 OPTIONS:
   --detach             - Once bootstrap and tests are complete, keep the validator running
   --no-test            - Skip running tests and only bootstrap the validator
+  --no-build           - Skip building the project
 
 EOF
   exit 1
@@ -28,6 +30,9 @@ while [[ -n $1 ]]; do
       shift 1
     elif [[ $1 = --no-test ]]; then
       no_test=true
+      shift 1
+    elif [[ $1 = --no-build ]]; then
+      no_build=true
       shift 1
     elif [[ $1 = -h ]]; then
       usage "$@"
@@ -57,8 +62,10 @@ trap kill_process SIGINT
 # helper function to silence background processes
 bkg() { "$@" >/dev/null & }
 
-chmod +x ./build.sh
-./build.sh
+if [[ $no_build == false ]]; then
+  chmod +x ./build.sh
+  ./build.sh
+fi
 
 # Killing local validator if currently running
 solana_pid=$(pgrep -f solana)
@@ -73,6 +80,8 @@ export ANCHOR_PROVIDER_URL=$rpc_url
 # suppress output form anchor localnet
 # start anchor localnet in background
 bkg anchor localnet
+# warm up validator
+sleep 5
 
 # run bootstrap.sh
 cargo test --package phoenix-vaults --test phoenix bootstrap_markets -- --exact --nocapture

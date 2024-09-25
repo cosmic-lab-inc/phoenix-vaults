@@ -7,7 +7,7 @@
         "clean": "chmod +x ./clean.sh && ./clean.sh",
         "idl": "cp target/types/phoenix_vaults.ts ts/sdk/src/types/phoenix_vaults.ts && prettier --write ts/sdk/src/types/phoenix_vaults.ts",
         "market-registry": "yarn run ts-mocha -p ./tsconfig.json -t 1000000 -b tests/marketRegistry.ts",
-        "anchor-tests": "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/phoenixVaults.ts"
+        "anchor-tests": "yarn run ts-mocha -p ./tsconfig.json -t 1000000 -b tests/phoenixVaults.ts"
     },
     "dependencies": {
         "@coral-xyz/anchor": "0.28.0",

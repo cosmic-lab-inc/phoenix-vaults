@@ -136,15 +136,6 @@ export type PhoenixVaults = {
 					isSigner: false;
 				},
 				{
-					name: 'lut';
-					isMut: true;
-					isSigner: false;
-					docs: [
-						'Assumes [`AddressLookupTable`] is initialized prior to calling this instruction,',
-						'ideally within the same transaction.'
-					];
-				},
-				{
 					name: 'payer';
 					isMut: true;
 					isSigner: true;
@@ -156,11 +147,6 @@ export type PhoenixVaults = {
 				},
 				{
 					name: 'systemProgram';
-					isMut: false;
-					isSigner: false;
-				},
-				{
-					name: 'lutProgram';
 					isMut: false;
 					isSigner: false;
 				}
@@ -195,11 +181,6 @@ export type PhoenixVaults = {
 				},
 				{
 					name: 'marketRegistry';
-					isMut: false;
-					isSigner: false;
-				},
-				{
-					name: 'lut';
 					isMut: false;
 					isSigner: false;
 				},
@@ -300,11 +281,6 @@ export type PhoenixVaults = {
 				},
 				{
 					name: 'marketRegistry';
-					isMut: false;
-					isSigner: false;
-				},
-				{
-					name: 'lut';
 					isMut: false;
 					isSigner: false;
 				},
@@ -450,7 +426,7 @@ export type PhoenixVaults = {
 			accounts: [
 				{
 					name: 'vault';
-					isMut: false;
+					isMut: true;
 					isSigner: false;
 					docs: [
 						'If delegate has authority to sign for vault, then any Phoenix CPI is valid.',
@@ -552,11 +528,6 @@ export type PhoenixVaults = {
 				},
 				{
 					name: 'marketRegistry';
-					isMut: false;
-					isSigner: false;
-				},
-				{
-					name: 'lut';
 					isMut: false;
 					isSigner: false;
 				},
@@ -779,11 +750,6 @@ export type PhoenixVaults = {
 					isSigner: false;
 				},
 				{
-					name: 'lut';
-					isMut: false;
-					isSigner: false;
-				},
-				{
 					name: 'vaultQuoteTokenAccount';
 					isMut: true;
 					isSigner: false;
@@ -815,11 +781,6 @@ export type PhoenixVaults = {
 				},
 				{
 					name: 'marketRegistry';
-					isMut: false;
-					isSigner: false;
-				},
-				{
-					name: 'lut';
 					isMut: false;
 					isSigner: false;
 				},
@@ -915,11 +876,6 @@ export type PhoenixVaults = {
 				},
 				{
 					name: 'marketRegistry';
-					isMut: false;
-					isSigner: false;
-				},
-				{
-					name: 'lut';
 					isMut: false;
 					isSigner: false;
 				},
@@ -1143,15 +1099,15 @@ export type PhoenixVaults = {
 				kind: 'struct';
 				fields: [
 					{
-						name: 'lut';
+						name: 'authority';
 						docs: [
-							'[`AddressLookupTable`] that contains a list of Phoenix markets'
+							'Authority over this account. This is a program admin-level keypair.'
 						];
 						type: 'publicKey';
 					},
 					{
-						name: 'lutAuth';
-						docs: ['Authority over the [`AddressLookupTable`]'];
+						name: 'solUsdcMarket';
+						docs: ['Phoenix SOL/USDC market'];
 						type: 'publicKey';
 					},
 					{
@@ -1433,6 +1389,17 @@ export type PhoenixVaults = {
 						};
 					},
 					{
+						name: 'positions';
+						type: {
+							array: [
+								{
+									defined: 'MarketPosition';
+								},
+								8
+							];
+						};
+					},
+					{
 						name: 'permissioned';
 						docs: ['Whether anyone can be an investor'];
 						type: 'bool';
@@ -1458,6 +1425,10 @@ export type PhoenixVaults = {
 			type: {
 				kind: 'struct';
 				fields: [
+					{
+						name: 'solUsdcMarket';
+						type: 'publicKey';
+					},
 					{
 						name: 'usdcMint';
 						type: 'publicKey';
@@ -1587,6 +1558,34 @@ export type PhoenixVaults = {
 						type: {
 							option: 'publicKey';
 						};
+					}
+				];
+			};
+		},
+		{
+			name: 'MarketPosition';
+			type: {
+				kind: 'struct';
+				fields: [
+					{
+						name: 'market';
+						type: 'publicKey';
+					},
+					{
+						name: 'quoteLotsLocked';
+						type: 'u64';
+					},
+					{
+						name: 'quoteLotsFree';
+						type: 'u64';
+					},
+					{
+						name: 'baseLotsLocked';
+						type: 'u64';
+					},
+					{
+						name: 'baseLotsFree';
+						type: 'u64';
 					}
 				];
 			};
@@ -1973,68 +1972,48 @@ export type PhoenixVaults = {
 		},
 		{
 			code: 6032;
-			name: 'MarketMapFull';
-			msg: 'MarketMapFull';
+			name: 'MarketMissingInRemainingAccounts';
+			msg: 'MarketMissingInRemainingAccounts';
 		},
 		{
 			code: 6033;
-			name: 'InvalidAddressLookupTableData';
-			msg: 'InvalidAddressLookupTableData';
-		},
-		{
-			code: 6034;
-			name: 'AddressLookupTableAuthorityMissing';
-			msg: 'AddressLookupTableAuthorityMissing';
-		},
-		{
-			code: 6035;
-			name: 'AddressLookupTableAuthorityInvalid';
-			msg: 'AddressLookupTableAuthorityInvalid';
-		},
-		{
-			code: 6036;
-			name: 'MarketRegistryLookupTableMismatch';
-			msg: 'MarketRegistryLookupTableMismatch';
-		},
-		{
-			code: 6037;
-			name: 'MarketRegistryLength';
-			msg: 'MarketRegistryLength';
-		},
-		{
-			code: 6038;
 			name: 'MarketRegistryMismatch';
 			msg: 'MarketRegistryMismatch';
 		},
 		{
-			code: 6039;
+			code: 6034;
 			name: 'OrderPacketDeserialization';
 			msg: 'OrderPacketDeserialization';
 		},
 		{
-			code: 6040;
+			code: 6035;
 			name: 'OrderPacketMustUseDepositedFunds';
 			msg: 'OrderPacketMustUseDepositedFunds';
 		},
 		{
-			code: 6041;
+			code: 6036;
 			name: 'InvalidPhoenixInstruction';
 			msg: 'InvalidPhoenixInstruction';
 		},
 		{
-			code: 6042;
+			code: 6037;
 			name: 'OrderPacketMustBeTakeOnly';
 			msg: 'OrderPacketMustBeTakeOnly';
 		},
 		{
-			code: 6043;
+			code: 6038;
 			name: 'BaseLotsMustBeZero';
 			msg: 'BaseLotsMustBeZero';
 		},
 		{
-			code: 6044;
+			code: 6039;
 			name: 'TraderStateNotFound';
 			msg: 'TraderStateNotFound';
+		},
+		{
+			code: 6040;
+			name: 'MarketPositionNotFound';
+			msg: 'MarketPositionNotFound';
 		}
 	];
 };
@@ -2177,15 +2156,6 @@ export const IDL: PhoenixVaults = {
 					isSigner: false,
 				},
 				{
-					name: 'lut',
-					isMut: true,
-					isSigner: false,
-					docs: [
-						'Assumes [`AddressLookupTable`] is initialized prior to calling this instruction,',
-						'ideally within the same transaction.',
-					],
-				},
-				{
 					name: 'payer',
 					isMut: true,
 					isSigner: true,
@@ -2197,11 +2167,6 @@ export const IDL: PhoenixVaults = {
 				},
 				{
 					name: 'systemProgram',
-					isMut: false,
-					isSigner: false,
-				},
-				{
-					name: 'lutProgram',
 					isMut: false,
 					isSigner: false,
 				},
@@ -2236,11 +2201,6 @@ export const IDL: PhoenixVaults = {
 				},
 				{
 					name: 'marketRegistry',
-					isMut: false,
-					isSigner: false,
-				},
-				{
-					name: 'lut',
 					isMut: false,
 					isSigner: false,
 				},
@@ -2341,11 +2301,6 @@ export const IDL: PhoenixVaults = {
 				},
 				{
 					name: 'marketRegistry',
-					isMut: false,
-					isSigner: false,
-				},
-				{
-					name: 'lut',
 					isMut: false,
 					isSigner: false,
 				},
@@ -2491,7 +2446,7 @@ export const IDL: PhoenixVaults = {
 			accounts: [
 				{
 					name: 'vault',
-					isMut: false,
+					isMut: true,
 					isSigner: false,
 					docs: [
 						'If delegate has authority to sign for vault, then any Phoenix CPI is valid.',
@@ -2593,11 +2548,6 @@ export const IDL: PhoenixVaults = {
 				},
 				{
 					name: 'marketRegistry',
-					isMut: false,
-					isSigner: false,
-				},
-				{
-					name: 'lut',
 					isMut: false,
 					isSigner: false,
 				},
@@ -2820,11 +2770,6 @@ export const IDL: PhoenixVaults = {
 					isSigner: false,
 				},
 				{
-					name: 'lut',
-					isMut: false,
-					isSigner: false,
-				},
-				{
 					name: 'vaultQuoteTokenAccount',
 					isMut: true,
 					isSigner: false,
@@ -2856,11 +2801,6 @@ export const IDL: PhoenixVaults = {
 				},
 				{
 					name: 'marketRegistry',
-					isMut: false,
-					isSigner: false,
-				},
-				{
-					name: 'lut',
 					isMut: false,
 					isSigner: false,
 				},
@@ -2956,11 +2896,6 @@ export const IDL: PhoenixVaults = {
 				},
 				{
 					name: 'marketRegistry',
-					isMut: false,
-					isSigner: false,
-				},
-				{
-					name: 'lut',
 					isMut: false,
 					isSigner: false,
 				},
@@ -3184,15 +3119,15 @@ export const IDL: PhoenixVaults = {
 				kind: 'struct',
 				fields: [
 					{
-						name: 'lut',
+						name: 'authority',
 						docs: [
-							'[`AddressLookupTable`] that contains a list of Phoenix markets',
+							'Authority over this account. This is a program admin-level keypair.',
 						],
 						type: 'publicKey',
 					},
 					{
-						name: 'lutAuth',
-						docs: ['Authority over the [`AddressLookupTable`]'],
+						name: 'solUsdcMarket',
+						docs: ['Phoenix SOL/USDC market'],
 						type: 'publicKey',
 					},
 					{
@@ -3474,6 +3409,17 @@ export const IDL: PhoenixVaults = {
 						},
 					},
 					{
+						name: 'positions',
+						type: {
+							array: [
+								{
+									defined: 'MarketPosition',
+								},
+								8,
+							],
+						},
+					},
+					{
 						name: 'permissioned',
 						docs: ['Whether anyone can be an investor'],
 						type: 'bool',
@@ -3499,6 +3445,10 @@ export const IDL: PhoenixVaults = {
 			type: {
 				kind: 'struct',
 				fields: [
+					{
+						name: 'solUsdcMarket',
+						type: 'publicKey',
+					},
 					{
 						name: 'usdcMint',
 						type: 'publicKey',
@@ -3628,6 +3578,34 @@ export const IDL: PhoenixVaults = {
 						type: {
 							option: 'publicKey',
 						},
+					},
+				],
+			},
+		},
+		{
+			name: 'MarketPosition',
+			type: {
+				kind: 'struct',
+				fields: [
+					{
+						name: 'market',
+						type: 'publicKey',
+					},
+					{
+						name: 'quoteLotsLocked',
+						type: 'u64',
+					},
+					{
+						name: 'quoteLotsFree',
+						type: 'u64',
+					},
+					{
+						name: 'baseLotsLocked',
+						type: 'u64',
+					},
+					{
+						name: 'baseLotsFree',
+						type: 'u64',
 					},
 				],
 			},
@@ -4014,68 +3992,48 @@ export const IDL: PhoenixVaults = {
 		},
 		{
 			code: 6032,
-			name: 'MarketMapFull',
-			msg: 'MarketMapFull',
+			name: 'MarketMissingInRemainingAccounts',
+			msg: 'MarketMissingInRemainingAccounts',
 		},
 		{
 			code: 6033,
-			name: 'InvalidAddressLookupTableData',
-			msg: 'InvalidAddressLookupTableData',
-		},
-		{
-			code: 6034,
-			name: 'AddressLookupTableAuthorityMissing',
-			msg: 'AddressLookupTableAuthorityMissing',
-		},
-		{
-			code: 6035,
-			name: 'AddressLookupTableAuthorityInvalid',
-			msg: 'AddressLookupTableAuthorityInvalid',
-		},
-		{
-			code: 6036,
-			name: 'MarketRegistryLookupTableMismatch',
-			msg: 'MarketRegistryLookupTableMismatch',
-		},
-		{
-			code: 6037,
-			name: 'MarketRegistryLength',
-			msg: 'MarketRegistryLength',
-		},
-		{
-			code: 6038,
 			name: 'MarketRegistryMismatch',
 			msg: 'MarketRegistryMismatch',
 		},
 		{
-			code: 6039,
+			code: 6034,
 			name: 'OrderPacketDeserialization',
 			msg: 'OrderPacketDeserialization',
 		},
 		{
-			code: 6040,
+			code: 6035,
 			name: 'OrderPacketMustUseDepositedFunds',
 			msg: 'OrderPacketMustUseDepositedFunds',
 		},
 		{
-			code: 6041,
+			code: 6036,
 			name: 'InvalidPhoenixInstruction',
 			msg: 'InvalidPhoenixInstruction',
 		},
 		{
-			code: 6042,
+			code: 6037,
 			name: 'OrderPacketMustBeTakeOnly',
 			msg: 'OrderPacketMustBeTakeOnly',
 		},
 		{
-			code: 6043,
+			code: 6038,
 			name: 'BaseLotsMustBeZero',
 			msg: 'BaseLotsMustBeZero',
 		},
 		{
-			code: 6044,
+			code: 6039,
 			name: 'TraderStateNotFound',
 			msg: 'TraderStateNotFound',
+		},
+		{
+			code: 6040,
+			name: 'MarketPositionNotFound',
+			msg: 'MarketPositionNotFound',
 		},
 	],
 };

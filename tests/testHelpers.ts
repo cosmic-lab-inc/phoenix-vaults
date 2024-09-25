@@ -4,7 +4,6 @@ import {
 	createAssociatedTokenAccountInstruction,
 } from '@solana/spl-token';
 import {
-	AddressLookupTableAccount,
 	ComputeBudgetProgram,
 	Connection,
 	MessageV0,
@@ -14,10 +13,10 @@ import {
 	TransactionInstruction,
 	VersionedTransaction,
 } from '@solana/web3.js';
-import { assert } from 'chai';
 import { BN } from '@coral-xyz/anchor';
 import {
 	Investor,
+	MarketPosition,
 	PERCENTAGE_PRECISION,
 	PhoenixVaults,
 	Vault,
@@ -40,17 +39,17 @@ import {
 export async function simulate(
 	connection: Connection,
 	payer: Signer,
-	instructions: TransactionInstruction[],
+	ixs: TransactionInstruction[],
 	signers: Signer[] = []
 ): Promise<void> {
-	instructions = [
+	const instructions = [
 		ComputeBudgetProgram.setComputeUnitLimit({
 			units: 400_000,
 		}),
 		ComputeBudgetProgram.setComputeUnitPrice({
 			microLamports: 10_000,
 		}),
-		...instructions,
+		...ixs,
 	];
 
 	const recentBlockhash = await connection
@@ -84,67 +83,21 @@ export async function simulate(
 	}
 }
 
-export async function sendAndConfirmWithLookupTable(
-	connection: Connection,
-	payer: Signer,
-	instructions: TransactionInstruction[],
-	lookupTables: AddressLookupTableAccount[],
-	signers: Signer[] = []
-): Promise<string> {
-	try {
-		instructions = [
-			ComputeBudgetProgram.setComputeUnitLimit({
-				units: 400_000,
-			}),
-			ComputeBudgetProgram.setComputeUnitPrice({
-				microLamports: 10_000,
-			}),
-			...instructions,
-		];
-
-		const recentBlockhash = await connection
-			.getLatestBlockhash()
-			.then((res) => res.blockhash);
-		const msg = new anchor.web3.TransactionMessage({
-			payerKey: payer.publicKey,
-			recentBlockhash,
-			instructions,
-		}).compileToV0Message(lookupTables);
-		const tx = new anchor.web3.VersionedTransaction(msg);
-		tx.sign([payer, ...signers]);
-
-		const sig = await connection.sendTransaction(tx, {
-			skipPreflight: true,
-		});
-		const strategy = {
-			signature: sig,
-		} as TransactionConfirmationStrategy;
-		const confirm = await connection.confirmTransaction(strategy);
-		if (confirm.value.err) {
-			throw new Error(JSON.stringify(confirm.value.err));
-		}
-		return sig;
-	} catch (e: any) {
-		console.error(e);
-		throw new Error(e);
-	}
-}
-
 export async function sendAndConfirm(
 	connection: Connection,
 	payer: Signer,
-	instructions: TransactionInstruction[],
+	ixs: TransactionInstruction[],
 	signers: Signer[] = []
 ): Promise<string> {
 	try {
-		instructions = [
+		const instructions = [
 			ComputeBudgetProgram.setComputeUnitLimit({
 				units: 400_000,
 			}),
 			ComputeBudgetProgram.setComputeUnitPrice({
 				microLamports: 10_000,
 			}),
-			...instructions,
+			...ixs,
 		];
 
 		const recentBlockhash = await connection
@@ -158,6 +111,14 @@ export async function sendAndConfirm(
 		const tx = new anchor.web3.VersionedTransaction(msg);
 		tx.sign([payer, ...signers]);
 
+		const sim = await connection.simulateTransaction(tx, {
+			sigVerify: false,
+		});
+		if (sim.value.err !== null) {
+			console.log('simulation:', sim.value.err, sim.value.logs);
+			throw new Error(JSON.stringify(sim.value.err));
+		}
+
 		const sig = await connection.sendTransaction(tx, {
 			skipPreflight: true,
 		});
@@ -170,7 +131,6 @@ export async function sendAndConfirm(
 		}
 		return sig;
 	} catch (e: any) {
-		console.error(e);
 		throw new Error(e);
 	}
 }
@@ -447,19 +407,28 @@ export async function marketPrice(
 	return marketState.getUiLadder(1, 0, 0).asks[0].price;
 }
 
+function isAvailable(position: MarketPosition) {
+	return (
+		position.baseLotsFree.eq(ZERO) &&
+		position.baseLotsLocked.eq(ZERO) &&
+		position.quoteLotsFree.eq(ZERO) &&
+		position.quoteLotsLocked.eq(ZERO)
+	);
+}
+
 export async function fetchVaultEquity(
 	program: anchor.Program<PhoenixVaults>,
 	conn: Connection,
-	vault: PublicKey,
-	registry: PublicKey
+	vault: PublicKey
 ): Promise<number> {
-	const registryAcct = await program.account.marketRegistry.fetch(registry);
-	const lutAcctInfo = await conn.getAccountInfo(registryAcct.lut);
-	assert(lutAcctInfo !== null);
-	const lutAcct = AddressLookupTableAccount.deserialize(lutAcctInfo.data);
+	const vaultAcct = await program.account.vault.fetch(vault);
 	let equity = 0;
-	for (const market of lutAcct.addresses) {
-		const marketState = await fetchMarketState(conn, market);
+	equity += await tokenBalance(conn, vaultAcct.usdcTokenAccount);
+	for (const position of vaultAcct.positions) {
+		if (isAvailable(position as MarketPosition)) {
+			continue;
+		}
+		const marketState = await fetchMarketState(conn, position.market);
 		const price = marketState.getUiLadder(1, 0, 0).asks[0].price;
 		const vaultState = parseTraderState(marketState, vault);
 		const baseQuoteUnits =
@@ -491,12 +460,11 @@ export async function fetchInvestorEquity(
 	program: anchor.Program<PhoenixVaults>,
 	conn: Connection,
 	investor: PublicKey,
-	vault: PublicKey,
-	registry: PublicKey
+	vault: PublicKey
 ): Promise<number> {
 	const investorShares = await fetchInvestorShares(program, investor);
 	const vaultShares = await fetchVaultShares(program, vault);
-	const vaultEquity = await fetchVaultEquity(program, conn, vault, registry);
+	const vaultEquity = await fetchVaultEquity(program, conn, vault);
 	return (investorShares / vaultShares) * vaultEquity;
 }
 
@@ -504,16 +472,9 @@ export async function fetchInvestorEquityRoundedDown(
 	program: anchor.Program<PhoenixVaults>,
 	conn: Connection,
 	investor: PublicKey,
-	vault: PublicKey,
-	registry: PublicKey
+	vault: PublicKey
 ): Promise<number> {
-	const equity = await fetchInvestorEquity(
-		program,
-		conn,
-		investor,
-		vault,
-		registry
-	);
+	const equity = await fetchInvestorEquity(program, conn, investor, vault);
 	return Math.floor(equity);
 }
 

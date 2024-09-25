@@ -1,6 +1,7 @@
 pub mod events;
 mod investor;
 mod market;
+mod market_position;
 mod market_registry;
 mod programs;
 mod traits;
@@ -12,6 +13,7 @@ mod withdraw_unit;
 pub use events::*;
 pub use investor::*;
 pub use market::*;
+pub use market_position::*;
 pub use market_registry::*;
 pub use programs::*;
 pub use traits::*;

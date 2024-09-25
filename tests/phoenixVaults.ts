@@ -1,8 +1,6 @@
 import * as anchor from '@coral-xyz/anchor';
 import {
 	AccountMeta,
-	AddressLookupTableAccount,
-	AddressLookupTableProgram,
 	ConfirmOptions,
 	Keypair,
 	LAMPORTS_PER_SOL,
@@ -80,8 +78,6 @@ describe('phoenixVaults', () => {
 	let phoenix: PhoenixClient;
 
 	const marketRegistry = getMarketRegistryAddressSync();
-	let lutSlot: number;
-	let lut: PublicKey;
 
 	const mintAuth = MOCK_MARKET_AUTHORITY;
 	const usdcMint = MOCK_USDC_MINT.publicKey;
@@ -124,65 +120,11 @@ describe('phoenixVaults', () => {
 		);
 
 		await conn.requestAirdrop(maker.publicKey, LAMPORTS_PER_SOL * 10);
-
-		lutSlot = await conn.getSlot('finalized');
-		const slotBuffer = Buffer.alloc(8);
-		slotBuffer.writeBigInt64LE(BigInt(lutSlot), 0);
-		const lutSeeds = [provider.publicKey.toBuffer(), slotBuffer];
-		lut = PublicKey.findProgramAddressSync(
-			lutSeeds,
-			AddressLookupTableProgram.programId
-		)[0];
-	});
-
-	it('Create Address Lookup Table', async () => {
-		const [ix, lutKey] = AddressLookupTableProgram.createLookupTable({
-			authority: provider.publicKey,
-			payer: provider.publicKey,
-			recentSlot: lutSlot,
-		});
-		assert(lutKey.toString() === lut.toString());
-
-		await sendAndConfirm(conn, payer, [ix]);
-
-		const lutAcctInfo = await conn.getAccountInfo(lut, 'processed');
-		assert(lutAcctInfo !== null);
-		const lutAcct = AddressLookupTableAccount.deserialize(lutAcctInfo.data);
-		assert(lutAcct.authority?.toString() === provider.publicKey.toString());
-	});
-
-	it('Fill Address Lookup Table', async () => {
-		const ix = AddressLookupTableProgram.extendLookupTable({
-			lookupTable: lut,
-			authority: provider.publicKey,
-			payer: provider.publicKey,
-			addresses: marketKeys,
-		});
-
-		await sendAndConfirm(conn, payer, [ix]);
-
-		const lutAcctInfo = await conn.getAccountInfo(lut, 'processed');
-		assert(lutAcctInfo !== null);
-		const lutAcct = AddressLookupTableAccount.deserialize(lutAcctInfo.data);
-		assert(lutAcct.addresses.length === marketKeys.length);
 	});
 
 	it('Initialize Market Registry', async () => {
-		const accounts = {
-			authority: provider.publicKey,
-			lut,
-			marketRegistry,
-			lutProgram: AddressLookupTableProgram.programId,
-		};
-
-		const markets: AccountMeta[] = marketKeys.map((pubkey) => {
-			return {
-				pubkey,
-				isWritable: false,
-				isSigner: false,
-			};
-		});
 		const params = {
+			solUsdcMarket,
 			usdcMint,
 			solMint,
 		};
@@ -190,8 +132,10 @@ describe('phoenixVaults', () => {
 		try {
 			await program.methods
 				.initializeMarketRegistry(params)
-				.accounts(accounts)
-				.remainingAccounts(markets)
+				.accounts({
+					authority: provider.publicKey,
+					marketRegistry,
+				})
 				.rpc();
 		} catch (e) {
 			console.error(e);
@@ -382,7 +326,6 @@ describe('phoenixVaults', () => {
 			investor,
 			authority: provider.publicKey,
 			marketRegistry,
-			lut,
 			investorQuoteTokenAccount: investorUsdcAta,
 			phoenix: PHOENIX_PROGRAM_ID,
 			logAuthority: getLogAuthority(),
@@ -402,6 +345,7 @@ describe('phoenixVaults', () => {
 				isSigner: false,
 			};
 		});
+
 		const ix = await program.methods
 			.investorDeposit(usdcAmount)
 			.accounts(accounts)
@@ -556,6 +500,14 @@ describe('phoenixVaults', () => {
 		assert.strictEqual(vaultBefore.baseUnitsFree, 0);
 		assert.strictEqual(vaultBefore.quoteUnitsFree, 1000);
 
+		const markets: AccountMeta[] = marketKeys.map((pubkey) => {
+			return {
+				pubkey,
+				isWritable: false,
+				isSigner: false,
+			};
+		});
+
 		try {
 			const ix = await program.methods
 				.placeLimitOrder({
@@ -576,6 +528,7 @@ describe('phoenixVaults', () => {
 					marketQuoteTokenAccount,
 					tokenProgram: TOKEN_PROGRAM_ID,
 				})
+				.remainingAccounts(markets)
 				.instruction();
 			await sendAndConfirm(conn, payer, [ix], [manager]);
 		} catch (e: any) {
@@ -694,6 +647,14 @@ describe('phoenixVaults', () => {
 		});
 		const order = encodeLimitOrderPacketWithFreeFunds(takerOrderPacket);
 
+		const markets: AccountMeta[] = marketKeys.map((pubkey) => {
+			return {
+				pubkey,
+				isWritable: false,
+				isSigner: false,
+			};
+		});
+
 		try {
 			const ix = await program.methods
 				.placeLimitOrder({
@@ -714,6 +675,7 @@ describe('phoenixVaults', () => {
 					marketQuoteTokenAccount,
 					tokenProgram: TOKEN_PROGRAM_ID,
 				})
+				.remainingAccounts(markets)
 				.instruction();
 			await sendAndConfirm(conn, payer, [ix], [manager]);
 		} catch (e: any) {
@@ -805,15 +767,12 @@ describe('phoenixVaults', () => {
 			program,
 			conn,
 			investor,
-			vaultKey,
-			marketRegistry
+			vaultKey
 		);
 		console.log(
 			`investor equity before withdraw request: ${investorEquityBefore}`
 		);
 		assert.strictEqual(investorEquityBefore, 1249.75002);
-
-		// todo: vaultEquity function that replicates MarketMapProvider::equity()
 
 		const vaultEquity = new BN(
 			investorEquityBefore * QUOTE_PRECISION.toNumber()
@@ -846,13 +805,12 @@ describe('phoenixVaults', () => {
 					investor,
 					authority: provider.publicKey,
 					marketRegistry,
-					lut,
 					vaultUsdcTokenAccount: vaultUsdcAta,
 				})
 				.remainingAccounts(markets)
 				.instruction();
 
-			await sendAndConfirm(conn, payer, [ix], [payer]);
+			await sendAndConfirm(conn, payer, [ix]);
 		} catch (e: any) {
 			throw new Error(e);
 		}
@@ -866,8 +824,7 @@ describe('phoenixVaults', () => {
 			program,
 			conn,
 			investor,
-			vaultKey,
-			marketRegistry
+			vaultKey
 		);
 		console.log(
 			`investor equity after withdraw request: ${investorEquityAfter}`
@@ -1002,7 +959,6 @@ describe('phoenixVaults', () => {
 	// 			investor,
 	// 			authority: provider.publicKey,
 	// 			marketRegistry,
-	// 			lut,
 	// 			investorQuoteTokenAccount: investorUsdcAta,
 	// 			phoenix: PHOENIX_PROGRAM_ID,
 	// 			logAuthority: getLogAuthority(),
@@ -1023,7 +979,6 @@ describe('phoenixVaults', () => {
 	// 		.remainingAccounts(markets)
 	// 		.instruction();
 	// 	try {
-	// 		// await simulate(conn, payer, [ix]);
 	// 		await sendAndConfirm(conn, payer, [ix]);
 	// 	} catch (e: any) {
 	// 		throw new Error(e);
@@ -1046,12 +1001,10 @@ describe('phoenixVaults', () => {
 					investor,
 					authority: provider.publicKey,
 					marketRegistry,
-					lut,
 					vaultQuoteTokenAccount: vaultUsdcAta,
 				})
 				.remainingAccounts(markets)
 				.instruction();
-			await simulate(conn, payer, [ix]);
 			await sendAndConfirm(conn, payer, [ix]);
 		} catch (e: any) {
 			throw new Error(e);
@@ -1099,8 +1052,7 @@ describe('phoenixVaults', () => {
 			program,
 			conn,
 			investor,
-			vaultKey,
-			marketRegistry
+			vaultKey
 		);
 		console.log(`investor equity before liquidation: ${investorEquity}`);
 		assert.strictEqual(investorEquity, 1199.80001619964);
@@ -1125,7 +1077,6 @@ describe('phoenixVaults', () => {
 					investor,
 					authority: provider.publicKey,
 					marketRegistry,
-					lut,
 					investorUsdcTokenAccount: investorUsdcAta,
 					phoenix: PHOENIX_PROGRAM_ID,
 					logAuthority: getLogAuthority(),

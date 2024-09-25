@@ -1,29 +1,22 @@
 use crate::constants::PRICE_PRECISION_U64;
 use crate::error::ErrorCode;
 use crate::math::*;
-use crate::state::{Investor, MarketRegistry, Vault};
+use crate::state::{Investor, MarketPosition, MarketRegistry, Vault};
 use crate::validate;
 use anchor_lang::prelude::*;
 use anchor_spl::token::TokenAccount;
-use heapless::LinearMap;
 use phoenix::program::{load_with_dispatch, MarketHeader};
 use phoenix::quantities::WrapperU64;
 use sokoban::ZeroCopy;
-use solana_program::address_lookup_table::state::AddressLookupTable;
-
-const SOL_USDC_MARKET_INDEX: usize = 0;
+use std::collections::BTreeMap;
+use std::iter::Peekable;
+use std::panic::Location;
+use std::slice::Iter;
 
 pub trait MarketMapProvider<'a> {
-    fn load_markets(
-        &self,
-        registry: &MarketRegistry,
-        market_lut: MarketLookupTable,
-    ) -> Result<LinearMap<Pubkey, u64, 32>>;
-
     fn load_sol_usdc_market(
         &self,
         registry: &MarketRegistry,
-        lut: &AddressLookupTable,
     ) -> Result<(Pubkey, u64, Box<MarketHeader>)>;
 
     fn equity(
@@ -31,7 +24,6 @@ pub trait MarketMapProvider<'a> {
         vault: &Vault,
         vault_usdc: &Account<TokenAccount>,
         registry: &MarketRegistry,
-        market_lut: MarketLookupTable,
     ) -> Result<u64>;
 
     fn check_cant_withdraw(
@@ -39,99 +31,23 @@ pub trait MarketMapProvider<'a> {
         investor: &Investor,
         vault_usdc_token_account: &Account<TokenAccount>,
         registry: &MarketRegistry,
-        lut: &AddressLookupTable,
     ) -> Result<()>;
-}
 
-pub struct MarketLookupTable<'a> {
-    pub lut_key: Pubkey,
-    pub lut: &'a AddressLookupTable<'a>,
+    fn market_position(&self, vault: &Vault, market: Pubkey) -> Result<MarketPosition>;
 }
 
 impl<'a: 'info, 'info, T: anchor_lang::Bumps> MarketMapProvider<'a>
     for Context<'_, '_, 'a, 'info, T>
 {
-    /// The [`MarketRegistry`] references an [`AddressLookupTable`] which contains a list of all markets on Phoenix.
-    /// The remaining accounts in this Context should directly correspond to the addresses in the lookup table.
-    fn load_markets(
-        &self,
-        registry: &MarketRegistry,
-        market_lut: MarketLookupTable,
-    ) -> Result<LinearMap<Pubkey, u64, 32>> {
-        let MarketLookupTable { lut, .. } = market_lut;
-
-        let mut market_prices = LinearMap::new();
-
-        let sol_mint = registry.sol_mint;
-        let usdc_mint = registry.usdc_mint;
-        let (_, sol_tick_price, sol_header) = self.load_sol_usdc_market(registry, lut)?;
-        let sol_price = ticks_to_price_precision(&sol_header, sol_tick_price);
-
-        let remaining_accounts_iter = &mut self.remaining_accounts.iter().peekable();
-        for (account, lut_key) in remaining_accounts_iter.zip(lut.addresses.iter()) {
-            // assert this key in the remaining accounts matches the key in the lookup table
-            validate!(
-                account.key == lut_key,
-                ErrorCode::MarketRegistryMismatch,
-                &format!("MarketRegistryMismatch: {:?} != {:?}", account.key, lut_key)
-            )?;
-
-            let market_key = account.key();
-            let account = account.to_account_info();
-            let account_data = account.try_borrow_data()?;
-            let (header_bytes, bytes) = account_data.split_at(std::mem::size_of::<MarketHeader>());
-            let header = Box::new(MarketHeader::load_bytes(header_bytes).ok_or(
-                anchor_lang::error::Error::from(ErrorCode::MarketDeserializationError),
-            )?);
-            let market = load_with_dispatch(&header.market_size_params, bytes)?;
-            let tick_price = market
-                .inner
-                .get_ladder(1)
-                .asks
-                .first()
-                .map_or(0, |ask| ask.price_in_ticks);
-            let price = ticks_to_price_precision(&header, tick_price);
-
-            let quote_mint = header.quote_params.mint_key;
-            if quote_mint == usdc_mint {
-                market_prices
-                    .insert(market_key, price)
-                    .map_err(|_| anchor_lang::error::Error::from(ErrorCode::MarketMapFull))?;
-            } else if quote_mint == sol_mint {
-                market_prices
-                    .insert(market_key, sol_price * price)
-                    .map_err(|_| anchor_lang::error::Error::from(ErrorCode::MarketMapFull))?;
-            } else {
-                return Err(ErrorCode::UnrecognizedQuoteMint.into());
-            }
-        }
-        Ok(market_prices)
-    }
-
     /// Process the SOL/USDC to cover all quote mints (SOL and USDC) on Phoenix.
     /// This enables equity calculation in either SOL or USDC denomination.
     fn load_sol_usdc_market(
         &self,
         registry: &MarketRegistry,
-        lut: &AddressLookupTable,
     ) -> Result<(Pubkey, u64, Box<MarketHeader>)> {
-        let lut_key_at_index = lut
-            .addresses
-            .get(SOL_USDC_MARKET_INDEX)
-            .map_or(Pubkey::default(), |key| *key);
-
-        let account = self
-            .remaining_accounts
-            .get(SOL_USDC_MARKET_INDEX)
-            .ok_or(anchor_lang::error::Error::from(ErrorCode::SolMarketMissing))?;
-
-        validate!(
-            *account.key == lut_key_at_index,
-            ErrorCode::MarketRegistryMismatch,
-            &format!(
-                "SOL/USDC MarketRegistryMismatch: {:?} != {:?}",
-                account.key, lut_key_at_index
-            )
+        let account = MarketMap::find(
+            &registry.sol_usdc_market,
+            &mut self.remaining_accounts.iter().peekable(),
         )?;
 
         let account_data = account.try_borrow_data()?;
@@ -160,15 +76,13 @@ impl<'a: 'info, 'info, T: anchor_lang::Bumps> MarketMapProvider<'a>
         vault: &Vault,
         vault_usdc: &Account<TokenAccount>,
         registry: &MarketRegistry,
-        market_lut: MarketLookupTable,
     ) -> Result<u64> {
-        let MarketLookupTable { lut, .. } = market_lut;
-
         let mut equity = 0;
 
         let sol_mint = registry.sol_mint;
         let usdc_mint = registry.usdc_mint;
-        let (_, sol_tick_price, sol_header) = self.load_sol_usdc_market(registry, lut)?;
+
+        let (_, sol_tick_price, sol_header) = self.load_sol_usdc_market(registry)?;
         let sol_price = ticks_to_price_precision(&sol_header, sol_tick_price);
 
         let vault_usdc_units_precision = quote_lots_to_quote_units_precision(
@@ -178,15 +92,14 @@ impl<'a: 'info, 'info, T: anchor_lang::Bumps> MarketMapProvider<'a>
         equity += vault_usdc_units_precision;
 
         let remaining_accounts_iter = &mut self.remaining_accounts.iter().peekable();
-        for (account, lut_key) in remaining_accounts_iter.zip(lut.addresses.iter()) {
-            // assert this key in the remaining accounts matches the key in the lookup table
-            validate!(
-                account.key == lut_key,
-                ErrorCode::MarketRegistryMismatch,
-                &format!("MarketRegistryMismatch: {:?} != {:?}", account.key, lut_key)
-            )?;
+        for position in vault.positions {
+            if position.is_available() {
+                continue;
+            }
+            // assert this key in the remaining accounts matches the vault's MarketPosition
+            let account_info = MarketMap::find(&position.market, remaining_accounts_iter)?;
 
-            let account_data = account.try_borrow_data()?;
+            let account_data = account_info.try_borrow_data()?;
             let (header_bytes, bytes) = account_data.split_at(std::mem::size_of::<MarketHeader>());
             let header = Box::new(MarketHeader::load_bytes(header_bytes).ok_or(
                 anchor_lang::error::Error::from(ErrorCode::MarketDeserializationError),
@@ -234,25 +147,10 @@ impl<'a: 'info, 'info, T: anchor_lang::Bumps> MarketMapProvider<'a>
         investor: &Investor,
         vault_usdc_token_account: &Account<TokenAccount>,
         registry: &MarketRegistry,
-        lut: &AddressLookupTable,
     ) -> Result<()> {
-        let lut_key_at_index = lut
-            .addresses
-            .get(SOL_USDC_MARKET_INDEX)
-            .map_or(Pubkey::default(), |key| *key);
-
-        let account = self
-            .remaining_accounts
-            .get(SOL_USDC_MARKET_INDEX)
-            .ok_or(anchor_lang::error::Error::from(ErrorCode::SolMarketMissing))?;
-
-        validate!(
-            *account.key == lut_key_at_index,
-            ErrorCode::MarketRegistryMismatch,
-            &format!(
-                "SOL/USDC MarketRegistryMismatch: {:?} != {:?}",
-                account.key, lut_key_at_index
-            )
+        let account = MarketMap::find(
+            &registry.sol_usdc_market,
+            &mut self.remaining_accounts.iter().peekable(),
         )?;
 
         let account_data = account.try_borrow_data()?;
@@ -279,5 +177,71 @@ impl<'a: 'info, 'info, T: anchor_lang::Bumps> MarketMapProvider<'a>
         )?;
 
         Ok(())
+    }
+
+    fn market_position(&self, vault: &Vault, market: Pubkey) -> Result<MarketPosition> {
+        let account_info =
+            MarketMap::find(&market, &mut self.remaining_accounts.iter().peekable())?;
+        let account_data = account_info.try_borrow_data()?;
+        let (header_bytes, bytes) = account_data.split_at(std::mem::size_of::<MarketHeader>());
+        let header = Box::new(MarketHeader::load_bytes(header_bytes).ok_or(
+            anchor_lang::error::Error::from(ErrorCode::MarketDeserializationError),
+        )?);
+        let market_wrapper = load_with_dispatch(&header.market_size_params, bytes)?;
+        let trader_state = market_wrapper.inner.get_trader_state(&vault.pubkey).ok_or(
+            anchor_lang::error::Error::from(ErrorCode::TraderStateNotFound),
+        )?;
+        Ok(MarketPosition {
+            market,
+            quote_lots_free: trader_state.quote_lots_free.as_u64(),
+            quote_lots_locked: trader_state.quote_lots_locked.as_u64(),
+            base_lots_free: trader_state.base_lots_free.as_u64(),
+            base_lots_locked: trader_state.base_lots_locked.as_u64(),
+        })
+    }
+}
+
+pub struct MarketMap<'a>(pub BTreeMap<Pubkey, &'a AccountInfo<'a>>);
+
+impl<'a> MarketMap<'a> {
+    // #[track_caller]
+    // #[inline(always)]
+    // pub fn get_ref(&self, market: &Pubkey) -> Result<&'a AccountInfo<'a>> {
+    //     let account_info = match self.0.get(market) {
+    //         Some(loader) => loader,
+    //         None => {
+    //             let caller = Location::caller();
+    //             msg!(
+    //                 "Could not find account info {:?} at {}:{}",
+    //                 market,
+    //                 caller.file(),
+    //                 caller.line()
+    //             );
+    //             return Err(ErrorCode::MarketMissingInRemainingAccounts.into());
+    //         }
+    //     };
+    //     Ok(*account_info)
+    // }
+    //
+    // pub fn load<'c>(
+    //     account_info_iter: &'c mut Peekable<Iter<'a, AccountInfo<'a>>>,
+    // ) -> Result<MarketMap<'a>> {
+    //     let mut market_map = MarketMap(BTreeMap::new());
+    //     while let Some(account_info) = account_info_iter.peek() {
+    //         market_map.0.insert(account_info.key(), account_info);
+    //     }
+    //     Ok(market_map)
+    // }
+
+    pub fn find<'c>(
+        key: &Pubkey,
+        account_info_iter: &'c mut Peekable<Iter<'a, AccountInfo<'a>>>,
+    ) -> Result<&'a AccountInfo<'a>> {
+        while let Some(account_info) = account_info_iter.peek() {
+            if account_info.key == key {
+                return Ok(account_info);
+            }
+        }
+        Err(ErrorCode::MarketMissingInRemainingAccounts.into())
     }
 }

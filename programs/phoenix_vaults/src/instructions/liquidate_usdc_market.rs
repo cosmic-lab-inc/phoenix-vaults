@@ -12,7 +12,6 @@ use crate::cpis::{PhoenixTradeCPI, PhoenixWithdrawCPI, TokenTransferCPI};
 use crate::error::ErrorCode;
 use crate::math::{
     quote_atoms_to_quote_lots_rounded_down, quote_lots_to_base_lots, quote_lots_to_quote_atoms,
-    SafeMath,
 };
 use crate::state::{
     Investor, MarketMapProvider, MarketRegistry, MarketTransferParams, PhoenixProgram, Vault,
@@ -41,38 +40,26 @@ pub fn liquidate_usdc_market<'c: 'info, 'info>(
     }
 
     let registry = ctx.accounts.market_registry.load()?;
-    let lut_acct_info = ctx.accounts.lut.to_account_info();
-    let lut_data = lut_acct_info.data.borrow();
-    let lut = MarketRegistry::deserialize_lookup_table(registry.lut_auth, lut_data.as_ref())?;
     let vault_usdc_ata = &ctx.accounts.vault_usdc_token_account;
-
-    if let Err(e) = ctx.check_cant_withdraw(&investor, vault_usdc_ata, &registry, &lut) {
+    if let Err(e) = ctx.check_cant_withdraw(&investor, vault_usdc_ata, &registry) {
         vault.reset_liquidation_delegate();
         return Err(e);
     }
 
     drop(vault);
 
-    let lut_key_at_index = lut
-        .addresses
-        .get(market_index as usize)
-        .map_or(Pubkey::default(), |key| *key);
     let account = ctx
         .remaining_accounts
         .get(market_index as usize)
         .ok_or(anchor_lang::error::Error::from(ErrorCode::SolMarketMissing))?;
     validate!(
-        *account.key == lut_key_at_index,
+        *account.key == registry.sol_usdc_market,
         ErrorCode::MarketRegistryMismatch,
         &format!(
             "SOL/USDC MarketRegistryMismatch: {:?} != {:?}",
-            account.key, lut_key_at_index
+            account.key, registry.sol_usdc_market
         )
     )?;
-    // drop lut account data borrow in reverse order it was borrowed
-    drop(lut);
-    drop(lut_data);
-    drop(lut_acct_info);
 
     let account_data = account.try_borrow_data()?;
     let (header_bytes, bytes) = account_data.split_at(std::mem::size_of::<MarketHeader>());
@@ -148,6 +135,17 @@ pub fn liquidate_usdc_market<'c: 'info, 'info>(
         .last_withdraw_request
         .reduce_by_value(quote_atoms_to_withdraw)?;
 
+    let mut vault = ctx.accounts.vault.load_mut()?;
+    let market = ctx.accounts.market.key();
+    let pos = ctx.market_position(&vault, market)?;
+    vault.force_update_market_position(pos)?;
+
+    let sol_usdc_market = registry.sol_usdc_market;
+    let sol_usdc_pos = ctx.market_position(&vault, sol_usdc_market)?;
+    vault.force_update_market_position(sol_usdc_pos)?;
+
+    drop(vault);
+
     Ok(())
 }
 
@@ -171,12 +169,9 @@ pub struct LiquidateUsdcMarket<'info> {
 
     #[account(
         seeds = [b"market_registry"],
-        bump,
-        constraint = is_lut_for_registry(&market_registry, &lut)?
+        bump
     )]
     pub market_registry: AccountLoader<'info, MarketRegistry>,
-    /// CHECK: Deserialized into [`AddressLookupTable`] within instruction
-    pub lut: UncheckedAccount<'info>,
 
     #[account(
         mut,

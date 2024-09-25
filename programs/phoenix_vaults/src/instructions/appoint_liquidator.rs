@@ -2,7 +2,7 @@ use anchor_lang::prelude::*;
 use anchor_spl::token::TokenAccount;
 
 use crate::constraints::{
-    is_authority_for_investor, is_lut_for_registry, is_usdc_token_for_vault, is_vault_for_investor,
+    is_authority_for_investor, is_usdc_token_for_vault, is_vault_for_investor,
 };
 use crate::state::{Investor, MarketMapProvider, MarketRegistry, Vault};
 
@@ -18,16 +18,12 @@ pub fn appoint_liquidator<'c: 'info, 'info>(
     let registry = ctx.accounts.market_registry.load()?;
     let vault_usdc_ata = &ctx.accounts.vault_quote_token_account;
 
-    let lut_acct_info = ctx.accounts.lut.to_account_info();
-    let lut_data = lut_acct_info.data.borrow();
-    let lut = MarketRegistry::deserialize_lookup_table(registry.lut_auth, lut_data.as_ref())?;
-
     // 1. Check the vault depositor has waited the redeem period since the last withdraw request
     investor
         .last_withdraw_request
         .check_redeem_period_finished(&vault, now)?;
     // 2. Check that the depositor is unable to withdraw
-    ctx.check_cant_withdraw(&investor, vault_usdc_ata, &registry, &lut)?;
+    ctx.check_cant_withdraw(&investor, vault_usdc_ata, &registry)?;
     // 3. Check that the vault is not already in liquidation for another investor
     vault.check_delegate_available_for_liquidation(&investor, now)?;
 
@@ -56,13 +52,9 @@ pub struct AppointLiquidator<'info> {
 
     #[account(
         seeds = [b"market_registry"],
-        bump,
-        constraint = is_lut_for_registry(&market_registry, &lut)?
+        bump
     )]
     pub market_registry: AccountLoader<'info, MarketRegistry>,
-
-    /// CHECK: Deserialized into [`AddressLookupTable`] within instruction
-    pub lut: UncheckedAccount<'info>,
 
     #[account(
         mut,

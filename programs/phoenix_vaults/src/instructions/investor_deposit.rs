@@ -9,8 +9,7 @@ use crate::declare_vault_seeds;
 use crate::error::ErrorCode;
 use crate::math::quote_atoms_to_quote_lots_rounded_down;
 use crate::state::{
-    Investor, MarketLookupTable, MarketMapProvider, MarketRegistry, MarketTransferParams,
-    PhoenixProgram, Vault,
+    Investor, MarketMapProvider, MarketRegistry, MarketTransferParams, PhoenixProgram, Vault,
 };
 
 pub fn investor_deposit<'c: 'info, 'info>(
@@ -24,15 +23,8 @@ pub fn investor_deposit<'c: 'info, 'info>(
 
     let registry = ctx.accounts.market_registry.load()?;
 
-    let lut_acct_info = ctx.accounts.lut.to_account_info();
-    let lut_data = lut_acct_info.data.borrow();
-    let lut = MarketRegistry::deserialize_lookup_table(registry.lut_auth, lut_data.as_ref())?;
-    let market_lut = MarketLookupTable {
-        lut_key: ctx.accounts.lut.key(),
-        lut: &lut,
-    };
     let vault_usdc = &ctx.accounts.vault_quote_token_account;
-    let vault_equity = ctx.equity(&vault, vault_usdc, &registry, market_lut)?;
+    let vault_equity = ctx.equity(&vault, vault_usdc, &registry)?;
 
     investor.deposit(amount, vault_equity, &mut vault, clock.unix_timestamp)?;
 
@@ -40,12 +32,19 @@ pub fn investor_deposit<'c: 'info, 'info>(
 
     ctx.token_transfer(amount)?;
 
-    let (_, _, sol_usdc_header) = ctx.load_sol_usdc_market(&registry, &lut)?;
+    let (_, _, sol_usdc_header) = ctx.load_sol_usdc_market(&registry)?;
     let quote_lots = quote_atoms_to_quote_lots_rounded_down(&sol_usdc_header, amount);
     ctx.phoenix_deposit(MarketTransferParams {
         quote_lots,
         base_lots: 0,
     })?;
+
+    let mut vault = ctx.accounts.vault.load_mut()?;
+    let market = ctx.accounts.market.key();
+    let pos = ctx.market_position(&vault, market)?;
+    vault.force_update_market_position(pos)?;
+
+    drop(vault);
 
     Ok(())
 }
@@ -73,12 +72,9 @@ pub struct InvestorDeposit<'info> {
 
     #[account(
         seeds = [b"market_registry"],
-        bump,
-        constraint = is_lut_for_registry(&market_registry, &lut)?
+        bump
     )]
     pub market_registry: AccountLoader<'info, MarketRegistry>,
-    /// CHECK: Deserialized into [`AddressLookupTable`] within instruction
-    pub lut: UncheckedAccount<'info>,
 
     #[account(
         mut,

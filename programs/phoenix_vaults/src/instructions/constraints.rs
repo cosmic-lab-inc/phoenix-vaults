@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::TokenAccount;
 
-use crate::state::{Investor, MarketRegistry, Vault};
+use crate::state::{Investor, Vault};
 
 pub fn is_vault_for_investor(
     investor: &AccountLoader<Investor>,
@@ -35,7 +35,8 @@ pub fn is_usdc_token_for_vault(
 ) -> Result<bool> {
     let vault_ref = vault.load()?;
     let owner = token.owner.eq(&vault.key());
-    Ok(owner && vault_ref.usdc_token_account.eq(&token.key()))
+    let mint_is_usdc = vault_ref.usdc_mint.eq(&token.mint);
+    Ok(owner && mint_is_usdc && vault_ref.usdc_token_account.eq(&token.key()))
 }
 
 pub fn is_sol_token_for_vault(
@@ -45,7 +46,7 @@ pub fn is_sol_token_for_vault(
     let vault_ref = vault.load()?;
     let owner = token.owner.eq(&vault.key());
     let mint_is_sol = vault_ref.sol_mint.eq(&token.mint);
-    Ok(owner && vault_ref.sol_token_account.eq(&token.key()))
+    Ok(owner && mint_is_sol && vault_ref.sol_token_account.eq(&token.key()))
 }
 
 pub fn is_vault_token(vault: &AccountLoader<Vault>, token: &Account<TokenAccount>) -> Result<bool> {
@@ -66,13 +67,6 @@ pub fn is_vault_mint(vault: &AccountLoader<Vault>, mint: &Pubkey) -> Result<bool
     let is_usdc_mint = is_usdc_mint(vault, mint)?;
     let is_sol_mint = is_sol_mint(vault, mint)?;
     Ok(is_usdc_mint || is_sol_mint)
-}
-
-pub fn is_lut_for_registry(
-    registry: &AccountLoader<MarketRegistry>,
-    lut: &UncheckedAccount,
-) -> Result<bool> {
-    Ok(&registry.load()?.lut == lut.key)
 }
 
 pub fn is_liquidator_for_vault(vault: &AccountLoader<Vault>, authority: &Signer) -> Result<bool> {

@@ -69,18 +69,8 @@ pub enum ErrorCode {
     UnrecognizedQuoteMint,
     #[msg("SolMarketMissing")]
     SolMarketMissing,
-    #[msg("MarketMapFull")]
-    MarketMapFull,
-    #[msg("InvalidAddressLookupTableData")]
-    InvalidAddressLookupTableData,
-    #[msg("AddressLookupTableAuthorityMissing")]
-    AddressLookupTableAuthorityMissing,
-    #[msg("AddressLookupTableAuthorityInvalid")]
-    AddressLookupTableAuthorityInvalid,
-    #[msg("MarketRegistryLookupTableMismatch")]
-    MarketRegistryLookupTableMismatch,
-    #[msg("MarketRegistryLength")]
-    MarketRegistryLength,
+    #[msg("MarketMissingInRemainingAccounts")]
+    MarketMissingInRemainingAccounts,
     #[msg("MarketRegistryMismatch")]
     MarketRegistryMismatch,
     #[msg("OrderPacketDeserialization")]
@@ -95,6 +85,8 @@ pub enum ErrorCode {
     BaseLotsMustBeZero,
     #[msg("TraderStateNotFound")]
     TraderStateNotFound,
+    #[msg("MarketPositionNotFound")]
+    MarketPositionNotFound,
 }
 
 #[macro_export]

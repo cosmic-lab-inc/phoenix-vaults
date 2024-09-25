@@ -10,7 +10,7 @@ use crate::constraints::{
 };
 use crate::cpis::PhoenixTradeCPI;
 use crate::error::ErrorCode;
-use crate::state::{PhoenixProgram, Vault};
+use crate::state::{MarketMapProvider, PhoenixProgram, Vault};
 use crate::{declare_vault_seeds, validate};
 
 pub fn place_limit_order<'c: 'info, 'info>(
@@ -35,6 +35,12 @@ pub fn place_limit_order<'c: 'info, 'info>(
     let order = decode_order_packet(data).ok_or(ErrorCode::OrderPacketDeserialization)?;
     ctx.phoenix_trade(order)?;
 
+    let mut vault = ctx.accounts.vault.load_mut()?;
+    let market = ctx.accounts.market.key();
+    let pos = ctx.market_position(&vault, market)?;
+    vault.force_update_market_position(pos)?;
+    drop(vault);
+
     Ok(())
 }
 
@@ -49,6 +55,7 @@ pub struct PlaceLimitOrder<'info> {
     /// Phoenix CPI validates that opaque instruction data is a [`PhoenixInstruction`],
     /// so this is safe since any Phoenix CPI is secure.
     #[account(
+        mut,
         constraint = is_delegate_for_vault(&vault, &delegate)?
     )]
     pub vault: AccountLoader<'info, Vault>,
