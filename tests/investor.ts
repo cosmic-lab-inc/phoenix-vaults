@@ -4,7 +4,8 @@ import {
 	ConfirmOptions,
 	Keypair,
 	LAMPORTS_PER_SOL,
-	PublicKey, SystemProgram,
+	PublicKey,
+	SystemProgram,
 } from '@solana/web3.js';
 import { assert } from 'chai';
 import { before } from 'mocha';
@@ -23,7 +24,8 @@ import {
 	MOCK_USDC_PRECISION,
 	PHOENIX_PROGRAM_ID,
 	WithdrawUnit,
-	LOCALNET_MARKET_CONFIG, PHOENIX_SEAT_MANAGER_PROGRAM_ID,
+	LOCALNET_MARKET_CONFIG,
+	PHOENIX_SEAT_MANAGER_PROGRAM_ID,
 } from '../ts/sdk';
 import { BN } from '@coral-xyz/anchor';
 import {
@@ -43,7 +45,9 @@ import {
 import {
 	Client as PhoenixClient,
 	getLogAuthority,
-	getSeatAddress, getSeatDepositCollectorAddress, getSeatManagerAddress,
+	getSeatAddress,
+	getSeatDepositCollectorAddress,
+	getSeatManagerAddress,
 } from '@ellipsis-labs/phoenix-sdk';
 
 describe('phoenixVaults', () => {

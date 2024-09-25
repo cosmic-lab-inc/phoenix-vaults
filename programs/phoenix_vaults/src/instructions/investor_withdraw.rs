@@ -6,10 +6,10 @@ use solana_program::program::invoke_signed;
 use crate::constraints::*;
 use crate::cpis::{PhoenixWithdrawCPI, TokenTransferCPI};
 use crate::declare_vault_seeds;
-use crate::math::quote_atoms_to_quote_lots_rounded_down;
 use crate::state::{
     Investor, MarketMapProvider, MarketRegistry, MarketTransferParams, PhoenixProgram, Vault,
 };
+// use crate::math::quote_atoms_to_quote_lots_rounded_down;
 
 pub fn investor_withdraw<'c: 'info, 'info>(
     ctx: Context<'_, '_, 'c, 'info, InvestorWithdraw<'info>>,
@@ -29,14 +29,13 @@ pub fn investor_withdraw<'c: 'info, 'info>(
 
     drop(vault);
 
-    let (_, _, sol_usdc_header) = ctx.load_sol_usdc_market(&registry)?;
-
-    let quote_lots =
-        quote_atoms_to_quote_lots_rounded_down(&sol_usdc_header, investor_withdraw_amount);
-    ctx.phoenix_withdraw(MarketTransferParams {
-        quote_lots,
-        base_lots: 0,
-    })?;
+    // let (_, _, sol_usdc_header) = ctx.load_sol_usdc_market(&registry)?;
+    // let quote_lots =
+    //     quote_atoms_to_quote_lots_rounded_down(&sol_usdc_header, investor_withdraw_amount);
+    // ctx.phoenix_withdraw(MarketTransferParams {
+    //     quote_lots,
+    //     base_lots: 0,
+    // })?;
 
     msg!(
         "vault_usdc_balance: {}",

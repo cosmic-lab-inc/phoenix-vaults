@@ -7,10 +7,10 @@ use crate::constraints::*;
 use crate::cpis::{PhoenixDepositCPI, TokenTransferCPI};
 use crate::declare_vault_seeds;
 use crate::error::ErrorCode;
-use crate::math::quote_atoms_to_quote_lots_rounded_down;
 use crate::state::{
     Investor, MarketMapProvider, MarketRegistry, MarketTransferParams, PhoenixProgram, Vault,
 };
+// use crate::math::quote_atoms_to_quote_lots_rounded_down;
 
 pub fn investor_deposit<'c: 'info, 'info>(
     ctx: Context<'_, '_, 'c, 'info, InvestorDeposit<'info>>,
@@ -31,20 +31,6 @@ pub fn investor_deposit<'c: 'info, 'info>(
     drop(vault);
 
     ctx.token_transfer(amount)?;
-
-    let (_, _, sol_usdc_header) = ctx.load_sol_usdc_market(&registry)?;
-    let quote_lots = quote_atoms_to_quote_lots_rounded_down(&sol_usdc_header, amount);
-    ctx.phoenix_deposit(MarketTransferParams {
-        quote_lots,
-        base_lots: 0,
-    })?;
-
-    let mut vault = ctx.accounts.vault.load_mut()?;
-    let market = ctx.accounts.market.key();
-    let pos = ctx.market_position(&vault, market)?;
-    let index = vault.force_get_market_position_index(market)?;
-    vault.update_market_position(index, pos)?;
-    drop(vault);
 
     Ok(())
 }
@@ -83,52 +69,11 @@ pub struct InvestorDeposit<'info> {
     )]
     pub investor_quote_token_account: Box<Account<'info, TokenAccount>>,
 
-    //
-    // Phoenix CPI accounts
-    //
-    pub phoenix: Program<'info, PhoenixProgram>,
-    /// CHECK: validated in Phoenix CPI
-    pub log_authority: UncheckedAccount<'info>,
-    /// CHECK: validated in Phoenix CPI
-    #[account(mut)]
-    pub market: UncheckedAccount<'info>,
-    /// CHECK: validated in Phoenix CPI
-    pub seat: UncheckedAccount<'info>,
-
-    #[account(
-        constraint = is_sol_mint(&vault, &base_mint.key())?
-    )]
-    pub base_mint: Account<'info, Mint>,
-    #[account(
-        constraint = is_usdc_mint(&vault, &quote_mint.key())?
-    )]
-    pub quote_mint: Account<'info, Mint>,
-
     #[account(
         mut,
-        constraint = is_sol_token_for_vault(&vault, &vault_base_token_account)?,
-        token::mint = base_mint
-    )]
-    pub vault_base_token_account: Account<'info, TokenAccount>,
-    #[account(
-        mut,
-        constraint = is_usdc_token_for_vault(&vault, &vault_quote_token_account)?,
-        token::mint = quote_mint
+        constraint = is_usdc_token_for_vault(&vault, &vault_quote_token_account)?
     )]
     pub vault_quote_token_account: Account<'info, TokenAccount>,
-
-    #[account(
-        mut,
-        constraint = is_sol_mint(&vault, &market_base_token_account.mint)?,
-        token::mint = base_mint
-    )]
-    pub market_base_token_account: Account<'info, TokenAccount>,
-    #[account(
-        mut,
-        constraint = is_usdc_mint(&vault, &market_quote_token_account.mint)?,
-        token::mint = quote_mint
-    )]
-    pub market_quote_token_account: Account<'info, TokenAccount>,
 
     pub token_program: Program<'info, Token>,
 }
@@ -151,53 +96,6 @@ impl<'info> TokenTransferCPI for Context<'_, '_, '_, 'info, InvestorDeposit<'inf
         let token_program = self.accounts.token_program.to_account_info().clone();
         let cpi_context = CpiContext::new(token_program, cpi_accounts);
         token::transfer(cpi_context, amount)?;
-        Ok(())
-    }
-}
-
-impl<'info> PhoenixDepositCPI for Context<'_, '_, '_, 'info, InvestorDeposit<'info>> {
-    fn phoenix_deposit(&self, params: MarketTransferParams) -> Result<()> {
-        if params.base_lots > 0 {
-            return Err(ErrorCode::BaseLotsMustBeZero.into());
-        }
-        let trader_index = 3;
-        let mut ix = phoenix::program::instruction_builders::create_deposit_funds_instruction(
-            &self.accounts.market.key(),
-            &self.accounts.vault.key(),
-            &self.accounts.base_mint.key(),
-            &self.accounts.quote_mint.key(),
-            &DepositParams {
-                quote_lots_to_deposit: params.quote_lots,
-                base_lots_to_deposit: 0,
-            },
-        );
-        ix.accounts[trader_index].is_signer = true;
-
-        // #[account(0, name = "phoenix_program", desc = "Phoenix program")]
-        // #[account(1, name = "log_authority", desc = "Phoenix log authority")]
-        // #[account(2, writable, name = "market", desc = "This account holds the market state")]
-        // #[account(3, signer, name = "trader")]
-        // #[account(4, name = "seat")]
-        // #[account(5, writable, name = "base_account", desc = "Trader base token account")]
-        // #[account(6, writable, name = "quote_account", desc = "Trader quote token account")]
-        // #[account(7, writable, name = "base_vault", desc = "Base vault PDA, seeds are [b'vault', market_address, base_mint_address]")]
-        // #[account(8, writable, name = "quote_vault", desc = "Quote vault PDA, seeds are [b'vault', market_address, quote_mint_address]")]
-        // #[account(9, name = "token_program", desc = "Token program")]
-        let accounts = [
-            self.accounts.phoenix.to_account_info(),
-            self.accounts.log_authority.to_account_info(),
-            self.accounts.market.to_account_info(),
-            self.accounts.vault.to_account_info(),
-            self.accounts.seat.to_account_info(),
-            self.accounts.vault_base_token_account.to_account_info(),
-            self.accounts.vault_quote_token_account.to_account_info(),
-            self.accounts.market_base_token_account.to_account_info(),
-            self.accounts.market_quote_token_account.to_account_info(),
-            self.accounts.token_program.to_account_info(),
-        ];
-        declare_vault_seeds!(self.accounts.vault, seeds);
-        invoke_signed(&ix, &accounts, seeds)?;
-
         Ok(())
     }
 }

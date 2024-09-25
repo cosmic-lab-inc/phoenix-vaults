@@ -190,52 +190,7 @@ export type PhoenixVaults = {
 					isSigner: false;
 				},
 				{
-					name: 'phoenix';
-					isMut: false;
-					isSigner: false;
-				},
-				{
-					name: 'logAuthority';
-					isMut: false;
-					isSigner: false;
-				},
-				{
-					name: 'market';
-					isMut: true;
-					isSigner: false;
-				},
-				{
-					name: 'seat';
-					isMut: false;
-					isSigner: false;
-				},
-				{
-					name: 'baseMint';
-					isMut: false;
-					isSigner: false;
-				},
-				{
-					name: 'quoteMint';
-					isMut: false;
-					isSigner: false;
-				},
-				{
-					name: 'vaultBaseTokenAccount';
-					isMut: true;
-					isSigner: false;
-				},
-				{
 					name: 'vaultQuoteTokenAccount';
-					isMut: true;
-					isSigner: false;
-				},
-				{
-					name: 'marketBaseTokenAccount';
-					isMut: true;
-					isSigner: false;
-				},
-				{
-					name: 'marketQuoteTokenAccount';
 					isMut: true;
 					isSigner: false;
 				},
@@ -558,7 +513,7 @@ export type PhoenixVaults = {
 			accounts: [
 				{
 					name: 'vault';
-					isMut: false;
+					isMut: true;
 					isSigner: false;
 					docs: [
 						'If delegate has authority to sign for vault, then any Phoenix CPI is valid.',
@@ -2241,52 +2196,7 @@ export const IDL: PhoenixVaults = {
 					isSigner: false,
 				},
 				{
-					name: 'phoenix',
-					isMut: false,
-					isSigner: false,
-				},
-				{
-					name: 'logAuthority',
-					isMut: false,
-					isSigner: false,
-				},
-				{
-					name: 'market',
-					isMut: true,
-					isSigner: false,
-				},
-				{
-					name: 'seat',
-					isMut: false,
-					isSigner: false,
-				},
-				{
-					name: 'baseMint',
-					isMut: false,
-					isSigner: false,
-				},
-				{
-					name: 'quoteMint',
-					isMut: false,
-					isSigner: false,
-				},
-				{
-					name: 'vaultBaseTokenAccount',
-					isMut: true,
-					isSigner: false,
-				},
-				{
 					name: 'vaultQuoteTokenAccount',
-					isMut: true,
-					isSigner: false,
-				},
-				{
-					name: 'marketBaseTokenAccount',
-					isMut: true,
-					isSigner: false,
-				},
-				{
-					name: 'marketQuoteTokenAccount',
 					isMut: true,
 					isSigner: false,
 				},
@@ -2609,7 +2519,7 @@ export const IDL: PhoenixVaults = {
 			accounts: [
 				{
 					name: 'vault',
-					isMut: false,
+					isMut: true,
 					isSigner: false,
 					docs: [
 						'If delegate has authority to sign for vault, then any Phoenix CPI is valid.',
