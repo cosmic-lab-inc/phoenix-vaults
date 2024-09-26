@@ -15,7 +15,7 @@ default = []
 
 [dependencies]
 anchor-lang = "0.29.0"
-anchor-spl = { version = "0.29.0" , features = ["token", "associated_token"], default = false }
+anchor-spl = { version = "0.29.0" , features = ["token", "associated_token"] }
 bytemuck = "1.14.0"
 bincode = "1.3.3"
 static_assertions = "1.1.0"

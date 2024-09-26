@@ -24,15 +24,15 @@ pub fn investor_withdraw<'c: 'info, 'info>(
 
     let (investor_withdraw_amount, finishing_liquidation) =
         investor.withdraw(vault_equity, &mut vault, clock.unix_timestamp)?;
+    msg!("investor_withdraw_amount: {}", investor_withdraw_amount);
 
     if finishing_liquidation {
         vault.reset_liquidation_delegate();
     }
-    
+
     drop(vault);
 
     ctx.token_transfer(investor_withdraw_amount)?;
-    
 
     let mut vault = ctx.accounts.vault.load_mut()?;
     let market = ctx.accounts.market.key();

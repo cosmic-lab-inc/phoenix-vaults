@@ -435,7 +435,12 @@ impl Investor {
         Ok(())
     }
 
-    pub fn withdraw(&mut self, vault_equity: u64, vault: &mut Vault, now: i64) -> Result<(u64, bool)> {
+    pub fn withdraw(
+        &mut self,
+        vault_equity: u64,
+        vault: &mut Vault,
+        now: i64,
+    ) -> Result<(u64, bool)> {
         self.last_withdraw_request
             .check_redeem_period_finished(vault, now)?;
 
@@ -471,6 +476,7 @@ impl Investor {
         let amount: u64 = shares_to_amount(n_shares, vault.total_shares, vault_equity)?;
 
         let withdraw_amount = amount.min(self.last_withdraw_request.value);
+        msg!("vault_equity: {}", vault_equity);
         msg!(
             "amount={}, last_withdraw_request_value={}",
             amount,

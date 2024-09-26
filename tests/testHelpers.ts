@@ -428,8 +428,17 @@ export async function fetchVaultEquity(
 		const marketState = await fetchMarketState(conn, position.market);
 		const price = marketState.getUiLadder(1, 0, 0).bids[0].price;
 		const vaultState = parseTraderState(marketState, vault);
+
 		const baseQuoteUnits =
 			(vaultState.baseUnitsFree + vaultState.baseUnitsLocked) * price;
+
+		// const baseQuoteUnitsWithoutFee =
+		// 	(vaultState.baseUnitsFree + vaultState.baseUnitsLocked) * price;
+		// const fee =
+		// 	(marketState.data.takerFeeBps * 100) / PERCENTAGE_PRECISION.toNumber();
+		// console.log('fee:', fee);
+		// const baseQuoteUnits = baseQuoteUnitsWithoutFee * (1 - fee);
+
 		const quoteUnits =
 			vaultState.quoteUnitsFree + vaultState.quoteUnitsLocked + baseQuoteUnits;
 		equity += quoteUnits;
@@ -543,7 +552,7 @@ export function calculateRealizedInvestorEquity(
 export function investorEquityAvailableAfterLiquidation(
 	investor: Investor,
 	vaultEquity: BN,
-	vault: Vault,
+	vault: Vault
 ): BN {
 	const investorAmount = sharesToAmount(
 		investor.vaultShares,

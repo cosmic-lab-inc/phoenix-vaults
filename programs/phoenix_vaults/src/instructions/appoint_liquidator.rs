@@ -7,7 +7,9 @@ use crate::constraints::{
 use crate::state::{Investor, MarketMapProvider, MarketRegistry, Vault};
 
 /// If the investor can't withdraw their equity from the vault's USDC token account,
-/// then the investor is granted authority to sign for liquidation of the vault.
+/// then the investor is granted authority to sign for liquidation of the vault position on Phoenix markets.
+/// The investor can liquidate assets into USDC by calling `liquidate_usdc_market` or `liquidate_sol_market`,
+/// depending on whether the Phoenix market is denominated in USDC or SOL.
 pub fn appoint_liquidator<'c: 'info, 'info>(
     ctx: Context<'_, '_, 'c, 'info, AppointLiquidator<'info>>,
 ) -> Result<()> {

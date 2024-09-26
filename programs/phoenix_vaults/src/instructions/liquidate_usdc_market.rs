@@ -7,11 +7,13 @@ use phoenix::state::{OrderPacket, OrderPacketMetadata, SelfTradeBehavior, Side};
 use sokoban::ZeroCopy;
 use solana_program::program::invoke_signed;
 
+use crate::constants::PERCENTAGE_PRECISION;
 use crate::constraints::*;
 use crate::cpis::{PhoenixTradeCPI, PhoenixWithdrawCPI, TokenTransferCPI};
 use crate::error::ErrorCode;
 use crate::math::{
     quote_atoms_to_quote_lots_rounded_down, quote_lots_to_base_lots, quote_lots_to_quote_atoms,
+    shares_to_amount, Cast, SafeMath,
 };
 use crate::state::{
     Investor, MarketMap, MarketMapProvider, MarketRegistry, MarketTransferParams, PhoenixProgram,
@@ -32,7 +34,7 @@ pub fn liquidate_usdc_market<'c: 'info, 'info>(
 
     let vault_key = ctx.accounts.vault.key();
     let mut vault = ctx.accounts.vault.load_mut()?;
-    let mut investor = ctx.accounts.investor.load_mut()?;
+    let investor = ctx.accounts.investor.load_mut()?;
 
     if let Err(e) = vault.check_liquidator(&investor, now) {
         vault.reset_liquidation_delegate();
@@ -40,13 +42,18 @@ pub fn liquidate_usdc_market<'c: 'info, 'info>(
     }
 
     let registry = ctx.accounts.market_registry.load()?;
-    let vault_usdc_ata = &ctx.accounts.vault_usdc_token_account;
-    if let Err(e) = ctx.check_cant_withdraw(&investor, vault_usdc_ata, &registry) {
+    let vault_usdc = &ctx.accounts.vault_usdc_token_account;
+    if let Err(e) = ctx.check_cant_withdraw(&investor, vault_usdc, &registry) {
         vault.reset_liquidation_delegate();
         return Err(e);
     }
 
-    drop(vault);
+    let vault_equity = ctx.equity(&vault, vault_usdc, &registry)?;
+    let amount = shares_to_amount(
+        investor.last_withdraw_request.shares,
+        vault.total_shares,
+        vault_equity,
+    )?;
 
     let account = MarketMap::find(
         &registry.sol_usdc_market,
@@ -69,6 +76,8 @@ pub fn liquidate_usdc_market<'c: 'info, 'info>(
         .first()
         .map_or(0, |bid| bid.price_in_ticks);
 
+    let withdraw_request_amount = amount.min(investor.last_withdraw_request.value);
+
     let trader_state =
         market
             .inner
@@ -79,10 +88,11 @@ pub fn liquidate_usdc_market<'c: 'info, 'info>(
 
     let vault_bl = trader_state.base_lots_free.as_u64();
     let vault_ql = trader_state.quote_lots_free.as_u64();
-    let withdraw_ql =
-        quote_atoms_to_quote_lots_rounded_down(&header, investor.last_withdraw_request.value);
+    let withdraw_ql = quote_atoms_to_quote_lots_rounded_down(&header, withdraw_request_amount);
 
-    let quote_atoms_to_withdraw = if withdraw_ql > vault_ql {
+    drop(vault);
+
+    if withdraw_ql > vault_ql {
         // sell base lots to quote lots
         let ql_to_sell = withdraw_ql - vault_ql;
         let bl_to_sell = quote_lots_to_base_lots(&header, ql_to_sell, tick_price).min(vault_bl);
@@ -94,13 +104,12 @@ pub fn liquidate_usdc_market<'c: 'info, 'info>(
         ctx.phoenix_trade(params)?;
 
         // withdraw existing quote_lots plus liquidated quote lots from market to vault
-        // todo: account for taker fee
         ctx.phoenix_withdraw(MarketTransferParams {
             base_lots: 0,
             quote_lots: ql_to_withdraw,
         })?;
         msg!(
-            "liquidated USDC quote atoms to fulfill withdraw request: {}",
+            "liquidated {} USDC quote atoms to fulfill withdraw request",
             quote_atoms
         );
         quote_atoms
@@ -114,17 +123,11 @@ pub fn liquidate_usdc_market<'c: 'info, 'info>(
             quote_lots: withdraw_ql,
         })?;
         msg!(
-            "sufficient USDC quote atoms to fulfill withdraw request: {}",
+            "{} USDC quote atoms withdrawn to fulfill withdraw request",
             quote_atoms
         );
         quote_atoms
     };
-
-    // // withdraw quote lots from vault to investor
-    // ctx.token_transfer(quote_atoms_to_withdraw)?;
-    // investor
-    //     .last_withdraw_request
-    //     .reduce_by_value(quote_atoms_to_withdraw)?;
 
     let mut vault = ctx.accounts.vault.load_mut()?;
     let market = ctx.accounts.market.key();

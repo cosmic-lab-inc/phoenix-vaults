@@ -47,6 +47,8 @@ import {
 	fetchInvestorEquity,
 	calculateRealizedInvestorEquity,
 	parseTraderState,
+	simulate,
+	fetchVaultEquity,
 } from './testHelpers';
 import {
 	Client as PhoenixClient,
@@ -668,6 +670,7 @@ describe('phoenixVaults', () => {
 		const vaultEquity = new BN(
 			investorEquityBefore * QUOTE_PRECISION.toNumber()
 		);
+
 		const investorAcct = await program.account.investor.fetch(investor);
 		const vaultAcct = await program.account.vault.fetch(vaultKey);
 		const withdrawRequestEquity = calculateRealizedInvestorEquity(
@@ -700,7 +703,6 @@ describe('phoenixVaults', () => {
 				})
 				.remainingAccounts(markets)
 				.instruction();
-
 			await sendAndConfirm(conn, payer, [ix]);
 		} catch (e: any) {
 			throw new Error(e);
@@ -831,7 +833,8 @@ describe('phoenixVaults', () => {
 				})
 				.remainingAccounts(markets)
 				.instruction();
-			await sendAndConfirm(conn, payer, [ix]);
+			await simulate(conn, payer, [ix, ix]);
+			await sendAndConfirm(conn, payer, [ix, ix]);
 		} catch (e: any) {
 			throw new Error(e);
 		}
@@ -842,8 +845,7 @@ describe('phoenixVaults', () => {
 			`vault after liquidation, sol: ${vaultSolAfter}, usdc: ${vaultUsdcAfter}`
 		);
 		assert.strictEqual(vaultSolAfter, 0);
-		// investor withdraw request - 0.01% Phoenix taker fee
-		assert.strictEqual(vaultUsdcAfter, 1199.75502);
+		assert.strictEqual(vaultUsdcAfter, 1249.75002);
 
 		const vaultStateAfter = await fetchTraderState(
 			conn,
@@ -853,8 +855,7 @@ describe('phoenixVaults', () => {
 		console.log(
 			`vault trader state after liquidation, sol: ${vaultStateAfter.baseUnitsFree}, usdc: ${vaultStateAfter.quoteUnitsFree}`
 		);
-		// ~$50 profit share to manager and protocol still remaining in SOL, at $125/SOL that's roughly 0.4 SOL
-		assert.strictEqual(vaultStateAfter.baseUnitsFree, 0.4);
+		assert.strictEqual(vaultStateAfter.baseUnitsFree, 0);
 		assert.strictEqual(vaultStateAfter.quoteUnitsFree, 0);
 	});
 
@@ -903,11 +904,12 @@ describe('phoenixVaults', () => {
 		console.log(
 			`vault after liquidation, sol: ${vaultSolAfter}, usdc: ${vaultUsdcAfter}`
 		);
-		// assert.strictEqual(vaultSolAfter, 0);
-		// assert.strictEqual(vaultUsdcAfter, 0);
+		assert.strictEqual(vaultSolAfter, 0);
+		// $1249 - $1199 investor equity = manager and protocol profit share
+		assert.strictEqual(vaultUsdcAfter, 49.970005);
 
 		const investorUsdcAfter = await tokenBalance(conn, investorUsdcAta);
 		console.log(`investor usdc after liquidation: ${investorUsdcAfter}`);
-		// assert.strictEqual(investorUsdcAfter, 1199.80001);
+		assert.strictEqual(investorUsdcAfter, 1199.780015);
 	});
 });

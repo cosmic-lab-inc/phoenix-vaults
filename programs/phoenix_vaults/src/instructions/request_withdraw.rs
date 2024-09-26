@@ -25,7 +25,6 @@ pub fn request_withdraw<'c: 'info, 'info>(
 
     let vault_usdc = &ctx.accounts.vault_usdc_token_account;
     let vault_equity = ctx.equity(vault, vault_usdc, &registry)?;
-    msg!("investor_withdraw_amount: {}", withdraw_amount);
 
     investor.request_withdraw(
         withdraw_amount.cast()?,
