@@ -65,9 +65,9 @@ pub fn liquidate_usdc_market<'c: 'info, 'info>(
     let tick_price = market
         .inner
         .get_ladder(1)
-        .asks
+        .bids
         .first()
-        .map_or(0, |ask| ask.price_in_ticks);
+        .map_or(0, |bid| bid.price_in_ticks);
 
     let trader_state =
         market
@@ -120,11 +120,11 @@ pub fn liquidate_usdc_market<'c: 'info, 'info>(
         quote_atoms
     };
 
-    // withdraw quote lots from vault to investor
-    ctx.token_transfer(quote_atoms_to_withdraw)?;
-    investor
-        .last_withdraw_request
-        .reduce_by_value(quote_atoms_to_withdraw)?;
+    // // withdraw quote lots from vault to investor
+    // ctx.token_transfer(quote_atoms_to_withdraw)?;
+    // investor
+    //     .last_withdraw_request
+    //     .reduce_by_value(quote_atoms_to_withdraw)?;
 
     let mut vault = ctx.accounts.vault.load_mut()?;
     let market = ctx.accounts.market.key();

@@ -435,7 +435,7 @@ impl Investor {
         Ok(())
     }
 
-    pub fn withdraw(&mut self, vault_equity: u64, vault: &mut Vault, now: i64) -> Result<u64> {
+    pub fn withdraw(&mut self, vault_equity: u64, vault: &mut Vault, now: i64) -> Result<(u64, bool)> {
         self.last_withdraw_request
             .check_redeem_period_finished(vault, now)?;
 
@@ -525,7 +525,9 @@ impl Investor {
             protocol_shares_after
         });
 
-        Ok(withdraw_amount)
+        let finishing_liquidation = vault.liquidator == self.authority;
+
+        Ok((withdraw_amount, finishing_liquidation))
     }
 
     pub fn apply_profit_share(

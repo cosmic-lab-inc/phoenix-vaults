@@ -65,7 +65,7 @@ impl<'a: 'info, 'info, T: anchor_lang::Bumps> MarketMapProvider<'a>
         }
         let market = load_with_dispatch(&header.market_size_params, bytes)?;
         let ladder = market.inner.get_ladder(1);
-        let tick_price = ladder.asks.first().map_or(0, |ask| ask.price_in_ticks);
+        let tick_price = ladder.bids.first().map_or(0, |bid| bid.price_in_ticks);
 
         Ok((account.key(), tick_price, header))
     }
@@ -110,9 +110,9 @@ impl<'a: 'info, 'info, T: anchor_lang::Bumps> MarketMapProvider<'a>
             let tick_price = market
                 .inner
                 .get_ladder(1)
-                .asks
+                .bids
                 .first()
-                .map_or(0, |ask| ask.price_in_ticks);
+                .map_or(0, |bid| bid.price_in_ticks);
             let price = ticks_to_price_precision(&header, tick_price);
 
             if let Some(trader_state) = market.inner.get_trader_state(&vault.pubkey) {

@@ -96,9 +96,9 @@ async fn read_market<'a>(client: &'a RpcClient, market: &'a Pubkey) -> anyhow::R
     );
     let wrapper = load_with_dispatch(&header.market_size_params, bytes)?;
     let ladder = wrapper.inner.get_ladder(1);
-    let tick_price = match ladder.asks.first() {
-        Some(ask) => Ok(ask.price_in_ticks),
-        None => Err(anyhow::anyhow!("No asks found in ladder")),
+    let tick_price = match ladder.bids.first() {
+        Some(bid) => Ok(bid.price_in_ticks),
+        None => Err(anyhow::anyhow!("No bids found in ladder")),
     }?;
 
     let mut price_precision = ticks_to_price_precision(&header, tick_price);

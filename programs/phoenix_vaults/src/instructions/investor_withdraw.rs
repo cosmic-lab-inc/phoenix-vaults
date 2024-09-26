@@ -9,7 +9,6 @@ use crate::declare_vault_seeds;
 use crate::state::{
     Investor, MarketMapProvider, MarketRegistry, MarketTransferParams, PhoenixProgram, Vault,
 };
-// use crate::math::quote_atoms_to_quote_lots_rounded_down;
 
 pub fn investor_withdraw<'c: 'info, 'info>(
     ctx: Context<'_, '_, 'c, 'info, InvestorWithdraw<'info>>,
@@ -23,17 +22,17 @@ pub fn investor_withdraw<'c: 'info, 'info>(
     let vault_usdc = &ctx.accounts.vault_quote_token_account;
     let vault_equity = ctx.equity(&vault, vault_usdc, &registry)?;
 
-    let investor_withdraw_amount =
+    let (investor_withdraw_amount, finishing_liquidation) =
         investor.withdraw(vault_equity, &mut vault, clock.unix_timestamp)?;
-    msg!("investor_withdraw_amount: {}", investor_withdraw_amount);
 
+    if finishing_liquidation {
+        vault.reset_liquidation_delegate();
+    }
+    
     drop(vault);
 
-    msg!(
-        "vault_usdc_balance: {}",
-        ctx.accounts.vault_quote_token_account.amount
-    );
     ctx.token_transfer(investor_withdraw_amount)?;
+    
 
     let mut vault = ctx.accounts.vault.load_mut()?;
     let market = ctx.accounts.market.key();

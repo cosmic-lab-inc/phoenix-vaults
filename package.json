@@ -6,9 +6,10 @@
         "prepare": "husky install",
         "clean": "chmod +x ./clean.sh && ./clean.sh",
         "idl": "cp target/types/phoenix_vaults.ts ts/sdk/src/types/phoenix_vaults.ts && prettier --write ts/sdk/src/types/phoenix_vaults.ts",
+        "anchor-tests": "yarn run ts-mocha -p ./tsconfig.json -t 1000000 -b tests/phoenixVaults.ts",
         "test:registry": "yarn run ts-mocha -p ./tsconfig.json -t 1000000 -b tests/marketRegistry.ts",
         "test:investor": "yarn run ts-mocha -p ./tsconfig.json -t 1000000 -b tests/investor.ts",
-        "anchor-tests": "yarn run ts-mocha -p ./tsconfig.json -t 1000000 -b tests/phoenixVaults.ts"
+        "test:liquidate": "yarn run ts-mocha -p ./tsconfig.json -t 1000000 -b tests/liquidate.ts"
     },
     "dependencies": {
         "@coral-xyz/anchor": "0.28.0",

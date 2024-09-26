@@ -369,13 +369,12 @@ export async function outAmount(
 ) {
 	const marketState = await fetchMarketState(conn, market);
 	const uiLadder = marketState.getUiLadder(3, 0, 0);
-	const out = getExpectedOutAmountRouter({
+	return getExpectedOutAmountRouter({
 		uiLadder,
 		side,
 		takerFeeBps: takerFeeBps ?? marketState.data.takerFeeBps,
 		inAmount,
 	});
-	return out;
 }
 
 export async function logLadder(conn: Connection, market: PublicKey) {
@@ -388,12 +387,10 @@ export async function logLadder(conn: Connection, market: PublicKey) {
 		console.log('no asks');
 	}
 	for (const bid of ladder.bids) {
-		// const price = marketState.ticksToFloatPrice(bid.priceInTicks.toNumber());
 		const price = bid.price;
 		console.log(`bid: ${price}`);
 	}
 	for (const ask of ladder.asks) {
-		// const price = marketState.ticksToFloatPrice(ask.priceInTicks.toNumber());
 		const price = ask.price;
 		console.log(`ask: ${price}`);
 	}
@@ -404,7 +401,7 @@ export async function marketPrice(
 	market: PublicKey
 ): Promise<number> {
 	const marketState = await fetchMarketState(conn, market);
-	return marketState.getUiLadder(1, 0, 0).asks[0].price;
+	return marketState.getUiLadder(1, 0, 0).bids[0].price;
 }
 
 function isAvailable(position: MarketPosition) {
@@ -429,7 +426,7 @@ export async function fetchVaultEquity(
 			continue;
 		}
 		const marketState = await fetchMarketState(conn, position.market);
-		const price = marketState.getUiLadder(1, 0, 0).asks[0].price;
+		const price = marketState.getUiLadder(1, 0, 0).bids[0].price;
 		const vaultState = parseTraderState(marketState, vault);
 		const baseQuoteUnits =
 			(vaultState.baseUnitsFree + vaultState.baseUnitsLocked) * price;
@@ -527,6 +524,26 @@ export function calculateRealizedInvestorEquity(
 	investor: Investor,
 	vaultEquity: BN,
 	vault: Vault
+): BN {
+	const investorAmount = sharesToAmount(
+		investor.vaultShares,
+		vault.totalShares,
+		vaultEquity
+	);
+	console.log('investorAmount:', investorAmount.toNumber());
+	const profitShareAmount = calculateProfitShare(
+		investor,
+		investorAmount,
+		vault
+	);
+	console.log('profitShareAmount:', profitShareAmount.toNumber());
+	return investorAmount.sub(profitShareAmount);
+}
+
+export function investorEquityAvailableAfterLiquidation(
+	investor: Investor,
+	vaultEquity: BN,
+	vault: Vault,
 ): BN {
 	const investorAmount = sharesToAmount(
 		investor.vaultShares,

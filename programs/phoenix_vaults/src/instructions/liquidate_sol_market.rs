@@ -66,9 +66,9 @@ pub fn liquidate_sol_market<'c: 'info, 'info>(
     let tick_price = market
         .inner
         .get_ladder(1)
-        .asks
+        .bids
         .first()
-        .map_or(0, |ask| ask.price_in_ticks);
+        .map_or(0, |bid| bid.price_in_ticks);
 
     let (_, sol_usdc_tick_price, sol_usdc_header) = ctx.load_sol_usdc_market(&registry)?;
 
