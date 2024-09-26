@@ -1097,7 +1097,6 @@ describe('phoenixVaults', () => {
 		assert.strictEqual(investorUsdcBefore, 0);
 
 		try {
-			const marketIndex = 0;
 			const markets: AccountMeta[] = [
 				{
 					pubkey: solUsdcMarket,
@@ -1106,7 +1105,7 @@ describe('phoenixVaults', () => {
 				},
 			];
 			const ix = await program.methods
-				.liquidateUsdcMarket(marketIndex)
+				.liquidateUsdcMarket()
 				.accounts({
 					vault: vaultKey,
 					investor,

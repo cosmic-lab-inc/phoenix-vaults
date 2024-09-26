@@ -118,18 +118,16 @@ pub mod phoenix_vaults {
     /// to fulfill their withdrawal request.
     pub fn liquidate_usdc_market<'c: 'info, 'info>(
         ctx: Context<'_, '_, 'c, 'info, LiquidateUsdcMarket<'info>>,
-        market_index: u8,
     ) -> Result<()> {
-        instructions::liquidate_usdc_market(ctx, market_index)
+        instructions::liquidate_usdc_market(ctx)
     }
 
     /// After `appoint_liquidator` the investor can liquidate a SOL denominated market position
     /// to fulfill their withdrawal request.
     pub fn liquidate_sol_market<'c: 'info, 'info>(
         ctx: Context<'_, '_, 'c, 'info, LiquidateSolMarket<'info>>,
-        market_index: u8,
     ) -> Result<()> {
-        instructions::liquidate_sol_market(ctx, market_index)
+        instructions::liquidate_sol_market(ctx)
     }
 
     /// Update the fees, profit share, min deposit, max capacity, delegate, and more.

@@ -16,7 +16,8 @@ use crate::math::{
     quote_atoms_to_quote_lots_rounded_down, quote_lots_to_base_lots, quote_lots_to_quote_atoms,
 };
 use crate::state::{
-    Investor, MarketMapProvider, MarketRegistry, MarketTransferParams, PhoenixProgram, Vault,
+    Investor, MarketMap, MarketMapProvider, MarketRegistry, MarketTransferParams, PhoenixProgram,
+    Vault,
 };
 use crate::{declare_vault_seeds, validate};
 
@@ -31,7 +32,6 @@ use crate::{declare_vault_seeds, validate};
 /// * transfer quote USDC to `investor_quote_token_account`
 pub fn liquidate_sol_market<'c: 'info, 'info>(
     ctx: Context<'_, '_, 'c, 'info, LiquidateSolMarket<'info>>,
-    market_index: u8,
 ) -> Result<()> {
     let now = Clock::get()?.unix_timestamp;
 
@@ -53,20 +53,10 @@ pub fn liquidate_sol_market<'c: 'info, 'info>(
 
     let vault_key = ctx.accounts.vault.key();
 
-    let account = ctx
-        .remaining_accounts
-        .get(market_index as usize)
-        .ok_or(anchor_lang::error::Error::from(ErrorCode::SolMarketMissing))?;
-
-    validate!(
-        *account.key == registry.sol_usdc_market,
-        ErrorCode::MarketRegistryMismatch,
-        &format!(
-            "SOL/USDC MarketRegistryMismatch: {:?} != {:?}",
-            account.key, registry.sol_usdc_market
-        )
+    let account = MarketMap::find(
+        &registry.sol_usdc_market,
+        &mut ctx.remaining_accounts.iter().peekable(),
     )?;
-
     let account_data = account.try_borrow_data()?;
     let (header_bytes, bytes) = account_data.split_at(std::mem::size_of::<MarketHeader>());
     let header = Box::new(MarketHeader::load_bytes(header_bytes).ok_or(

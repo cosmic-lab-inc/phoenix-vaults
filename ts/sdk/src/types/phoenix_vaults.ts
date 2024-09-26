@@ -800,12 +800,7 @@ export type PhoenixVaults = {
 					isSigner: false;
 				}
 			];
-			args: [
-				{
-					name: 'marketIndex';
-					type: 'u8';
-				}
-			];
+			args: [];
 		},
 		{
 			name: 'liquidateSolMarket';
@@ -915,12 +910,7 @@ export type PhoenixVaults = {
 					isSigner: false;
 				}
 			];
-			args: [
-				{
-					name: 'marketIndex';
-					type: 'u8';
-				}
-			];
+			args: [];
 		},
 		{
 			name: 'updateVault';
@@ -2806,12 +2796,7 @@ export const IDL: PhoenixVaults = {
 					isSigner: false,
 				},
 			],
-			args: [
-				{
-					name: 'marketIndex',
-					type: 'u8',
-				},
-			],
+			args: [],
 		},
 		{
 			name: 'liquidateSolMarket',
@@ -2921,12 +2906,7 @@ export const IDL: PhoenixVaults = {
 					isSigner: false,
 				},
 			],
-			args: [
-				{
-					name: 'marketIndex',
-					type: 'u8',
-				},
-			],
+			args: [],
 		},
 		{
 			name: 'updateVault',
