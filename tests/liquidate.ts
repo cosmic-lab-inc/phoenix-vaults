@@ -833,8 +833,8 @@ describe('phoenixVaults', () => {
 				})
 				.remainingAccounts(markets)
 				.instruction();
-			await simulate(conn, payer, [ix, ix]);
-			await sendAndConfirm(conn, payer, [ix, ix]);
+			await simulate(conn, payer, [ix]);
+			await sendAndConfirm(conn, payer, [ix]);
 		} catch (e: any) {
 			throw new Error(e);
 		}
@@ -845,7 +845,7 @@ describe('phoenixVaults', () => {
 			`vault after liquidation, sol: ${vaultSolAfter}, usdc: ${vaultUsdcAfter}`
 		);
 		assert.strictEqual(vaultSolAfter, 0);
-		assert.strictEqual(vaultUsdcAfter, 1249.75002);
+		assert.strictEqual(vaultUsdcAfter, 1199.88001);
 
 		const vaultStateAfter = await fetchTraderState(
 			conn,
@@ -855,7 +855,7 @@ describe('phoenixVaults', () => {
 		console.log(
 			`vault trader state after liquidation, sol: ${vaultStateAfter.baseUnitsFree}, usdc: ${vaultStateAfter.quoteUnitsFree}`
 		);
-		assert.strictEqual(vaultStateAfter.baseUnitsFree, 0);
+		assert.strictEqual(vaultStateAfter.baseUnitsFree, 0.399);
 		assert.strictEqual(vaultStateAfter.quoteUnitsFree, 0);
 	});
 
@@ -902,14 +902,18 @@ describe('phoenixVaults', () => {
 		const vaultSolAfter = await tokenBalance(conn, vaultSolAta);
 		const vaultUsdcAfter = await tokenBalance(conn, vaultUsdcAta);
 		console.log(
-			`vault after liquidation, sol: ${vaultSolAfter}, usdc: ${vaultUsdcAfter}`
+			`vault after withdraw, sol: ${vaultSolAfter}, usdc: ${vaultUsdcAfter}`
 		);
 		assert.strictEqual(vaultSolAfter, 0);
-		// $1249 - $1199 investor equity = manager and protocol profit share
-		assert.strictEqual(vaultUsdcAfter, 49.970005);
+		assert.strictEqual(vaultUsdcAfter, 0.095205);
 
 		const investorUsdcAfter = await tokenBalance(conn, investorUsdcAta);
-		console.log(`investor usdc after liquidation: ${investorUsdcAfter}`);
-		assert.strictEqual(investorUsdcAfter, 1199.780015);
+		console.log(`investor usdc after withdraw: ${investorUsdcAfter}`);
+		assert.strictEqual(investorUsdcAfter, 1199.784805);
+
+		const investorAcct = await program.account.investor.fetch(investor);
+		const withdrawRequest = investorAcct.lastWithdrawRequest.value.toNumber() / QUOTE_PRECISION.toNumber();
+		console.log(`investor withdraw request: ${withdrawRequest}`);
+		assert.strictEqual(withdrawRequest, 0);
 	});
 });

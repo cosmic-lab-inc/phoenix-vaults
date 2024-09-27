@@ -214,35 +214,6 @@ impl<'a: 'info, 'info, T: anchor_lang::Bumps> MarketMapProvider<'a>
 pub struct MarketMap<'a>(pub BTreeMap<Pubkey, &'a AccountInfo<'a>>);
 
 impl<'a> MarketMap<'a> {
-    // #[track_caller]
-    // #[inline(always)]
-    // pub fn get_ref(&self, market: &Pubkey) -> Result<&'a AccountInfo<'a>> {
-    //     let account_info = match self.0.get(market) {
-    //         Some(loader) => loader,
-    //         None => {
-    //             let caller = Location::caller();
-    //             msg!(
-    //                 "Could not find account info {:?} at {}:{}",
-    //                 market,
-    //                 caller.file(),
-    //                 caller.line()
-    //             );
-    //             return Err(ErrorCode::MarketMissingInRemainingAccounts.into());
-    //         }
-    //     };
-    //     Ok(*account_info)
-    // }
-    //
-    // pub fn load<'c>(
-    //     account_info_iter: &'c mut Peekable<Iter<'a, AccountInfo<'a>>>,
-    // ) -> Result<MarketMap<'a>> {
-    //     let mut market_map = MarketMap(BTreeMap::new());
-    //     while let Some(account_info) = account_info_iter.peek() {
-    //         market_map.0.insert(account_info.key(), account_info);
-    //     }
-    //     Ok(market_map)
-    // }
-
     pub fn find<'c>(
         key: &Pubkey,
         account_info_iter: &'c mut Peekable<Iter<'a, AccountInfo<'a>>>,

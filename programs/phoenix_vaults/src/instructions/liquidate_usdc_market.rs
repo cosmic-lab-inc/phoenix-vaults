@@ -26,7 +26,7 @@ use crate::{declare_vault_seeds, validate};
 /// If the market is USDC denominated:
 ///     * if not enough quote USDC to fulfill withdraw request, swap base to USDC as needed
 ///     * withdraw quote USDC to `vault_usdc_token_account`
-/// * transfer quote USDC to `investor_quote_token_account`
+///     * transfer quote USDC to `investor_quote_token_account`
 pub fn liquidate_usdc_market<'c: 'info, 'info>(
     ctx: Context<'_, '_, 'c, 'info, LiquidateUsdcMarket<'info>>,
 ) -> Result<()> {
@@ -55,10 +55,8 @@ pub fn liquidate_usdc_market<'c: 'info, 'info>(
         vault_equity,
     )?;
 
-    let account = MarketMap::find(
-        &registry.sol_usdc_market,
-        &mut ctx.remaining_accounts.iter().peekable(),
-    )?;
+    let market_key = ctx.accounts.market.key();
+    let account = MarketMap::find(&market_key, &mut ctx.remaining_accounts.iter().peekable())?;
     let account_data = account.try_borrow_data()?;
     let (header_bytes, bytes) = account_data.split_at(std::mem::size_of::<MarketHeader>());
     let header = Box::new(MarketHeader::load_bytes(header_bytes).ok_or(
@@ -68,8 +66,8 @@ pub fn liquidate_usdc_market<'c: 'info, 'info>(
     if quote_mint != registry.usdc_mint {
         return Err(ErrorCode::UnrecognizedQuoteMint.into());
     }
-    let market = load_with_dispatch(&header.market_size_params, bytes)?;
-    let tick_price = market
+    let market_wrapper = load_with_dispatch(&header.market_size_params, bytes)?;
+    let tick_price = market_wrapper
         .inner
         .get_ladder(1)
         .bids
@@ -77,25 +75,45 @@ pub fn liquidate_usdc_market<'c: 'info, 'info>(
         .map_or(0, |bid| bid.price_in_ticks);
 
     let withdraw_request_amount = amount.min(investor.last_withdraw_request.value);
+    msg!("withdraw_request_amount: {}", withdraw_request_amount);
 
-    let trader_state =
-        market
-            .inner
-            .get_trader_state(&vault_key)
-            .ok_or(anchor_lang::error::Error::from(
-                ErrorCode::TraderStateNotFound,
-            ))?;
+    let trader_state = market_wrapper.inner.get_trader_state(&vault_key).ok_or(
+        anchor_lang::error::Error::from(ErrorCode::TraderStateNotFound),
+    )?;
 
     let vault_bl = trader_state.base_lots_free.as_u64();
     let vault_ql = trader_state.quote_lots_free.as_u64();
     let withdraw_ql = quote_atoms_to_quote_lots_rounded_down(&header, withdraw_request_amount);
+
+    let market_position = ctx.market_position(&vault, market_key)?;
+    msg!(
+        "quote lots: {}",
+        market_position.quote_lots_locked + market_position.quote_lots_free
+    );
+    msg!(
+        "base lots: {}",
+        market_position.base_lots_locked + market_position.base_lots_free
+    );
 
     drop(vault);
 
     if withdraw_ql > vault_ql {
         // sell base lots to quote lots
         let ql_to_sell = withdraw_ql - vault_ql;
+
+        msg!("ql to sell without fee: {}", ql_to_sell);
+        let fee_bps = market_wrapper.inner.get_taker_fee_bps().safe_mul(100)?;
+        let ql_fee = ql_to_sell
+            .cast::<u128>()?
+            .safe_mul(fee_bps.cast()?)?
+            .safe_div(PERCENTAGE_PRECISION)?
+            .cast::<u64>()?;
+        msg!("ql fee: {}", ql_fee);
+        let ql_to_sell = ql_to_sell.safe_add(ql_fee)?;
+        msg!("ql to sell with fee: {}", ql_to_sell);
+
         let bl_to_sell = quote_lots_to_base_lots(&header, ql_to_sell, tick_price).min(vault_bl);
+
         let ql_to_withdraw = vault_ql + ql_to_sell;
         let quote_atoms = quote_lots_to_quote_atoms(&header, ql_to_withdraw);
         drop(header);
