@@ -130,18 +130,6 @@ impl<'a: 'info, 'info, T: anchor_lang::Bumps> MarketMapProvider<'a>
                 let base_quote_units_precision =
                     base_units_precision * usdc_price_precision / PRICE_PRECISION_U64;
 
-                // let base_quote_units_precision_before_fee =
-                //     base_units_precision * usdc_price_precision / PRICE_PRECISION_U64;
-                // fee_bps = 1 (0.01%), PERCENTAGE_PRECISION is 100 per 0.01%, so multiply by 100
-                // let fee_bps = market.inner.get_taker_fee_bps().safe_mul(100)?;
-                // let base_quote_units_precision_fee = base_quote_units_precision_before_fee
-                //     .cast::<u128>()?
-                //     .safe_mul(fee_bps.cast()?)?
-                //     .safe_div(PERCENTAGE_PRECISION)?
-                //     .cast::<u64>()?;
-                // let base_quote_units_precision = base_quote_units_precision_before_fee
-                //     .safe_sub(base_quote_units_precision_fee)?;
-
                 let quote_units_precision =
                     quote_lots_to_quote_units_precision(&header, quote_lots);
                 let total_quote_units_precision =

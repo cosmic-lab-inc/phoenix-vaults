@@ -432,13 +432,6 @@ export async function fetchVaultEquity(
 		const baseQuoteUnits =
 			(vaultState.baseUnitsFree + vaultState.baseUnitsLocked) * price;
 
-		// const baseQuoteUnitsWithoutFee =
-		// 	(vaultState.baseUnitsFree + vaultState.baseUnitsLocked) * price;
-		// const fee =
-		// 	(marketState.data.takerFeeBps * 100) / PERCENTAGE_PRECISION.toNumber();
-		// console.log('fee:', fee);
-		// const baseQuoteUnits = baseQuoteUnitsWithoutFee * (1 - fee);
-
 		const quoteUnits =
 			vaultState.quoteUnitsFree + vaultState.quoteUnitsLocked + baseQuoteUnits;
 		equity += quoteUnits;

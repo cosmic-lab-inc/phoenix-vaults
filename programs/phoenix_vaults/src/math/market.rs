@@ -38,6 +38,11 @@ pub fn quote_atoms_to_quote_lots_rounded_down(header: &MarketHeader, quote_atoms
     quote_atoms / quote_atoms_per_quote_lot
 }
 
+pub fn quote_atoms_to_quote_lots_rounded_up(header: &MarketHeader, quote_atoms: u64) -> u64 {
+    let quote_atoms_per_quote_lot: u64 = header.get_quote_lot_size().into();
+    (quote_atoms + quote_atoms_per_quote_lot - 1) / quote_atoms_per_quote_lot
+}
+
 pub fn quote_lots_to_quote_atoms(header: &MarketHeader, quote_lots: u64) -> u64 {
     let quote_atoms_per_quote_lot = header.get_quote_lot_size().as_u64();
     quote_lots * quote_atoms_per_quote_lot

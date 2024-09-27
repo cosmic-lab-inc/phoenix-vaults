@@ -12,8 +12,8 @@ use crate::constraints::*;
 use crate::cpis::{PhoenixTradeCPI, PhoenixWithdrawCPI, TokenTransferCPI};
 use crate::error::ErrorCode;
 use crate::math::{
-    quote_atoms_to_quote_lots_rounded_down, quote_lots_to_base_lots, quote_lots_to_quote_atoms,
-    shares_to_amount, Cast, SafeMath,
+    quote_atoms_to_quote_lots_rounded_down, quote_atoms_to_quote_lots_rounded_up,
+    quote_lots_to_base_lots, quote_lots_to_quote_atoms, shares_to_amount, Cast, SafeMath,
 };
 use crate::state::{
     Investor, MarketMap, MarketMapProvider, MarketRegistry, MarketTransferParams, PhoenixProgram,
@@ -83,7 +83,7 @@ pub fn liquidate_usdc_market<'c: 'info, 'info>(
 
     let vault_bl = trader_state.base_lots_free.as_u64();
     let vault_ql = trader_state.quote_lots_free.as_u64();
-    let withdraw_ql = quote_atoms_to_quote_lots_rounded_down(&header, withdraw_request_amount);
+    let withdraw_ql = quote_atoms_to_quote_lots_rounded_up(&header, withdraw_request_amount);
 
     let market_position = ctx.market_position(&vault, market_key)?;
     msg!(
@@ -100,39 +100,35 @@ pub fn liquidate_usdc_market<'c: 'info, 'info>(
     if withdraw_ql > vault_ql {
         // sell base lots to quote lots
         let ql_to_sell = withdraw_ql - vault_ql;
-
-        msg!("ql to sell without fee: {}", ql_to_sell);
         let fee_bps = market_wrapper.inner.get_taker_fee_bps().safe_mul(100)?;
         let ql_fee = ql_to_sell
             .cast::<u128>()?
             .safe_mul(fee_bps.cast()?)?
             .safe_div(PERCENTAGE_PRECISION)?
             .cast::<u64>()?;
-        msg!("ql fee: {}", ql_fee);
         let ql_to_sell = ql_to_sell.safe_add(ql_fee)?;
-        msg!("ql to sell with fee: {}", ql_to_sell);
-
         let bl_to_sell = quote_lots_to_base_lots(&header, ql_to_sell, tick_price).min(vault_bl);
-
         let ql_to_withdraw = vault_ql + ql_to_sell;
         let quote_atoms = quote_lots_to_quote_atoms(&header, ql_to_withdraw);
+        msg!(
+            "liquidating {} USDC quote atoms to fulfill withdraw request",
+            quote_atoms
+        );
         drop(header);
         drop(account_data);
         let params = LiquidateUsdcMarket::build_swap_params(bl_to_sell)?;
         ctx.phoenix_trade(params)?;
-
         // withdraw existing quote_lots plus liquidated quote lots from market to vault
         ctx.phoenix_withdraw(MarketTransferParams {
             base_lots: 0,
             quote_lots: ql_to_withdraw,
         })?;
-        msg!(
-            "liquidated {} USDC quote atoms to fulfill withdraw request",
-            quote_atoms
-        );
-        quote_atoms
     } else {
         let quote_atoms = quote_lots_to_quote_atoms(&header, withdraw_ql);
+        msg!(
+            "withdrawing {} USDC quote atoms to vault to fulfill withdraw request",
+            quote_atoms
+        );
         drop(header);
         drop(account_data);
         // withdraw available quote lots from market to vault
@@ -140,11 +136,6 @@ pub fn liquidate_usdc_market<'c: 'info, 'info>(
             base_lots: 0,
             quote_lots: withdraw_ql,
         })?;
-        msg!(
-            "{} USDC quote atoms withdrawn to fulfill withdraw request",
-            quote_atoms
-        );
-        quote_atoms
     };
 
     let mut vault = ctx.accounts.vault.load_mut()?;

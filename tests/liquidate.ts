@@ -912,7 +912,9 @@ describe('phoenixVaults', () => {
 		assert.strictEqual(investorUsdcAfter, 1199.784805);
 
 		const investorAcct = await program.account.investor.fetch(investor);
-		const withdrawRequest = investorAcct.lastWithdrawRequest.value.toNumber() / QUOTE_PRECISION.toNumber();
+		const withdrawRequest =
+			investorAcct.lastWithdrawRequest.value.toNumber() /
+			QUOTE_PRECISION.toNumber();
 		console.log(`investor withdraw request: ${withdrawRequest}`);
 		assert.strictEqual(withdrawRequest, 0);
 	});
