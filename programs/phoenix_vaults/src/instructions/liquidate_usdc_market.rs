@@ -11,10 +11,7 @@ use crate::constants::PERCENTAGE_PRECISION;
 use crate::constraints::*;
 use crate::cpis::{PhoenixTradeCPI, PhoenixWithdrawCPI, TokenTransferCPI};
 use crate::error::ErrorCode;
-use crate::math::{
-    quote_atoms_to_quote_lots_rounded_down, quote_atoms_to_quote_lots_rounded_up,
-    quote_lots_to_base_lots, quote_lots_to_quote_atoms, shares_to_amount, Cast, SafeMath,
-};
+use crate::math::*;
 use crate::state::{
     Investor, MarketMap, MarketMapProvider, MarketRegistry, MarketTransferParams, PhoenixProgram,
     Vault,
@@ -34,7 +31,7 @@ pub fn liquidate_usdc_market<'c: 'info, 'info>(
 
     let vault_key = ctx.accounts.vault.key();
     let mut vault = ctx.accounts.vault.load_mut()?;
-    let investor = ctx.accounts.investor.load_mut()?;
+    let investor = ctx.accounts.investor.load()?;
 
     if let Err(e) = vault.check_liquidator(&investor, now) {
         vault.reset_liquidation_delegate();
@@ -54,6 +51,10 @@ pub fn liquidate_usdc_market<'c: 'info, 'info>(
         vault.total_shares,
         vault_equity,
     )?;
+    let withdraw_request_amount = amount.min(investor.last_withdraw_request.value);
+    msg!("withdraw_request_amount: {}", withdraw_request_amount);
+
+    drop(vault);
 
     let market_key = ctx.accounts.market.key();
     let account = MarketMap::find(&market_key, &mut ctx.remaining_accounts.iter().peekable())?;
@@ -74,9 +75,6 @@ pub fn liquidate_usdc_market<'c: 'info, 'info>(
         .first()
         .map_or(0, |bid| bid.price_in_ticks);
 
-    let withdraw_request_amount = amount.min(investor.last_withdraw_request.value);
-    msg!("withdraw_request_amount: {}", withdraw_request_amount);
-
     let trader_state = market_wrapper.inner.get_trader_state(&vault_key).ok_or(
         anchor_lang::error::Error::from(ErrorCode::TraderStateNotFound),
     )?;
@@ -84,18 +82,6 @@ pub fn liquidate_usdc_market<'c: 'info, 'info>(
     let vault_bl = trader_state.base_lots_free.as_u64();
     let vault_ql = trader_state.quote_lots_free.as_u64();
     let withdraw_ql = quote_atoms_to_quote_lots_rounded_up(&header, withdraw_request_amount);
-
-    let market_position = ctx.market_position(&vault, market_key)?;
-    msg!(
-        "quote lots: {}",
-        market_position.quote_lots_locked + market_position.quote_lots_free
-    );
-    msg!(
-        "base lots: {}",
-        market_position.base_lots_locked + market_position.base_lots_free
-    );
-
-    drop(vault);
 
     if withdraw_ql > vault_ql {
         // sell base lots to quote lots
@@ -161,7 +147,6 @@ pub struct LiquidateUsdcMarket<'info> {
     pub vault: AccountLoader<'info, Vault>,
 
     #[account(
-        mut,
         seeds = [b"investor", vault.key().as_ref(), authority.key().as_ref()],
         bump,
         constraint = is_authority_for_investor(&investor, &authority)?,

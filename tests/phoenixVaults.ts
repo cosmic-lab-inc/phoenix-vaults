@@ -1061,8 +1061,8 @@ describe('phoenixVaults', () => {
 		console.log(
 			`vault after withdraw, sol: ${vaultSolAfter}, usdc: ${vaultUsdcAfter}`
 		);
-		// assert.strictEqual(vaultSolAfter, 0);
-		// assert.strictEqual(vaultUsdcAfter, 0.095205);
+		assert.strictEqual(vaultSolAfter, 0);
+		assert.strictEqual(vaultUsdcAfter, 0.000006);
 
 		const investorUsdcAfter = await tokenBalance(conn, investorUsdcAta);
 		console.log(`investor usdc after withdraw: ${investorUsdcAfter}`);

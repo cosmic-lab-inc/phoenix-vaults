@@ -48,6 +48,10 @@ pub fn quote_lots_to_quote_atoms(header: &MarketHeader, quote_lots: u64) -> u64 
     quote_lots * quote_atoms_per_quote_lot
 }
 
+pub fn quote_lots_to_quote_atoms_no_header(quote_atoms_per_quote_lot: u64, quote_lots: u64) -> u64 {
+    quote_lots * quote_atoms_per_quote_lot
+}
+
 pub fn base_lots_and_price_to_quote_atoms(
     header: &MarketHeader,
     base_lots: u64,
