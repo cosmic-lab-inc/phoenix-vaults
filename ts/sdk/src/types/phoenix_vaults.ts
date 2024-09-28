@@ -602,7 +602,7 @@ export type PhoenixVaults = {
 			accounts: [
 				{
 					name: 'vault';
-					isMut: false;
+					isMut: true;
 					isSigner: false;
 					docs: [
 						'If delegate has authority to sign for vault, then any Phoenix CPI is valid.',
@@ -726,7 +726,7 @@ export type PhoenixVaults = {
 				},
 				{
 					name: 'investor';
-					isMut: true;
+					isMut: false;
 					isSigner: false;
 				},
 				{
@@ -816,7 +816,7 @@ export type PhoenixVaults = {
 				},
 				{
 					name: 'investor';
-					isMut: true;
+					isMut: false;
 					isSigner: false;
 				},
 				{
@@ -892,6 +892,16 @@ export type PhoenixVaults = {
 				{
 					name: 'marketSolTokenAccount';
 					isMut: true;
+					isSigner: false;
+				},
+				{
+					name: 'solUsdcMarket';
+					isMut: true;
+					isSigner: false;
+				},
+				{
+					name: 'solUsdcMarketSeat';
+					isMut: false;
 					isSigner: false;
 				},
 				{
@@ -2598,7 +2608,7 @@ export const IDL: PhoenixVaults = {
 			accounts: [
 				{
 					name: 'vault',
-					isMut: false,
+					isMut: true,
 					isSigner: false,
 					docs: [
 						'If delegate has authority to sign for vault, then any Phoenix CPI is valid.',
@@ -2722,7 +2732,7 @@ export const IDL: PhoenixVaults = {
 				},
 				{
 					name: 'investor',
-					isMut: true,
+					isMut: false,
 					isSigner: false,
 				},
 				{
@@ -2812,7 +2822,7 @@ export const IDL: PhoenixVaults = {
 				},
 				{
 					name: 'investor',
-					isMut: true,
+					isMut: false,
 					isSigner: false,
 				},
 				{
@@ -2888,6 +2898,16 @@ export const IDL: PhoenixVaults = {
 				{
 					name: 'marketSolTokenAccount',
 					isMut: true,
+					isSigner: false,
+				},
+				{
+					name: 'solUsdcMarket',
+					isMut: true,
+					isSigner: false,
+				},
+				{
+					name: 'solUsdcMarketSeat',
+					isMut: false,
 					isSigner: false,
 				},
 				{

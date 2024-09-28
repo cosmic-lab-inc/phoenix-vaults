@@ -18,14 +18,14 @@ pub fn appoint_liquidator<'c: 'info, 'info>(
     let mut vault = ctx.accounts.vault.load_mut()?;
     let investor = ctx.accounts.investor.load()?;
     let registry = ctx.accounts.market_registry.load()?;
-    let vault_usdc_ata = &ctx.accounts.vault_quote_token_account;
+    let vault_usdc = &ctx.accounts.vault_quote_token_account;
 
     // 1. Check the vault depositor has waited the redeem period since the last withdraw request
     investor
         .last_withdraw_request
         .check_redeem_period_finished(&vault, now)?;
     // 2. Check that the depositor is unable to withdraw
-    ctx.check_cant_withdraw(&investor, vault_usdc_ata, &registry)?;
+    ctx.check_cant_withdraw(&investor, vault_usdc, &registry)?;
     // 3. Check that the vault is not already in liquidation for another investor
     vault.check_delegate_available_for_liquidation(&investor, now)?;
 

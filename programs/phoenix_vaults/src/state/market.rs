@@ -1,4 +1,4 @@
-use crate::constants::{PERCENTAGE_PRECISION, PRICE_PRECISION_U64};
+use crate::constants::PRICE_PRECISION_U64;
 use crate::error::ErrorCode;
 use crate::math::*;
 use crate::state::{Investor, MarketPosition, MarketRegistry, Vault};
@@ -8,7 +8,6 @@ use anchor_spl::token::TokenAccount;
 use phoenix::program::{load_with_dispatch, MarketHeader};
 use phoenix::quantities::WrapperU64;
 use sokoban::ZeroCopy;
-use std::collections::BTreeMap;
 use std::iter::Peekable;
 use std::slice::Iter;
 
@@ -199,14 +198,14 @@ impl<'a: 'info, 'info, T: anchor_lang::Bumps> MarketMapProvider<'a>
     }
 }
 
-pub struct MarketMap<'a>(pub BTreeMap<Pubkey, &'a AccountInfo<'a>>);
+pub struct MarketMap;
 
-impl<'a> MarketMap<'a> {
-    pub fn find<'c>(
+impl MarketMap {
+    pub fn find<'a>(
         key: &Pubkey,
-        account_info_iter: &'c mut Peekable<Iter<'a, AccountInfo<'a>>>,
+        account_info_iter: &mut Peekable<Iter<'a, AccountInfo<'a>>>,
     ) -> Result<&'a AccountInfo<'a>> {
-        while let Some(account_info) = account_info_iter.peek() {
+        for account_info in account_info_iter.by_ref() {
             if account_info.key == key {
                 return Ok(account_info);
             }

@@ -19,6 +19,7 @@ import {
 	MarketPosition,
 	PERCENTAGE_PRECISION,
 	PhoenixVaults,
+	UiMarketPosition,
 	Vault,
 	ZERO,
 } from '../ts/sdk';
@@ -377,31 +378,39 @@ export async function outAmount(
 	});
 }
 
-export async function logLadder(conn: Connection, market: PublicKey) {
+export async function amountPlusFee(
+	conn: Connection,
+	market: PublicKey,
+	inAmount: number
+) {
 	const marketState = await fetchMarketState(conn, market);
-	const ladder = marketState.getUiLadder(3, 0, 0);
-	if (ladder.bids.length === 0) {
-		console.log('no bids');
-	}
-	if (ladder.asks.length === 0) {
-		console.log('no asks');
-	}
-	for (const bid of ladder.bids) {
-		const price = bid.price;
-		console.log(`bid: ${price}`);
-	}
-	for (const ask of ladder.asks) {
-		const price = ask.price;
-		console.log(`ask: ${price}`);
-	}
+	const takerFeeBps = marketState.data.takerFeeBps;
+	return inAmount / (1 - takerFeeBps / 10000);
 }
 
-export async function marketPrice(
+export async function amountMinusFee(
 	conn: Connection,
-	market: PublicKey
-): Promise<number> {
+	market: PublicKey,
+	inAmount: number
+) {
 	const marketState = await fetchMarketState(conn, market);
-	return marketState.getUiLadder(1, 0, 0).bids[0].price;
+	const takerFeeBps = marketState.data.takerFeeBps;
+	return inAmount / (1 + takerFeeBps / 10000);
+}
+
+export async function calcFee(
+	conn: Connection,
+	market: PublicKey,
+	side: Side,
+	inAmount: number
+) {
+	const marketState = await fetchMarketState(conn, market);
+	const takerFeeBps = marketState.data.takerFeeBps;
+	if (side === Side.Bid) {
+		return inAmount / (1 + takerFeeBps / 10000);
+	} else {
+		return inAmount / (1 - takerFeeBps / 10000);
+	}
 }
 
 function isAvailable(position: MarketPosition) {
@@ -467,16 +476,6 @@ export async function fetchInvestorEquity(
 	return (investorShares / vaultShares) * vaultEquity;
 }
 
-export async function fetchInvestorEquityRoundedDown(
-	program: anchor.Program<PhoenixVaults>,
-	conn: Connection,
-	investor: PublicKey,
-	vault: PublicKey
-): Promise<number> {
-	const equity = await fetchInvestorEquity(program, conn, investor, vault);
-	return Math.floor(equity);
-}
-
 export function amountToShares(
 	amount: BN,
 	totalShares: BN,
@@ -532,32 +531,72 @@ export function calculateRealizedInvestorEquity(
 		vault.totalShares,
 		vaultEquity
 	);
-	console.log('investorAmount:', investorAmount.toNumber());
 	const profitShareAmount = calculateProfitShare(
 		investor,
 		investorAmount,
 		vault
 	);
-	console.log('profitShareAmount:', profitShareAmount.toNumber());
 	return investorAmount.sub(profitShareAmount);
 }
 
-export function investorEquityAvailableAfterLiquidation(
-	investor: Investor,
-	vaultEquity: BN,
-	vault: Vault
-): BN {
-	const investorAmount = sharesToAmount(
-		investor.vaultShares,
-		vault.totalShares,
-		vaultEquity
+export async function fetchMarketPosition(
+	program: anchor.Program<PhoenixVaults>,
+	vault: PublicKey,
+	market: PublicKey
+): Promise<UiMarketPosition> {
+	const marketState = await fetchMarketState(
+		program.provider.connection,
+		market
 	);
-	console.log('investorAmount:', investorAmount.toNumber());
-	const profitShareAmount = calculateProfitShare(
-		investor,
-		investorAmount,
-		vault
-	);
-	console.log('profitShareAmount:', profitShareAmount.toNumber());
-	return investorAmount.sub(profitShareAmount);
+	const vaultAcct = await program.account.vault.fetch(vault);
+	const pos = (vaultAcct.positions as MarketPosition[]).find((pos) => {
+		return pos.market.equals(market);
+	});
+	if (!pos) {
+		throw Error(`MarketPosition not found in for market ${market.toString()}`);
+	}
+
+	const quoteLotsFreeBigNum = pos.quoteLotsFree;
+	let quoteLotsFree: number;
+	if (quoteLotsFreeBigNum instanceof BN) {
+		quoteLotsFree = quoteLotsFreeBigNum.toNumber();
+	} else {
+		quoteLotsFree = quoteLotsFreeBigNum as number;
+	}
+
+	const quoteLotsLockedBigNum = pos.quoteLotsLocked;
+	let quoteLotsLocked: number;
+	if (quoteLotsLockedBigNum instanceof BN) {
+		quoteLotsLocked = quoteLotsLockedBigNum.toNumber();
+	} else {
+		quoteLotsLocked = quoteLotsLockedBigNum as number;
+	}
+
+	const baseLotsFreeBigNum = pos.baseLotsFree;
+	let baseLotsFree: number;
+	if (baseLotsFreeBigNum instanceof BN) {
+		baseLotsFree = baseLotsFreeBigNum.toNumber();
+	} else {
+		baseLotsFree = baseLotsFreeBigNum as number;
+	}
+
+	const baseLotsLockedBigNum = pos.baseLotsLocked;
+	let baseLotsLocked: number;
+	if (baseLotsLockedBigNum instanceof BN) {
+		baseLotsLocked = baseLotsLockedBigNum.toNumber();
+	} else {
+		baseLotsLocked = baseLotsLockedBigNum as number;
+	}
+
+	const quoteUnitsFree = marketState.quoteLotsToQuoteUnits(quoteLotsFree);
+	const quoteUnitsLocked = marketState.quoteLotsToQuoteUnits(quoteLotsLocked);
+	const baseUnitsFree = marketState.baseLotsToRawBaseUnits(baseLotsFree);
+	const baseUnitsLocked = marketState.baseLotsToRawBaseUnits(baseLotsLocked);
+	return {
+		market,
+		quoteUnitsFree,
+		quoteUnitsLocked,
+		baseUnitsFree,
+		baseUnitsLocked,
+	};
 }

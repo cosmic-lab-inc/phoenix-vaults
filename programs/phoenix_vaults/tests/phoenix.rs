@@ -1,13 +1,11 @@
 use phoenix::program::status::MarketStatus;
 use phoenix::program::*;
 use phoenix_seat_manager::get_seat_manager_address;
-use phoenix_seat_manager::instruction_builders::{
-    create_claim_market_authority_instruction, create_name_seat_manager_successor_instruction,
-};
+use phoenix_seat_manager::instruction_builders::create_claim_market_authority_instruction;
 use phoenix_seat_manager::seat_manager::SeatManager;
 use solana_client::nonblocking::rpc_client::RpcClient;
 use solana_sdk::commitment_config::CommitmentConfig;
-use solana_sdk::signature::{Keypair, Signature};
+use solana_sdk::signature::Keypair;
 use solana_sdk::signer::Signer;
 use spl_associated_token_account::get_associated_token_address;
 
@@ -219,8 +217,7 @@ async fn bootstrap_market(cfg: BootstrapMarketConfig<'_>) -> anyhow::Result<()> 
     // this creates SeatManager: https://github.com/Ellipsis-Labs/phoenix-seat-manager-v1/blob/31ad32a186d7e0e5aa747dcaa9463b7e27089b47/src/processor/claim_market_authority.rs#L98
     let claim_auth_ix =
         create_claim_market_authority_instruction(&market.pubkey(), &payer.pubkey());
-
-    let claim_auth_sig = send_and_confirm_tx(client, payer, &[claim_auth_ix], &[payer]).await?;
+    let _ = send_and_confirm_tx(client, payer, &[claim_auth_ix], &[payer]).await?;
 
     let (seat_manager_address, _) = get_seat_manager_address(&market.pubkey());
     let seat_manager_data = client
@@ -277,32 +274,32 @@ async fn bootstrap_markets() -> anyhow::Result<()> {
     println!("post SOL/USDC balance: {}", post_balance);
     println!("==================================================================");
 
-    // // JUP/SOL market
-    // airdrop(&client, &payer.pubkey(), 10.0).await?;
-    // airdrop(&client, &authority.pubkey(), 10.0).await?;
-    // let pre_balance = get_lamports(&client, &payer.pubkey()).await?;
-    // println!("pre JUP/SOL balance: {}", pre_balance);
-    // bootstrap_market(BootstrapMarketConfig {
-    //     client: &client,
-    //     payer: &payer,
-    //     authority: &authority,
-    //     market: &jup_sol_market,
-    //     quote_mint: &sol_mint,
-    //     quote_decimals: MOCK_SOL_DECIMALS,
-    //     base_mint: &jup_mint,
-    //     base_decimals: MOCK_JUP_DECIMALS,
-    //
-    //     num_quote_lots_per_quote_unit: None,
-    //     num_base_lots_per_base_unit: None,
-    //     tick_size_in_quote_lots_per_base_unit: None,
-    //     fee_bps: None,
-    //     raw_base_units_per_base_unit: None,
-    // })
-    // .await?;
-    // let post_balance = get_lamports(&client, &payer.pubkey()).await?;
-    // println!("post JUP/SOL balance: {}", post_balance);
-    // println!("==================================================================");
-    //
+    // JUP/SOL market
+    airdrop(&client, &payer.pubkey(), 10.0).await?;
+    airdrop(&client, &authority.pubkey(), 10.0).await?;
+    let pre_balance = get_lamports(&client, &payer.pubkey()).await?;
+    println!("pre JUP/SOL balance: {}", pre_balance);
+    bootstrap_market(BootstrapMarketConfig {
+        client: &client,
+        payer: &payer,
+        authority: &authority,
+        market: &jup_sol_market,
+        quote_mint: &sol_mint,
+        quote_decimals: MOCK_SOL_DECIMALS,
+        base_mint: &jup_mint,
+        base_decimals: MOCK_JUP_DECIMALS,
+
+        num_quote_lots_per_quote_unit: None,
+        num_base_lots_per_base_unit: None,
+        tick_size_in_quote_lots_per_base_unit: None,
+        fee_bps: None,
+        raw_base_units_per_base_unit: None,
+    })
+    .await?;
+    let post_balance = get_lamports(&client, &payer.pubkey()).await?;
+    println!("post JUP/SOL balance: {}", post_balance);
+    println!("==================================================================");
+
     // // JUP/USDC market
     // airdrop(&client, &payer.pubkey(), 10.0).await?;
     // airdrop(&client, &authority.pubkey(), 10.0).await?;

@@ -31,6 +31,7 @@ pub struct MarketWithdraw<'info> {
     /// Phoenix CPI validates that opaque instruction data is a [`PhoenixInstruction`],
     /// so this is safe since any Phoenix CPI is secure.
     #[account(
+        mut,
         constraint = is_delegate_for_vault(&vault, &delegate)?
     )]
     pub vault: AccountLoader<'info, Vault>,

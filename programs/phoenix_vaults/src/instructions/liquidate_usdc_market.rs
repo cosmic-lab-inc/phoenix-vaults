@@ -64,9 +64,15 @@ pub fn liquidate_usdc_market<'c: 'info, 'info>(
         anchor_lang::error::Error::from(ErrorCode::MarketDeserializationError),
     )?);
     let quote_mint = header.quote_params.mint_key;
-    if quote_mint != registry.usdc_mint {
-        return Err(ErrorCode::UnrecognizedQuoteMint.into());
-    }
+    validate!(
+        quote_mint == registry.usdc_mint,
+        ErrorCode::UnrecognizedQuoteMint,
+        &format!(
+            "Unrecognized quote mint {:?} != {:?}",
+            quote_mint, registry.usdc_mint
+        )
+    )?;
+
     let market_wrapper = load_with_dispatch(&header.market_size_params, bytes)?;
     let tick_price = market_wrapper
         .inner
@@ -95,11 +101,12 @@ pub fn liquidate_usdc_market<'c: 'info, 'info>(
         let ql_to_sell = ql_to_sell.safe_add(ql_fee)?;
         let bl_to_sell = quote_lots_to_base_lots(&header, ql_to_sell, tick_price).min(vault_bl);
         let ql_to_withdraw = vault_ql + ql_to_sell;
-        let quote_atoms = quote_lots_to_quote_atoms(&header, ql_to_withdraw);
+
         msg!(
             "liquidating {} USDC quote atoms to fulfill withdraw request",
-            quote_atoms
+            quote_lots_to_quote_atoms(&header, ql_to_withdraw)
         );
+
         drop(header);
         drop(account_data);
         let params = LiquidateUsdcMarket::build_swap_params(bl_to_sell)?;
@@ -110,10 +117,9 @@ pub fn liquidate_usdc_market<'c: 'info, 'info>(
             quote_lots: ql_to_withdraw,
         })?;
     } else {
-        let quote_atoms = quote_lots_to_quote_atoms(&header, withdraw_ql);
         msg!(
-            "withdrawing {} USDC quote atoms to vault to fulfill withdraw request",
-            quote_atoms
+            "liquidation not required, withdrawing {} USDC quote atoms to vault to fulfill withdraw request",
+            quote_lots_to_quote_atoms(&header, withdraw_ql)
         );
         drop(header);
         drop(account_data);

@@ -8,6 +8,7 @@ use phoenix::state::{OrderPacket, OrderPacketMetadata, SelfTradeBehavior, Side};
 use sokoban::ZeroCopy;
 use solana_program::program::invoke_signed;
 
+use crate::constants::PERCENTAGE_PRECISION;
 use crate::constraints::*;
 use crate::cpis::*;
 use crate::error::ErrorCode;
@@ -17,7 +18,6 @@ use crate::state::{
     Vault,
 };
 use crate::{declare_vault_seeds, validate};
-use crate::constants::PERCENTAGE_PRECISION;
 
 /// Investor has authority to liquidate vault position in any market if they can't withdraw their equity.
 /// This instruction liquidates up to the amount the investor has unfulfilled in its last withdraw request.
@@ -50,6 +50,7 @@ pub fn liquidate_sol_market<'c: 'info, 'info>(
     }
 
     let vault_equity = ctx.equity(&vault, vault_usdc, &registry)?;
+    msg!("vault_equity: {}", vault_equity);
     let amount = shares_to_amount(
         investor.last_withdraw_request.shares,
         vault.total_shares,
@@ -62,15 +63,21 @@ pub fn liquidate_sol_market<'c: 'info, 'info>(
 
     let vault_key = ctx.accounts.vault.key();
     let market_key = ctx.accounts.market.key();
-    let rem_accts = &mut ctx.remaining_accounts.iter().peekable();
+
+    let sol_usdc_market_account = MarketMap::find(
+        &registry.sol_usdc_market,
+        &mut ctx.remaining_accounts.iter().peekable(),
+    )?;
+    msg!(
+        "found SOL/USDC market {:?} in rem accts",
+        &registry.sol_usdc_market
+    );
 
     //
     // XXX/SOL market
     //
-    let account = MarketMap::find(
-        &market_key,
-        rem_accts
-    )?;
+    let account = MarketMap::find(&market_key, &mut ctx.remaining_accounts.iter().peekable())?;
+    msg!("found XXX/SOL market {:?} in rem accts", &market_key);
     let account_data = account.try_borrow_data()?;
     let (header_bytes, bytes) = account_data.split_at(std::mem::size_of::<MarketHeader>());
     let header = Box::new(MarketHeader::load_bytes(header_bytes).ok_or(
@@ -88,12 +95,14 @@ pub fn liquidate_sol_market<'c: 'info, 'info>(
     //
     // SOL/USDC market
     //
-    let sol_usdc_market_account = MarketMap::find(
-        &registry.sol_usdc_market,
-        rem_accts
-    )?;
+    // let sol_usdc_market_account = MarketMap::find(&registry.sol_usdc_market, &mut ctx.remaining_accounts.iter().peekable())?;
+    // msg!(
+    //     "found SOL/USDC market {:?} in rem accts",
+    //     &registry.sol_usdc_market
+    // );
     let sol_usdc_market_account_data = sol_usdc_market_account.try_borrow_data()?;
-    let (sol_usdc_header_bytes, sol_usdc_bytes) = sol_usdc_market_account_data.split_at(std::mem::size_of::<MarketHeader>());
+    let (sol_usdc_header_bytes, sol_usdc_bytes) =
+        sol_usdc_market_account_data.split_at(std::mem::size_of::<MarketHeader>());
     let sol_usdc_header = Box::new(
         MarketHeader::load_bytes(sol_usdc_header_bytes)
             .ok_or(anchor_lang::error::Error::from(
@@ -106,111 +115,158 @@ pub fn liquidate_sol_market<'c: 'info, 'info>(
     {
         return Err(ErrorCode::SolMarketMissing.into());
     }
-    let sol_usdc_market_wrapper = load_with_dispatch(&sol_usdc_header.market_size_params, sol_usdc_bytes)?;
+    let sol_usdc_market_wrapper =
+        load_with_dispatch(&sol_usdc_header.market_size_params, sol_usdc_bytes)?;
     let sol_usdc_ladder = sol_usdc_market_wrapper.inner.get_ladder(1);
-    let sol_usdc_tick_price = sol_usdc_ladder.bids.first().map_or(0, |bid| bid.price_in_ticks);
-    let sol_usdc_fee_bps = sol_usdc_market_wrapper.inner.get_taker_fee_bps().safe_mul(100)?;
+    let sol_usdc_tick_price = sol_usdc_ladder
+        .bids
+        .first()
+        .map_or(0, |bid| bid.price_in_ticks);
+    let sol_usdc_fee_bps = sol_usdc_market_wrapper
+        .inner
+        .get_taker_fee_bps()
+        .safe_mul(100)?;
 
-    if let Some(trader_state) = market_wrapper.inner.get_trader_state(&vault_key) {
-        let quote_mint = header.quote_params.mint_key;
-        if quote_mint == registry.sol_mint {
-            return Err(ErrorCode::UnrecognizedQuoteMint.into());
-        }
+    let trader_state = market_wrapper.inner.get_trader_state(&vault_key).ok_or(
+        anchor_lang::error::Error::from(ErrorCode::TraderStateNotFound),
+    )?;
 
-        let base_lots = trader_state.base_lots_free.as_u64();
-        let sol_lots = trader_state.quote_lots_free.as_u64();
+    let quote_mint = header.quote_params.mint_key;
+    validate!(
+        quote_mint == registry.sol_mint,
+        ErrorCode::UnrecognizedQuoteMint,
+        &format!(
+            "Unrecognized quote mint {:?} != {:?}",
+            quote_mint, registry.sol_mint
+        )
+    )?;
 
-        let withdraw_usdc_lots =
-            quote_atoms_to_quote_lots_rounded_up(&header, withdraw_request_amount);
-        let withdraw_sol_lots =
-            quote_lots_to_base_lots(&sol_usdc_header, withdraw_usdc_lots, sol_usdc_tick_price);
+    let base_lots_available = trader_state.base_lots_free.as_u64();
+    let sol_lots_available = trader_state.quote_lots_free.as_u64();
 
-        let sol_quote_lots_to_withdraw = if sol_lots >= withdraw_sol_lots {
-            drop(header);
-            drop(account_data);
-            // withdraw from market to `vault_sol_token_account`
-            ctx.phoenix_withdraw(MarketTransferParams {
-                base_lots: 0,
-                quote_lots: withdraw_sol_lots,
-            })?;
-            withdraw_sol_lots
-        } else {
-            // sell base lots into sol/quote lots
-            let ql_to_sell = withdraw_sol_lots - sol_lots;
+    // factor in fee to swap liquidated SOL into USDC
+    let withdraw_request_fee = withdraw_request_amount
+        .cast::<u128>()?
+        .safe_mul(sol_usdc_fee_bps.cast()?)?
+        .safe_div(PERCENTAGE_PRECISION)?
+        .cast::<u64>()?;
+    // add fee to withdraw request amount to be able to withdraw the requested amount after swapping
+    let withdraw_request_amount = withdraw_request_amount.safe_add(withdraw_request_fee)?;
+    msg!(
+        "withdraw_request_amount_with_fee: {}",
+        withdraw_request_amount
+    );
+    // convert withdraw request from USDC to SOL using SOL/USDC market terms
+    let sol_lots_in_sol_usdc_market_terms_to_withdraw = quote_atoms_and_price_to_base_lots(
+        &sol_usdc_header,
+        withdraw_request_amount,
+        sol_usdc_tick_price,
+    );
+    let sol_atoms = base_lots_to_base_atoms(
+        &sol_usdc_header,
+        sol_lots_in_sol_usdc_market_terms_to_withdraw,
+    );
+    msg!("sol atoms to withdraw: {}", sol_atoms);
+    // convert the SOL from SOL/USDC market terms to XXX/SOL market terms
+    let sol_lots_in_sol_market_terms_to_withdraw =
+        quote_atoms_to_quote_lots_rounded_up(&header, sol_atoms);
 
-            let fee_bps = market_wrapper.inner.get_taker_fee_bps().safe_mul(100)?;
-            let ql_fee = ql_to_sell
-                .cast::<u128>()?
-                .safe_mul(fee_bps.cast()?)?
-                .safe_div(PERCENTAGE_PRECISION)?
-                .cast::<u64>()?;
-            let ql_to_sell = ql_to_sell.safe_add(ql_fee)?;
-            
-            let bl_to_sell =
-                quote_lots_to_base_lots(&header, ql_to_sell, tick_price).min(base_lots);
-            let params = LiquidateSolMarket::build_swap_params(bl_to_sell)?;
-            
-            drop(header);
-            drop(account_data);
-            ctx.phoenix_trade(params)?;
-            
-            // withdraw liquidated base_lots and existing sol_lots to `vault_sol_token_account`
-            let ql_to_withdraw = sol_lots + ql_to_sell;
-            ctx.phoenix_withdraw(MarketTransferParams {
-                base_lots: 0,
-                quote_lots: ql_to_withdraw,
-            })?;
-            ql_to_withdraw
-        };
+    let sol_atoms_to_withdraw = if sol_lots_in_sol_market_terms_to_withdraw > sol_lots_available {
+        // sell XXX base lots into SOL quote lots
+        let ql_to_sell = sol_lots_in_sol_market_terms_to_withdraw - sol_lots_available;
 
-        //  * deposit sol_quote_atoms from `vault_sol_token_account` to SOL/USDC market
-        //  * swap SOL into USDC
-        //  * withdraw quote USDC to `vault_usdc_token_account`
-        //  * transfer quote USDC to `investor_usdc_token_account`
-        
-        // swap SOL into USDC
-        let sol_atoms = quote_lots_to_quote_atoms_no_header(quote_atoms_per_quote_lot, sol_quote_lots_to_withdraw);
-        let sol_base_lots_on_sol_usdc_market = base_atoms_to_base_lots_rounded_down(&sol_usdc_header, sol_atoms);
-        
-        let fee = sol_base_lots_on_sol_usdc_market
+        let fee_bps = market_wrapper.inner.get_taker_fee_bps().safe_mul(100)?;
+        let ql_fee = ql_to_sell
             .cast::<u128>()?
-            .safe_mul(sol_usdc_fee_bps.cast()?)?
+            .safe_mul(fee_bps.cast()?)?
             .safe_div(PERCENTAGE_PRECISION)?
             .cast::<u64>()?;
-        let sol_base_lots_on_sol_usdc_market = sol_base_lots_on_sol_usdc_market.safe_add(fee)?;
-        let usdc_lots = base_lots_to_quote_lots(
-            &sol_usdc_header,
-            sol_base_lots_on_sol_usdc_market,
-            sol_usdc_tick_price,
+        let ql_to_sell = ql_to_sell.safe_add(ql_fee)?;
+
+        msg!(
+            "liquidating {} SOL atoms",
+            quote_lots_to_quote_atoms(&header, ql_to_sell)
         );
 
-        drop(sol_usdc_header);
-        drop(sol_usdc_market_account_data);
+        let bl_to_sell =
+            quote_lots_to_base_lots(&header, ql_to_sell, tick_price).min(base_lots_available);
+        let params = LiquidateSolMarket::build_swap_params(bl_to_sell)?;
 
-        // deposit sol_quote_atoms from `vault_sol_token_account` to SOL/USDC market
-        ctx.phoenix_deposit_sol_usdc_market(MarketTransferParams {
-            quote_lots: 0,
-            // sol is quote on withdrawing market, but base on depositing market (SOL/USDC)
-            base_lots: sol_quote_lots_to_withdraw,
-        })?;
-        
-        let params = LiquidateSolMarket::build_swap_params(sol_base_lots_on_sol_usdc_market)?;
+        let ql_to_withdraw = sol_lots_available + ql_to_sell;
+        let sol_atoms_to_withdraw = quote_lots_to_quote_atoms(&header, ql_to_withdraw);
+        msg!("withdrawing {} SOL atoms", sol_atoms_to_withdraw);
+
+        drop(header);
+        drop(account_data);
         ctx.phoenix_trade(params)?;
 
-        // withdraw quote USDC to `vault_usdc_token_account`
+        // withdraw liquidated base_lots and existing sol_lots to `vault_sol_token_account`
         ctx.phoenix_withdraw(MarketTransferParams {
             base_lots: 0,
-            quote_lots: usdc_lots,
+            quote_lots: ql_to_withdraw,
         })?;
-    }
+        sol_atoms_to_withdraw
+    } else {
+        let sol_atoms_to_withdraw =
+            quote_lots_to_quote_atoms(&header, sol_lots_in_sol_market_terms_to_withdraw);
+        msg!(
+            "liquidation not required, withdrawing {} SOL atoms",
+            sol_atoms_to_withdraw
+        );
+
+        drop(header);
+        drop(account_data);
+        // withdraw from market to `vault_sol_token_account`
+        ctx.phoenix_withdraw(MarketTransferParams {
+            base_lots: 0,
+            quote_lots: sol_lots_in_sol_market_terms_to_withdraw,
+        })?;
+        sol_atoms_to_withdraw
+    };
+
+    // convert liquidated SOL to SOL/USDC market terms
+    let sol_base_lots_on_sol_usdc_market_to_withdraw =
+        base_atoms_to_base_lots_rounded_down(&sol_usdc_header, sol_atoms_to_withdraw);
+    msg!(
+        "sol_base_lots_on_sol_usdc_market_to_withdraw: {}",
+        sol_base_lots_on_sol_usdc_market_to_withdraw
+    );
+    let usdc_lots_on_sol_usdc_market_to_withdraw = base_lots_to_quote_lots(
+        &sol_usdc_header,
+        sol_base_lots_on_sol_usdc_market_to_withdraw,
+        sol_usdc_tick_price,
+    );
+    msg!(
+        "usdc_lots_on_sol_usdc_market_to_withdraw: {}",
+        usdc_lots_on_sol_usdc_market_to_withdraw
+    );
+
+    drop(sol_usdc_header);
+    drop(sol_usdc_market_account_data);
+
+    // deposit SOL from `vault_sol_token_account` to SOL/USDC market
+    ctx.phoenix_deposit_sol_usdc_market(MarketTransferParams {
+        quote_lots: 0,
+        // sol is quote on withdrawing market (XXX/SOL), but base on depositing market (SOL/USDC)
+        base_lots: sol_base_lots_on_sol_usdc_market_to_withdraw,
+    })?;
+
+    // sell SOL into USDC
+    let params =
+        LiquidateSolMarket::build_swap_params(sol_base_lots_on_sol_usdc_market_to_withdraw)?;
+    ctx.phoenix_trade_sol_usdc_market(params)?;
+
+    // withdraw quote USDC to `vault_usdc_token_account`
+    ctx.phoenix_withdraw_sol_usdc_market(MarketTransferParams {
+        base_lots: 0,
+        quote_lots: usdc_lots_on_sol_usdc_market_to_withdraw,
+    })?;
 
     let mut vault = ctx.accounts.vault.load_mut()?;
-    let market = ctx.accounts.market.key();
-    let pos = ctx.market_position(&vault, market)?;
+    let pos = ctx.market_position(&vault, ctx.accounts.market.key())?;
     vault.force_update_market_position(pos)?;
 
-    let sol_usdc_market = registry.sol_usdc_market;
-    let sol_usdc_pos = ctx.market_position(&vault, sol_usdc_market)?;
+    let sol_usdc_pos = ctx.market_position(&vault, registry.sol_usdc_market)?;
     vault.force_update_market_position(sol_usdc_pos)?;
 
     drop(vault);
@@ -299,6 +355,11 @@ pub struct LiquidateSolMarket<'info> {
     )]
     pub market_sol_token_account: Account<'info, TokenAccount>,
 
+    /// CHECK: validated in Phoenix CPI
+    #[account(mut)]
+    pub sol_usdc_market: UncheckedAccount<'info>,
+    /// CHECK: validated in Phoenix CPI
+    pub sol_usdc_market_seat: UncheckedAccount<'info>,
     #[account(
         mut,
         constraint = is_sol_mint(&vault, &sol_usdc_market_sol_token_account.mint)?,
@@ -380,7 +441,7 @@ impl<'info> PhoenixWithdrawSolUsdcMarketCPI
     fn phoenix_withdraw_sol_usdc_market(&self, params: MarketTransferParams) -> Result<()> {
         let trader_index = 3;
         let mut ix = phoenix::program::instruction_builders::create_withdraw_funds_with_custom_amounts_instruction(
-            &self.accounts.market.key(),
+            &self.accounts.sol_usdc_market.key(),
             &self.accounts.vault.key(),
             &self.accounts.sol_mint.key(),
             &self.accounts.usdc_mint.key(),
@@ -401,7 +462,7 @@ impl<'info> PhoenixWithdrawSolUsdcMarketCPI
         let accounts = [
             self.accounts.phoenix.to_account_info(),
             self.accounts.log_authority.to_account_info(),
-            self.accounts.market.to_account_info(),
+            self.accounts.sol_usdc_market.to_account_info(),
             self.accounts.vault.to_account_info(),
             self.accounts.vault_sol_token_account.to_account_info(),
             self.accounts.vault_usdc_token_account.to_account_info(),
@@ -416,6 +477,60 @@ impl<'info> PhoenixWithdrawSolUsdcMarketCPI
         declare_vault_seeds!(self.accounts.vault, seeds);
         invoke_signed(&ix, &accounts, seeds)?;
 
+        Ok(())
+    }
+}
+
+impl<'info> PhoenixTradeSolUsdcMarketCPI for Context<'_, '_, '_, 'info, LiquidateSolMarket<'info>> {
+    fn phoenix_trade_sol_usdc_market(&self, order: OrderPacket) -> Result<()> {
+        validate!(
+            order.is_take_only(),
+            ErrorCode::OrderPacketMustBeTakeOnly,
+            "OrderPacket must be take-only"
+        )?;
+        validate!(
+            order.no_deposit_or_withdrawal(),
+            ErrorCode::OrderPacketMustUseDepositedFunds,
+            "OrderPacket must use deposited funds"
+        )?;
+
+        let trader_index = 3;
+        let mut ix =
+            phoenix::program::instruction_builders::create_new_order_with_free_funds_instruction(
+                &self.accounts.sol_usdc_market.key(),
+                &self.accounts.vault.key(),
+                &order,
+            );
+        ix.accounts[trader_index].is_signer = true;
+
+        // #[account(0, name = "phoenix_program", desc = "Phoenix program")]
+        // #[account(1, name = "log_authority", desc = "Phoenix log authority")]
+        // #[account(2, writable, name = "market", desc = "This account holds the market state")]
+        // #[account(3, signer, name = "trader")]
+        // #[account(4, name = "seat")]
+        // #[account(5, writable, name = "base_account", desc = "Trader base token account")]
+        // #[account(6, writable, name = "quote_account", desc = "Trader quote token account")]
+        // #[account(7, writable, name = "base_vault", desc = "Base vault PDA, seeds are [b'vault', market_address, base_mint_address]")]
+        // #[account(8, writable, name = "quote_vault", desc = "Quote vault PDA, seeds are [b'vault', market_address, quote_mint_address]")]
+        // #[account(9, name = "token_program", desc = "Token program")]
+        let accounts = [
+            self.accounts.phoenix.to_account_info(),
+            self.accounts.log_authority.to_account_info(),
+            self.accounts.sol_usdc_market.to_account_info(),
+            self.accounts.vault.to_account_info(),
+            self.accounts.sol_usdc_market_seat.to_account_info(),
+            self.accounts.vault_sol_token_account.to_account_info(),
+            self.accounts.vault_usdc_token_account.to_account_info(),
+            self.accounts
+                .sol_usdc_market_sol_token_account
+                .to_account_info(),
+            self.accounts
+                .sol_usdc_market_usdc_token_account
+                .to_account_info(),
+            self.accounts.token_program.to_account_info(),
+        ];
+        declare_vault_seeds!(self.accounts.vault, seeds);
+        invoke_signed(&ix, &accounts, seeds)?;
         Ok(())
     }
 }
@@ -476,7 +591,7 @@ impl<'info> PhoenixDepositSolUsdcMarketCPI
     fn phoenix_deposit_sol_usdc_market(&self, params: MarketTransferParams) -> Result<()> {
         let trader_index = 3;
         let mut ix = phoenix::program::instruction_builders::create_deposit_funds_instruction(
-            &self.accounts.market.key(),
+            &self.accounts.sol_usdc_market.key(),
             &self.accounts.vault.key(),
             &self.accounts.sol_mint.key(),
             &self.accounts.usdc_mint.key(),
@@ -500,9 +615,9 @@ impl<'info> PhoenixDepositSolUsdcMarketCPI
         let accounts = [
             self.accounts.phoenix.to_account_info(),
             self.accounts.log_authority.to_account_info(),
-            self.accounts.market.to_account_info(),
+            self.accounts.sol_usdc_market.to_account_info(),
             self.accounts.vault.to_account_info(),
-            self.accounts.seat.to_account_info(),
+            self.accounts.sol_usdc_market_seat.to_account_info(),
             self.accounts.vault_sol_token_account.to_account_info(),
             self.accounts.vault_usdc_token_account.to_account_info(),
             self.accounts

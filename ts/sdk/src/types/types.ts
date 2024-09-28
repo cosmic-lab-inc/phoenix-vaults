@@ -86,6 +86,14 @@ export type MarketPosition = {
 	baseLotsFree: BN;
 };
 
+export type UiMarketPosition = {
+	market: PublicKey;
+	quoteUnitsLocked: number;
+	quoteUnitsFree: number;
+	baseUnitsLocked: number;
+	baseUnitsFree: number;
+};
+
 export type MarketTransferParams = {
 	quoteLots: BN;
 	baseLots: BN;
