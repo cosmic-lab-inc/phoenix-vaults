@@ -79,7 +79,10 @@ pub struct InvestorWithdraw<'info> {
     /// CHECK: validated in Phoenix CPI
     pub log_authority: UncheckedAccount<'info>,
     /// CHECK: validated in Phoenix CPI
-    #[account(mut)]
+    #[account(
+        mut,
+        constraint = is_sol_usdc_market(&market, &market_registry)?
+    )]
     pub market: UncheckedAccount<'info>,
     /// CHECK: validated in Phoenix CPI
     pub seat: UncheckedAccount<'info>,

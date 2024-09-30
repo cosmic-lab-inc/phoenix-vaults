@@ -324,7 +324,8 @@ export type PhoenixVaults = {
 					isMut: false;
 					isSigner: true;
 					docs: [
-						'Is manager by default, but can be delegated to another pubkey using `update_delegate`'
+						'Either vault delegate or an investor liquidating this vault.',
+						'If an investor needs to call this, then they must call `appoint_liquidator` first.'
 					];
 				},
 				{
@@ -2330,7 +2331,8 @@ export const IDL: PhoenixVaults = {
 					isMut: false,
 					isSigner: true,
 					docs: [
-						'Is manager by default, but can be delegated to another pubkey using `update_delegate`',
+						'Either vault delegate or an investor liquidating this vault.',
+						'If an investor needs to call this, then they must call `appoint_liquidator` first.',
 					],
 				},
 				{

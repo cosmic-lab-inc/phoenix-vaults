@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use solana_program::program::invoke_signed;
 
-use crate::constraints::is_delegate_for_vault;
+use crate::constraints::{is_delegate_for_vault, is_liquidator_for_vault};
 use crate::declare_vault_seeds;
 use crate::state::{PhoenixProgram, PhoenixSeatManagerProgram, Vault};
 
@@ -49,10 +49,11 @@ pub struct ClaimSeat<'info> {
     /// Phoenix CPI validates that opaque instruction data is a [`PhoenixInstruction`],
     /// so this is safe since any Phoenix CPI is secure.
     #[account(
-        constraint = is_delegate_for_vault(&vault, &delegate)?
+        constraint = is_delegate_for_vault(&vault, &delegate)? || is_liquidator_for_vault(&vault, &delegate)?
     )]
     pub vault: AccountLoader<'info, Vault>,
-    /// Is manager by default, but can be delegated to another pubkey using `update_delegate`
+    /// Either vault delegate or an investor liquidating this vault.
+    /// If an investor needs to call this, then they must call `appoint_liquidator` first.
     pub delegate: Signer<'info>,
 
     pub phoenix: Program<'info, PhoenixProgram>,

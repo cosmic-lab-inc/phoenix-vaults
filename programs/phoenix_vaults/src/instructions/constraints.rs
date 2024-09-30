@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::TokenAccount;
 
-use crate::state::{Investor, Vault};
+use crate::state::{Investor, MarketRegistry, Vault};
 
 pub fn is_vault_for_investor(
     investor: &AccountLoader<Investor>,
@@ -27,6 +27,13 @@ pub fn is_delegate_for_vault(vault: &AccountLoader<Vault>, signer: &Signer) -> R
 
 pub fn is_protocol_for_vault(vault: &AccountLoader<Vault>, protocol: &Signer) -> Result<bool> {
     Ok(vault.load()?.protocol.eq(protocol.key))
+}
+
+pub fn is_sol_usdc_market(
+    market: &UncheckedAccount,
+    registry: &AccountLoader<MarketRegistry>,
+) -> Result<bool> {
+    Ok(registry.load()?.sol_usdc_market.eq(market.key))
 }
 
 pub fn is_usdc_token_for_vault(
