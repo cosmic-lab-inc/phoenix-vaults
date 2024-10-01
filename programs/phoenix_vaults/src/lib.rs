@@ -10,7 +10,7 @@ use anchor_lang::prelude::*;
 use instructions::*;
 use state::*;
 
-declare_id!("VAULT8EhRg1mduZJYCab7xkNq7ieXMQ1Tqec2LPU6jv");
+declare_id!("VLt8tiD4iUGVuxFRr1NiN63BYJGKua5rNpEcsEGzdBq");
 
 #[program]
 pub mod phoenix_vaults {

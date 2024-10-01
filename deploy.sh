@@ -68,8 +68,8 @@ if [[ $auth_id != "CSMCi5Z6pBjMXQFQayk4WgVPNAgjmo1jTNEryjYyk4xN" ]]; then
   exit 1
 fi
 
-if [[ $program_id != "VAULT8EhRg1mduZJYCab7xkNq7ieXMQ1Tqec2LPU6jv" ]]; then
-  echo "Invalid program: $program_id, must be VAULT8EhRg1mduZJYCab7xkNq7ieXMQ1Tqec2LPU6jv"
+if [[ $program_id != "VLt8tiD4iUGVuxFRr1NiN63BYJGKua5rNpEcsEGzdBq" ]]; then
+  echo "Invalid program: $program_id, must be VLt8tiD4iUGVuxFRr1NiN63BYJGKua5rNpEcsEGzdBq"
   exit 1
 fi
 

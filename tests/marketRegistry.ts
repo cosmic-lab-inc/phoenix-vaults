@@ -10,7 +10,7 @@ import {
 import { Client as PhoenixClient } from '@ellipsis-labs/phoenix-sdk';
 import { sendAndConfirm, simulate } from './testHelpers';
 
-describe('phoenixVaults', () => {
+describe('marketRegistry', () => {
 	const provider = anchor.AnchorProvider.env();
 	anchor.setProvider(provider);
 	const conn = provider.connection;
@@ -47,6 +47,7 @@ describe('phoenixVaults', () => {
 	});
 
 	it('Create Market Registry If Needed', async () => {
+		console.log('market registry:', marketRegistry.toString());
 		const registryAi = await conn.getAccountInfo(marketRegistry);
 		if (registryAi !== null) {
 			console.log('MarketRegistry already exists');
