@@ -18,7 +18,7 @@ import {
 	Investor,
 	MarketPosition,
 	PERCENTAGE_PRECISION,
-	PhoenixVaults,
+	PhoenixVaults, QUOTE_PRECISION,
 	UiMarketPosition,
 	Vault,
 	ZERO,
@@ -475,6 +475,14 @@ export async function fetchManagerShares(
 		.toNumber();
 }
 
+export async function fetchProtocolShares(
+	program: anchor.Program<PhoenixVaults>,
+	vault: PublicKey
+): Promise<number> {
+	const vaultAcct = await program.account.vault.fetch(vault);
+	return vaultAcct.protocolProfitAndFeeShares.toNumber();
+}
+
 export async function fetchInvestorEquity(
 	program: anchor.Program<PhoenixVaults>,
 	conn: Connection,
@@ -484,7 +492,10 @@ export async function fetchInvestorEquity(
 	const investorShares = await fetchInvestorShares(program, investor);
 	const vaultShares = await fetchVaultShares(program, vault);
 	const vaultEquity = await fetchVaultEquity(program, conn, vault);
-	return (investorShares / vaultShares) * vaultEquity;
+	// return (investorShares / vaultShares) * vaultEquity;
+	const rawAmount = (investorShares / vaultShares) * vaultEquity;
+	const rawAmountBN = new BN((rawAmount * QUOTE_PRECISION.toNumber()));
+	return rawAmountBN.toNumber() / QUOTE_PRECISION.toNumber();
 }
 
 export async function fetchManagerEquity(
@@ -495,7 +506,24 @@ export async function fetchManagerEquity(
 	const managerShares = await fetchManagerShares(program, vault);
 	const vaultShares = await fetchVaultShares(program, vault);
 	const vaultEquity = await fetchVaultEquity(program, conn, vault);
-	return (managerShares / vaultShares) * vaultEquity;
+	// return (managerShares / vaultShares) * vaultEquity;
+	const rawAmount = (managerShares / vaultShares) * vaultEquity;
+	const rawAmountBN = new BN((rawAmount * QUOTE_PRECISION.toNumber()));
+	return rawAmountBN.toNumber() / QUOTE_PRECISION.toNumber();
+}
+
+export async function fetchProtocolEquity(
+	program: anchor.Program<PhoenixVaults>,
+	conn: Connection,
+	vault: PublicKey
+): Promise<number> {
+	const protocolShares = await fetchProtocolShares(program, vault);
+	const vaultShares = await fetchVaultShares(program, vault);
+	const vaultEquity = await fetchVaultEquity(program, conn, vault);
+	// return (protocolShares / vaultShares) * vaultEquity;
+	const rawAmount = (protocolShares / vaultShares) * vaultEquity;
+	const rawAmountBN = new BN((rawAmount * QUOTE_PRECISION.toNumber()));
+	return rawAmountBN.toNumber() / QUOTE_PRECISION.toNumber();
 }
 
 export function amountToShares(

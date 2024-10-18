@@ -848,7 +848,7 @@ impl Vault {
         Ok(())
     }
 
-    pub fn protocol_withdraw(&mut self, vault_equity: u64, now: i64) -> Result<u64> {
+    pub fn protocol_withdraw(&mut self, vault_equity: u64, now: i64) -> Result<(u64, bool)> {
         self.last_manager_withdraw_request
             .check_redeem_period_finished(self, now)?;
 
@@ -861,7 +861,7 @@ impl Vault {
             protocol_fee_shares,
         } = self.apply_fee(vault_equity, now)?;
 
-        let vault_shares_before: u128 = self.get_manager_shares()?;
+        let vault_shares_before: u128 = self.get_protocol_shares();
         let total_vault_shares_before = self.total_shares;
         let user_vault_shares_before = self.investor_shares;
         let protocol_shares_before: u128 = self.get_protocol_shares();
@@ -900,7 +900,7 @@ impl Vault {
         self.protocol_profit_and_fee_shares =
             self.protocol_profit_and_fee_shares.safe_sub(n_shares)?;
 
-        let vault_shares_after = self.get_manager_shares()?;
+        let vault_shares_after = self.get_protocol_shares();
         let protocol_shares_after = self.get_protocol_shares();
 
         emit!(InvestorRecord {
@@ -933,7 +933,9 @@ impl Vault {
             .safe_sub(self.last_protocol_withdraw_request.value)?;
         self.last_protocol_withdraw_request.reset(now)?;
 
-        Ok(n_tokens)
+        let finishing_liquidation = self.liquidator == self.protocol;
+
+        Ok((n_tokens, finishing_liquidation))
     }
 
     pub fn profit_share(&self) -> u32 {

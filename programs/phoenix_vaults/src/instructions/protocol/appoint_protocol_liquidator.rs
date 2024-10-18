@@ -1,15 +1,11 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::TokenAccount;
 
-use crate::constraints::{is_manager_for_vault, is_usdc_token_for_vault};
+use crate::constraints::{is_protocol_for_vault, is_usdc_token_for_vault};
 use crate::state::{MarketMapProvider, MarketRegistry, Vault};
 
-/// If the investor can't withdraw their equity from the vault's USDC token account,
-/// then the investor is granted authority to sign for liquidation of the vault position on Phoenix markets.
-/// The investor can liquidate assets into USDC by calling `liquidate_usdc_market` or `liquidate_sol_market`,
-/// depending on whether the Phoenix market is denominated in USDC or SOL.
-pub fn appoint_manager_liquidator<'c: 'info, 'info>(
-    ctx: Context<'_, '_, 'c, 'info, AppointManagerLiquidator<'info>>,
+pub fn appoint_protocol_liquidator<'c: 'info, 'info>(
+    ctx: Context<'_, '_, 'c, 'info, AppointProtocolLiquidator<'info>>,
 ) -> Result<()> {
     let now = Clock::get()?.unix_timestamp;
 
@@ -19,14 +15,14 @@ pub fn appoint_manager_liquidator<'c: 'info, 'info>(
 
     // 1. Check the vault depositor has waited the redeem period since the last withdraw request
     vault
-        .last_manager_withdraw_request
+        .last_protocol_withdraw_request
         .check_redeem_period_finished(&vault, now)?;
     // 2. Check that the depositor is unable to withdraw
-    ctx.check_cant_withdraw(&vault.last_manager_withdraw_request, vault_usdc, &registry)?;
+    ctx.check_cant_withdraw(&vault.last_protocol_withdraw_request, vault_usdc, &registry)?;
     // 3. Check that the vault is not already in liquidation for another investor
-    vault.check_delegate_available_for_liquidation(&ctx.accounts.manager, now)?;
+    vault.check_delegate_available_for_liquidation(&ctx.accounts.protocol, now)?;
 
-    vault.set_liquidation_delegate(ctx.accounts.manager.key(), now);
+    vault.set_liquidation_delegate(ctx.accounts.protocol.key(), now);
 
     drop(vault);
 
@@ -34,14 +30,14 @@ pub fn appoint_manager_liquidator<'c: 'info, 'info>(
 }
 
 #[derive(Accounts)]
-pub struct AppointManagerLiquidator<'info> {
+pub struct AppointProtocolLiquidator<'info> {
     #[account(
         mut,
-        constraint = is_manager_for_vault(&vault, &manager)?,
+        constraint = is_protocol_for_vault(&vault, &protocol)?,
     )]
     pub vault: AccountLoader<'info, Vault>,
 
-    pub manager: Signer<'info>,
+    pub protocol: Signer<'info>,
 
     #[account(
         seeds = [b"market_registry"],

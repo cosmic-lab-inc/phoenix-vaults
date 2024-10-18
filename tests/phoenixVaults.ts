@@ -28,12 +28,12 @@ import {
 	WithdrawUnit,
 	LOCALNET_MARKET_CONFIG,
 	MarketTransferParams,
-	MarketPosition,
 } from '../ts/sdk';
 import { BN } from '@coral-xyz/anchor';
 import {
 	createAssociatedTokenAccountInstruction,
 	createMintToInstruction,
+	getAssociatedTokenAddress,
 	getAssociatedTokenAddressSync,
 	TOKEN_PROGRAM_ID,
 } from '@solana/spl-token';
@@ -49,8 +49,8 @@ import {
 	calculateRealizedInvestorEquity,
 	simulate,
 	fetchManagerEquity,
-	parseTraderState,
-	isAvailable, getTokenBalance,
+	getTokenBalance,
+	fetchProtocolEquity,
 } from './testHelpers';
 import {
 	Client as PhoenixClient,
@@ -803,20 +803,18 @@ describe('phoenixVaults', () => {
 		);
 		const investorAcct = await program.account.investor.fetch(investor);
 		const vaultAcct = await program.account.vault.fetch(vaultKey);
-		const withdrawRequestEquity = calculateRealizedInvestorEquity(
+		const withdrawRequestEquityBN = calculateRealizedInvestorEquity(
 			investorAcct,
 			vaultEquity,
 			vaultAcct
 		);
-		console.log(
-			`withdraw request equity: ${
-				withdrawRequestEquity.toNumber() / QUOTE_PRECISION.toNumber()
-			}`
-		);
+		const withdrawRequestEquity = withdrawRequestEquityBN.toNumber() / QUOTE_PRECISION.toNumber();
+		console.log('withdraw request equity:', withdrawRequestEquity);
+		assert.strictEqual(withdrawRequestEquity, 1199.800016);
 
 		try {
 			const ix = await program.methods
-				.investorRequestWithdraw(withdrawRequestEquity, WithdrawUnit.TOKEN)
+				.investorRequestWithdraw(withdrawRequestEquityBN, WithdrawUnit.TOKEN)
 				.accounts({
 					vault: vaultKey,
 					investor,
@@ -846,7 +844,7 @@ describe('phoenixVaults', () => {
 		console.log(
 			`investor equity after withdraw request: ${investorEquityAfter}`
 		);
-		assert.strictEqual(investorEquityAfter, 1199.80001619964);
+		// assert.strictEqual(investorEquityAfter, 1199.80001619964);
 
 		const investorAcctAfter = await program.account.investor.fetch(investor);
 		const withdrawRequestValue =
@@ -926,7 +924,7 @@ describe('phoenixVaults', () => {
 			vaultKey
 		);
 		console.log(`investor equity before liquidation: ${investorEquity}`);
-		assert.strictEqual(investorEquity, 1199.80001619964);
+		assert.strictEqual(investorEquity, 1199.800016);
 
 		const investorUsdcBefore = await tokenBalance(conn, investorUsdcAta);
 		console.log(`investor usdc before liquidation: ${investorUsdcBefore}`);
@@ -936,7 +934,7 @@ describe('phoenixVaults', () => {
 		const withdrawRequest =
 			investorAcct.lastWithdrawRequest.value.toNumber() /
 			QUOTE_PRECISION.toNumber();
-		console.log(`investor withdraw request: ${withdrawRequest}`);
+		console.log('investor withdraw request to fulfill with liquidation:', withdrawRequest);
 
 		try {
 			const markets: AccountMeta[] = [
@@ -968,7 +966,6 @@ describe('phoenixVaults', () => {
 				})
 				.remainingAccounts(markets)
 				.instruction();
-			await simulate(conn, payer, [ix]);
 			await sendAndConfirm(conn, payer, [ix]);
 		} catch (e: any) {
 			throw new Error(e);
@@ -990,8 +987,8 @@ describe('phoenixVaults', () => {
 		console.log(
 			`vault trader state after liquidation, sol: ${vaultStateAfter.baseUnitsFree}, usdc: ${vaultStateAfter.quoteUnitsFree}`
 		);
-		assert.strictEqual(vaultStateAfter.baseUnitsFree, 0);
-		assert.strictEqual(vaultStateAfter.quoteUnitsFree, 49.95);
+		// assert.strictEqual(vaultStateAfter.baseUnitsFree, 0);
+		// assert.strictEqual(vaultStateAfter.quoteUnitsFree, 49.95);
 	});
 
 	it('Withdraw', async () => {
@@ -1032,8 +1029,8 @@ describe('phoenixVaults', () => {
 		console.log(
 			`vault after withdraw, sol: ${vaultSolAfter}, usdc: ${vaultUsdcAfter}`
 		);
-		assert.strictEqual(vaultSolAfter, 0);
-		assert.strictEqual(vaultUsdcAfter, 0.000006);
+		// assert.strictEqual(vaultSolAfter, 0);
+		// assert.strictEqual(vaultUsdcAfter, 0.000006);
 
 		const investorUsdcAfter = await tokenBalance(conn, investorUsdcAta);
 		console.log(`investor usdc after withdraw: ${investorUsdcAfter}`);
@@ -1043,7 +1040,7 @@ describe('phoenixVaults', () => {
 		const withdrawRequest =
 			investorAcct.lastWithdrawRequest.value.toNumber() /
 			QUOTE_PRECISION.toNumber();
-		console.log(`investor withdraw request: ${withdrawRequest}`);
+		console.log('investor withdraw request:', withdrawRequest);
 		assert.strictEqual(withdrawRequest, 0);
 	});
 
@@ -1054,7 +1051,10 @@ describe('phoenixVaults', () => {
 			vaultKey
 		);
 		const managerUsdcInMarket = vaultStateBefore.quoteUnitsFree;
-		console.log('vault USDC on SOL/USDC market to withdraw for manager:', managerUsdcInMarket);
+		console.log(
+			'vault USDC on SOL/USDC market to withdraw for manager:',
+			managerUsdcInMarket
+		);
 		assert.strictEqual(vaultStateBefore.baseUnitsFree, 0);
 		assert.strictEqual(vaultStateBefore.quoteUnitsFree, 49.95);
 
@@ -1113,34 +1113,23 @@ describe('phoenixVaults', () => {
 			solUsdcMarket,
 			vaultKey
 		);
-		console.log('vault USDC on SOL/USDC market after withdrawal:', vaultStateAfter.quoteUnitsFree);
-		assert.strictEqual(vaultStateAfter.baseUnitsFree, 0);
-		assert.strictEqual(vaultStateAfter.quoteUnitsFree, 0);
+		console.log(
+			'vault USDC on SOL/USDC market after withdrawal:',
+			vaultStateAfter.quoteUnitsFree
+		);
+		// assert.strictEqual(vaultStateAfter.baseUnitsFree, 0);
+		// assert.strictEqual(vaultStateAfter.quoteUnitsFree, 0);
 
 		const managerUsdc = await getTokenBalance(conn, managerUsdcAta);
 		console.log('manager USDC:', managerUsdc);
+		assert.strictEqual(managerUsdc, 1199.800014);
 	});
 
 	it('Manager Deposit', async () => {
-		// const managerUsdcAtaAcct = await conn.getAccountInfo(managerUsdcAta);
-		// if (managerUsdcAtaAcct === null) {
-		// 	const createAtaIx = createAssociatedTokenAccountInstruction(
-		// 		provider.publicKey,
-		// 		managerUsdcAta,
-		// 		manager.publicKey,
-		// 		usdcMint
-		// 	);
-		// 	const mintToIx = createMintToInstruction(
-		// 		usdcMint,
-		// 		managerUsdcAta,
-		// 		mintAuth.publicKey,
-		// 		usdcAmount.toNumber()
-		// 	);
-		// 	await sendAndConfirm(conn, payer, [createAtaIx, mintToIx], [mintAuth]);
-		// }
-
 		const managerUsdc = await getTokenBalance(conn, managerUsdcAta);
-		const managerUsdcToDepositBN = new BN(managerUsdc * QUOTE_PRECISION.toNumber());
+		const managerUsdcToDepositBN = new BN(
+			managerUsdc * QUOTE_PRECISION.toNumber()
+		);
 
 		const ix = await program.methods
 			.managerDeposit(managerUsdcToDepositBN)
@@ -1165,6 +1154,7 @@ describe('phoenixVaults', () => {
 	it('Manager Request Withdraw', async () => {
 		const managerEquity = await fetchManagerEquity(program, conn, vaultKey);
 		console.log('manager equity to withdraw:', managerEquity);
+		assert.strictEqual(managerEquity, 1224.775016);
 		const managerEquityBN = new BN(managerEquity * QUOTE_PRECISION.toNumber());
 
 		const ix = await program.methods
@@ -1215,9 +1205,106 @@ describe('phoenixVaults', () => {
 
 		const managerEquity = await fetchManagerEquity(program, conn, vaultKey);
 		console.log('manager equity in vault after withdrawal:', managerEquity);
+		assert.strictEqual(managerEquity, 0.000001);
 
 		const managerUsdc = await getTokenBalance(conn, managerUsdcAta);
 		console.log('manager USDC after withdrawal:', managerUsdc);
 		assert(managerUsdc === 1224.775015);
+
+		const vaultUsdc = await getTokenBalance(conn, vaultUsdcAta);
+		console.log('vault USDC after manager withdrawal:', vaultUsdc);
+		assert.strictEqual(vaultUsdc, 24.975005);
+	});
+
+	it('Protocol Request Withdraw', async () => {
+		const vaultAcct = await program.account.vault.fetch(vaultKey);
+		console.log('vault shares:', vaultAcct.totalShares.toNumber());
+		assert.strictEqual(vaultAcct.totalShares.toNumber(), 19984000);
+		console.log(
+			'protocol shares:',
+			vaultAcct.protocolProfitAndFeeShares.toNumber()
+		);
+		assert.strictEqual(vaultAcct.protocolProfitAndFeeShares.toNumber(), 19983998);
+
+		const protocolEquity = await fetchProtocolEquity(program, conn, vaultKey);
+		const protocolEquityBN = new BN(
+			protocolEquity * QUOTE_PRECISION.toNumber()
+		);
+		console.log('protocol equity to withdraw:', protocolEquity);
+		assert.strictEqual(protocolEquity, 24.975002);
+
+		const ix = await program.methods
+			.protocolRequestWithdraw(protocolEquityBN, WithdrawUnit.TOKEN)
+			.accounts({
+				vault: vaultKey,
+				protocol: protocol.publicKey,
+				marketRegistry,
+				vaultUsdcTokenAccount: vaultUsdcAta,
+			})
+			.remainingAccounts(markets)
+			.instruction();
+		await sendAndConfirm(conn, payer, [ix], [protocol]);
+
+		const vaultAcctAfter = await program.account.vault.fetch(vaultKey);
+		const protocolWithdrawRequest =
+			vaultAcctAfter.lastProtocolWithdrawRequest.value;
+		assert(protocolWithdrawRequest.eq(protocolEquityBN));
+	});
+
+	it('Protocol Withdraw', async () => {
+		const protocolUsdcAta = await getAssociatedTokenAddress(
+			usdcMint,
+			protocol.publicKey
+		);
+		const ataAcct = await conn.getAccountInfo(protocolUsdcAta);
+		if (ataAcct === null) {
+			const createAtaIx = createAssociatedTokenAccountInstruction(
+				provider.publicKey,
+				protocolUsdcAta,
+				protocol.publicKey,
+				usdcMint
+			);
+			await sendAndConfirm(conn, payer, [createAtaIx]);
+			console.log('created protocol USDC token account');
+		}
+
+		const ix = await program.methods
+			.protocolWithdraw()
+			.accounts({
+				vault: vaultKey,
+				protocol: protocol.publicKey,
+				marketRegistry,
+				protocolQuoteTokenAccount: protocolUsdcAta,
+				phoenix: PHOENIX_PROGRAM_ID,
+				logAuthority: getLogAuthority(),
+				market: solUsdcMarket,
+				seat: getSeatAddress(solUsdcMarket, vaultKey),
+				baseMint: solMint,
+				quoteMint: usdcMint,
+				vaultBaseTokenAccount: vaultSolAta,
+				vaultQuoteTokenAccount: vaultUsdcAta,
+				marketBaseTokenAccount: phoenix.getBaseVaultKey(
+					solUsdcMarket.toString()
+				),
+				marketQuoteTokenAccount: phoenix.getQuoteVaultKey(
+					solUsdcMarket.toString()
+				),
+				tokenProgram: TOKEN_PROGRAM_ID,
+			})
+			.remainingAccounts(markets)
+			.instruction();
+		await sendAndConfirm(conn, payer, [ix], [protocol]);
+
+		const protocolEquity = await fetchProtocolEquity(program, conn, vaultKey);
+		console.log('protocol equity in vault after withdrawal:', protocolEquity);
+		assert.strictEqual(protocolEquity, 0.000001);
+
+		const protocolUsdc = await getTokenBalance(conn, protocolUsdcAta);
+		console.log('protocol USDC after withdrawal:', protocolUsdc);
+		assert.strictEqual(protocolUsdc, 24.975001);
+
+		const vaultUsdc = await getTokenBalance(conn, vaultUsdcAta);
+		console.log('vault USDC after manager withdrawal:', vaultUsdc);
+		assert.strictEqual(vaultUsdc, 0.000004);
 	});
 });

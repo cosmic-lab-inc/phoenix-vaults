@@ -91,6 +91,12 @@ pub mod phoenix_vaults {
         instructions::investor_request_withdraw(ctx, withdraw_amount, withdraw_unit)
     }
 
+    pub fn cancel_withdraw_request<'c: 'info, 'info>(
+        ctx: Context<'_, '_, 'c, 'info, InvestorCancelWithdrawRequest<'info>>,
+    ) -> Result<()> {
+        instructions::investor_cancel_withdraw_request(ctx)
+    }
+
     /// Vault delegate deposits vault assets from the USDC or SOL token account to a Phoenix market.
     pub fn market_deposit<'c: 'info, 'info>(
         ctx: Context<'_, '_, 'c, 'info, MarketDeposit<'info>>,
@@ -119,6 +125,13 @@ pub mod phoenix_vaults {
         ctx: Context<'_, '_, 'c, 'info, AppointManagerLiquidator<'info>>,
     ) -> Result<()> {
         instructions::appoint_manager_liquidator(ctx)
+    }
+
+    /// Assign a vault protocol as delegate to enable liquidation of market positions.
+    pub fn appoint_protocol_liquidator<'c: 'info, 'info>(
+        ctx: Context<'_, '_, 'c, 'info, AppointProtocolLiquidator<'info>>,
+    ) -> Result<()> {
+        instructions::appoint_protocol_liquidator(ctx)
     }
 
     /// After `appoint_investor_liquidator` the investor can liquidate a USDC denominated market position
@@ -153,18 +166,28 @@ pub mod phoenix_vaults {
         instructions::manager_liquidate_sol_market(ctx)
     }
 
+    /// After `appoint_protocol_liquidator` the protocol can liquidate a SOL denominated market position
+    /// to fulfill their withdrawal request.
+    pub fn protocol_liquidate_sol_market<'c: 'info, 'info>(
+        ctx: Context<'_, '_, 'c, 'info, ProtocolLiquidateSolMarket<'info>>,
+    ) -> Result<()> {
+        instructions::protocol_liquidate_sol_market(ctx)
+    }
+
+    /// After `appoint_protocol_liquidator` the protocol can liquidate a USDC denominated market position
+    /// to fulfill their withdrawal request.
+    pub fn protocol_liquidate_usdc_market<'c: 'info, 'info>(
+        ctx: Context<'_, '_, 'c, 'info, ProtocolLiquidateUsdcMarket<'info>>,
+    ) -> Result<()> {
+        instructions::protocol_liquidate_usdc_market(ctx)
+    }
+
     /// Update the fees, profit share, min deposit, max capacity, delegate, and more.
     pub fn update_vault<'c: 'info, 'info>(
         ctx: Context<'_, '_, 'c, 'info, UpdateVault<'info>>,
         params: UpdateVaultParams,
     ) -> Result<()> {
         instructions::update_vault(ctx, params)
-    }
-
-    pub fn cancel_withdraw_request<'c: 'info, 'info>(
-        ctx: Context<'_, '_, 'c, 'info, InvestorCancelWithdrawRequest<'info>>,
-    ) -> Result<()> {
-        instructions::investor_cancel_withdraw_request(ctx)
     }
 
     pub fn manager_withdraw<'c: 'info, 'info>(
@@ -192,5 +215,25 @@ pub mod phoenix_vaults {
         ctx: Context<'_, '_, 'c, 'info, ManagerCancelWithdrawRequest<'info>>,
     ) -> Result<()> {
         instructions::manager_cancel_withdraw_request(ctx)
+    }
+
+    pub fn protocol_withdraw<'c: 'info, 'info>(
+        ctx: Context<'_, '_, 'c, 'info, ProtocolWithdraw<'info>>,
+    ) -> Result<()> {
+        instructions::protocol_withdraw(ctx)
+    }
+
+    pub fn protocol_request_withdraw<'c: 'info, 'info>(
+        ctx: Context<'_, '_, 'c, 'info, ProtocolRequestWithdraw<'info>>,
+        withdraw_amount: u64,
+        withdraw_unit: WithdrawUnit,
+    ) -> Result<()> {
+        instructions::protocol_request_withdraw(ctx, withdraw_amount, withdraw_unit)
+    }
+
+    pub fn protocol_cancel_withdraw_request<'c: 'info, 'info>(
+        ctx: Context<'_, '_, 'c, 'info, ProtocolCancelWithdrawRequest<'info>>,
+    ) -> Result<()> {
+        instructions::protocol_cancel_withdraw_request(ctx)
     }
 }
