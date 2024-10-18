@@ -47,7 +47,6 @@ import {
 	fetchTraderState,
 	fetchInvestorEquity,
 	calculateRealizedInvestorEquity,
-	simulate,
 	fetchManagerEquity,
 	getTokenBalance,
 	fetchProtocolEquity,
@@ -808,7 +807,8 @@ describe('phoenixVaults', () => {
 			vaultEquity,
 			vaultAcct
 		);
-		const withdrawRequestEquity = withdrawRequestEquityBN.toNumber() / QUOTE_PRECISION.toNumber();
+		const withdrawRequestEquity =
+			withdrawRequestEquityBN.toNumber() / QUOTE_PRECISION.toNumber();
 		console.log('withdraw request equity:', withdrawRequestEquity);
 		assert.strictEqual(withdrawRequestEquity, 1199.800016);
 
@@ -934,7 +934,10 @@ describe('phoenixVaults', () => {
 		const withdrawRequest =
 			investorAcct.lastWithdrawRequest.value.toNumber() /
 			QUOTE_PRECISION.toNumber();
-		console.log('investor withdraw request to fulfill with liquidation:', withdrawRequest);
+		console.log(
+			'investor withdraw request to fulfill with liquidation:',
+			withdrawRequest
+		);
 
 		try {
 			const markets: AccountMeta[] = [
@@ -1224,7 +1227,10 @@ describe('phoenixVaults', () => {
 			'protocol shares:',
 			vaultAcct.protocolProfitAndFeeShares.toNumber()
 		);
-		assert.strictEqual(vaultAcct.protocolProfitAndFeeShares.toNumber(), 19983998);
+		assert.strictEqual(
+			vaultAcct.protocolProfitAndFeeShares.toNumber(),
+			19983998
+		);
 
 		const protocolEquity = await fetchProtocolEquity(program, conn, vaultKey);
 		const protocolEquityBN = new BN(

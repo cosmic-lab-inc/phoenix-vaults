@@ -18,7 +18,8 @@ import {
 	Investor,
 	MarketPosition,
 	PERCENTAGE_PRECISION,
-	PhoenixVaults, QUOTE_PRECISION,
+	PhoenixVaults,
+	QUOTE_PRECISION,
 	UiMarketPosition,
 	Vault,
 	ZERO,
@@ -494,7 +495,7 @@ export async function fetchInvestorEquity(
 	const vaultEquity = await fetchVaultEquity(program, conn, vault);
 	// return (investorShares / vaultShares) * vaultEquity;
 	const rawAmount = (investorShares / vaultShares) * vaultEquity;
-	const rawAmountBN = new BN((rawAmount * QUOTE_PRECISION.toNumber()));
+	const rawAmountBN = new BN(rawAmount * QUOTE_PRECISION.toNumber());
 	return rawAmountBN.toNumber() / QUOTE_PRECISION.toNumber();
 }
 
@@ -508,7 +509,7 @@ export async function fetchManagerEquity(
 	const vaultEquity = await fetchVaultEquity(program, conn, vault);
 	// return (managerShares / vaultShares) * vaultEquity;
 	const rawAmount = (managerShares / vaultShares) * vaultEquity;
-	const rawAmountBN = new BN((rawAmount * QUOTE_PRECISION.toNumber()));
+	const rawAmountBN = new BN(rawAmount * QUOTE_PRECISION.toNumber());
 	return rawAmountBN.toNumber() / QUOTE_PRECISION.toNumber();
 }
 
@@ -522,7 +523,7 @@ export async function fetchProtocolEquity(
 	const vaultEquity = await fetchVaultEquity(program, conn, vault);
 	// return (protocolShares / vaultShares) * vaultEquity;
 	const rawAmount = (protocolShares / vaultShares) * vaultEquity;
-	const rawAmountBN = new BN((rawAmount * QUOTE_PRECISION.toNumber()));
+	const rawAmountBN = new BN(rawAmount * QUOTE_PRECISION.toNumber());
 	return rawAmountBN.toNumber() / QUOTE_PRECISION.toNumber();
 }
 
