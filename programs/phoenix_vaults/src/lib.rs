@@ -83,12 +83,12 @@ pub mod phoenix_vaults {
     }
 
     /// Investor request withdrawal of funds from the vault.
-    pub fn request_withdraw<'c: 'info, 'info>(
-        ctx: Context<'_, '_, 'c, 'info, RequestWithdraw<'info>>,
+    pub fn investor_request_withdraw<'c: 'info, 'info>(
+        ctx: Context<'_, '_, 'c, 'info, InvestorRequestWithdraw<'info>>,
         withdraw_amount: u64,
         withdraw_unit: WithdrawUnit,
     ) -> Result<()> {
-        instructions::request_withdraw(ctx, withdraw_amount, withdraw_unit)
+        instructions::investor_request_withdraw(ctx, withdraw_amount, withdraw_unit)
     }
 
     /// Vault delegate deposits vault assets from the USDC or SOL token account to a Phoenix market.
@@ -108,26 +108,49 @@ pub mod phoenix_vaults {
     }
 
     /// Assign an investor as delegate to enable liquidation of market positions.
-    pub fn appoint_liquidator<'c: 'info, 'info>(
-        ctx: Context<'_, '_, 'c, 'info, AppointLiquidator<'info>>,
+    pub fn appoint_investor_liquidator<'c: 'info, 'info>(
+        ctx: Context<'_, '_, 'c, 'info, AppointInvestorLiquidator<'info>>,
     ) -> Result<()> {
-        instructions::appoint_liquidator(ctx)
+        instructions::appoint_investor_liquidator(ctx)
     }
 
-    /// After `appoint_liquidator` the investor can liquidate a USDC denominated market position
-    /// to fulfill their withdrawal request.
-    pub fn liquidate_usdc_market<'c: 'info, 'info>(
-        ctx: Context<'_, '_, 'c, 'info, LiquidateUsdcMarket<'info>>,
+    /// Assign a vault manager as delegate to enable liquidation of market positions.
+    pub fn appoint_manager_liquidator<'c: 'info, 'info>(
+        ctx: Context<'_, '_, 'c, 'info, AppointManagerLiquidator<'info>>,
     ) -> Result<()> {
-        instructions::liquidate_usdc_market(ctx)
+        instructions::appoint_manager_liquidator(ctx)
     }
 
-    /// After `appoint_liquidator` the investor can liquidate a SOL denominated market position
+    /// After `appoint_investor_liquidator` the investor can liquidate a USDC denominated market position
     /// to fulfill their withdrawal request.
-    pub fn liquidate_sol_market<'c: 'info, 'info>(
-        ctx: Context<'_, '_, 'c, 'info, LiquidateSolMarket<'info>>,
+    pub fn investor_liquidate_usdc_market<'c: 'info, 'info>(
+        ctx: Context<'_, '_, 'c, 'info, InvestorLiquidateUsdcMarket<'info>>,
     ) -> Result<()> {
-        instructions::liquidate_sol_market(ctx)
+        instructions::investor_liquidate_usdc_market(ctx)
+    }
+
+    /// After `appoint_investor_liquidator` the investor can liquidate a SOL denominated market position
+    /// to fulfill their withdrawal request.
+    pub fn investor_liquidate_sol_market<'c: 'info, 'info>(
+        ctx: Context<'_, '_, 'c, 'info, InvestorLiquidateSolMarket<'info>>,
+    ) -> Result<()> {
+        instructions::investor_liquidate_sol_market(ctx)
+    }
+
+    /// After `appoint_manager_liquidator` the manager can liquidate a USDC denominated market position
+    /// to fulfill their withdrawal request.
+    pub fn manager_liquidate_usdc_market<'c: 'info, 'info>(
+        ctx: Context<'_, '_, 'c, 'info, ManagerLiquidateUsdcMarket<'info>>,
+    ) -> Result<()> {
+        instructions::manager_liquidate_usdc_market(ctx)
+    }
+
+    /// After `appoint_manager_liquidator` the manager can liquidate a SOL denominated market position
+    /// to fulfill their withdrawal request.
+    pub fn manager_liquidate_sol_market<'c: 'info, 'info>(
+        ctx: Context<'_, '_, 'c, 'info, ManagerLiquidateSolMarket<'info>>,
+    ) -> Result<()> {
+        instructions::manager_liquidate_sol_market(ctx)
     }
 
     /// Update the fees, profit share, min deposit, max capacity, delegate, and more.
@@ -139,8 +162,35 @@ pub mod phoenix_vaults {
     }
 
     pub fn cancel_withdraw_request<'c: 'info, 'info>(
-        ctx: Context<'_, '_, 'c, 'info, CancelWithdrawRequest<'info>>,
+        ctx: Context<'_, '_, 'c, 'info, InvestorCancelWithdrawRequest<'info>>,
     ) -> Result<()> {
-        instructions::cancel_withdraw_request(ctx)
+        instructions::investor_cancel_withdraw_request(ctx)
+    }
+
+    pub fn manager_withdraw<'c: 'info, 'info>(
+        ctx: Context<'_, '_, 'c, 'info, ManagerWithdraw<'info>>,
+    ) -> Result<()> {
+        instructions::manager_withdraw(ctx)
+    }
+
+    pub fn manager_deposit<'c: 'info, 'info>(
+        ctx: Context<'_, '_, 'c, 'info, ManagerDeposit<'info>>,
+        amount: u64,
+    ) -> Result<()> {
+        instructions::manager_deposit(ctx, amount)
+    }
+
+    pub fn manager_request_withdraw<'c: 'info, 'info>(
+        ctx: Context<'_, '_, 'c, 'info, ManagerRequestWithdraw<'info>>,
+        withdraw_amount: u64,
+        withdraw_unit: WithdrawUnit,
+    ) -> Result<()> {
+        instructions::manager_request_withdraw(ctx, withdraw_amount, withdraw_unit)
+    }
+
+    pub fn manager_cancel_withdraw_request<'c: 'info, 'info>(
+        ctx: Context<'_, '_, 'c, 'info, ManagerCancelWithdrawRequest<'info>>,
+    ) -> Result<()> {
+        instructions::manager_cancel_withdraw_request(ctx)
     }
 }

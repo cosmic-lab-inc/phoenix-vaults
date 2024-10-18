@@ -265,7 +265,7 @@ describe('phoenixVaults', () => {
 				};
 			});
 			const ix = await program.methods
-				.requestWithdraw(withdrawRequestEquityBN, WithdrawUnit.TOKEN)
+				.investorRequestWithdraw(withdrawRequestEquityBN, WithdrawUnit.TOKEN)
 				.accounts({
 					vault: vaultKey,
 					investor,

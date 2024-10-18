@@ -6,8 +6,8 @@ use crate::constraints::{
 };
 use crate::state::{Investor, MarketMapProvider, MarketRegistry, Vault};
 
-pub fn cancel_withdraw_request<'c: 'info, 'info>(
-    ctx: Context<'_, '_, 'c, 'info, CancelWithdrawRequest<'info>>,
+pub fn investor_cancel_withdraw_request<'c: 'info, 'info>(
+    ctx: Context<'_, '_, 'c, 'info, InvestorCancelWithdrawRequest<'info>>,
 ) -> Result<()> {
     let clock = &Clock::get()?;
     let mut vault = ctx.accounts.vault.load_mut()?;
@@ -24,7 +24,7 @@ pub fn cancel_withdraw_request<'c: 'info, 'info>(
 }
 
 #[derive(Accounts)]
-pub struct CancelWithdrawRequest<'info> {
+pub struct InvestorCancelWithdrawRequest<'info> {
     #[account(mut)]
     pub vault: AccountLoader<'info, Vault>,
     #[account(

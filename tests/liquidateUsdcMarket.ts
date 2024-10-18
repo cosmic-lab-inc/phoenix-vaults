@@ -46,9 +46,7 @@ import {
 	fetchTraderState,
 	fetchInvestorEquity,
 	calculateRealizedInvestorEquity,
-	parseTraderState,
 	simulate,
-	fetchVaultEquity,
 } from './testHelpers';
 import {
 	Client as PhoenixClient,
@@ -693,7 +691,7 @@ describe('phoenixVaults', () => {
 				};
 			});
 			const ix = await program.methods
-				.requestWithdraw(withdrawRequestEquity, WithdrawUnit.TOKEN)
+				.investorRequestWithdraw(withdrawRequestEquity, WithdrawUnit.TOKEN)
 				.accounts({
 					vault: vaultKey,
 					investor,
@@ -737,7 +735,7 @@ describe('phoenixVaults', () => {
 				},
 			];
 			const ix = await program.methods
-				.appointLiquidator()
+				.appointInvestorLiquidator()
 				.accounts({
 					vault: vaultKey,
 					investor,
@@ -812,7 +810,7 @@ describe('phoenixVaults', () => {
 				},
 			];
 			const ix = await program.methods
-				.liquidateUsdcMarket()
+				.investorLiquidateUsdcMarket()
 				.accounts({
 					vault: vaultKey,
 					investor,

@@ -1,7 +1,8 @@
 use crate::constants::PRICE_PRECISION_U64;
 use crate::error::ErrorCode;
 use crate::math::*;
-use crate::state::{Investor, MarketPosition, MarketRegistry, Vault};
+use crate::state::withdraw_request::WithdrawRequest;
+use crate::state::{MarketPosition, MarketRegistry, Vault};
 use crate::validate;
 use anchor_lang::prelude::*;
 use anchor_spl::token::TokenAccount;
@@ -26,7 +27,7 @@ pub trait MarketMapProvider<'a> {
 
     fn check_cant_withdraw(
         &self,
-        investor: &Investor,
+        withdraw_request: &WithdrawRequest,
         vault_usdc_token_account: &Account<TokenAccount>,
         registry: &MarketRegistry,
     ) -> Result<()>;
@@ -141,7 +142,7 @@ impl<'a: 'info, 'info, T: anchor_lang::Bumps> MarketMapProvider<'a>
 
     fn check_cant_withdraw(
         &self,
-        investor: &Investor,
+        withdraw_request: &WithdrawRequest,
         vault_usdc_token_account: &Account<TokenAccount>,
         registry: &MarketRegistry,
     ) -> Result<()> {
@@ -164,7 +165,7 @@ impl<'a: 'info, 'info, T: anchor_lang::Bumps> MarketMapProvider<'a>
         let quote_lots_available =
             quote_atoms_to_quote_lots_rounded_down(&header, vault_usdc_token_account.amount);
         let quote_lots_requested =
-            quote_atoms_to_quote_lots_rounded_down(&header, investor.last_withdraw_request.value);
+            quote_atoms_to_quote_lots_rounded_down(&header, withdraw_request.value);
         let cant_withdraw = quote_lots_available < quote_lots_requested;
 
         validate!(

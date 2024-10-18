@@ -28,6 +28,7 @@ import {
 	WithdrawUnit,
 	LOCALNET_MARKET_CONFIG,
 	MarketTransferParams,
+	MarketPosition,
 } from '../ts/sdk';
 import { BN } from '@coral-xyz/anchor';
 import {
@@ -47,6 +48,9 @@ import {
 	fetchInvestorEquity,
 	calculateRealizedInvestorEquity,
 	simulate,
+	fetchManagerEquity,
+	parseTraderState,
+	isAvailable, getTokenBalance,
 } from './testHelpers';
 import {
 	Client as PhoenixClient,
@@ -89,6 +93,10 @@ describe('phoenixVaults', () => {
 	// const jupUsdcMarket = MOCK_JUP_USDC_MARKET.publicKey;
 	// const manager = Keypair.generate();
 	const manager = payer;
+	const managerUsdcAta = getAssociatedTokenAddressSync(
+		usdcMint,
+		manager.publicKey
+	);
 	const protocol = Keypair.generate();
 	const maker = Keypair.generate();
 
@@ -105,6 +113,13 @@ describe('phoenixVaults', () => {
 	const marketKeys: PublicKey[] = LOCALNET_MARKET_CONFIG[
 		'localhost'
 	].markets.map((m) => new PublicKey(m.market));
+	const markets: AccountMeta[] = marketKeys.map((pubkey) => {
+		return {
+			pubkey,
+			isWritable: false,
+			isSigner: false,
+		};
+	});
 	const startSolUsdcPrice = 100;
 	const endSolUsdcPrice = 125;
 	const usdcUiAmount = 1_000;
@@ -304,13 +319,6 @@ describe('phoenixVaults', () => {
 		);
 		await sendAndConfirm(conn, payer, [createAtaIx, mintToIx], [mintAuth]);
 
-		const markets: AccountMeta[] = marketKeys.map((pubkey) => {
-			return {
-				pubkey,
-				isWritable: false,
-				isSigner: false,
-			};
-		});
 		const ix = await program.methods
 			.investorDeposit(usdcAmount)
 			.accounts({
@@ -368,13 +376,6 @@ describe('phoenixVaults', () => {
 			baseLots: new BN(0),
 		};
 
-		const markets: AccountMeta[] = marketKeys.map((pubkey) => {
-			return {
-				pubkey,
-				isWritable: false,
-				isSigner: false,
-			};
-		});
 		const ix = await program.methods
 			.marketDeposit(params)
 			.accounts({
@@ -536,14 +537,6 @@ describe('phoenixVaults', () => {
 		assert.strictEqual(vaultBefore.baseUnitsFree, 0);
 		assert.strictEqual(vaultBefore.quoteUnitsFree, 1000);
 
-		const markets: AccountMeta[] = marketKeys.map((pubkey) => {
-			return {
-				pubkey,
-				isWritable: false,
-				isSigner: false,
-			};
-		});
-
 		try {
 			const ix = await program.methods
 				.placeLimitOrder({
@@ -682,14 +675,6 @@ describe('phoenixVaults', () => {
 			useOnlyDepositedFunds: true,
 		});
 		const order = encodeLimitOrderPacketWithFreeFunds(takerOrderPacket);
-
-		const markets: AccountMeta[] = marketKeys.map((pubkey) => {
-			return {
-				pubkey,
-				isWritable: false,
-				isSigner: false,
-			};
-		});
 
 		try {
 			const ix = await program.methods
@@ -830,15 +815,8 @@ describe('phoenixVaults', () => {
 		);
 
 		try {
-			const markets: AccountMeta[] = marketKeys.map((pubkey) => {
-				return {
-					pubkey,
-					isWritable: false,
-					isSigner: false,
-				};
-			});
 			const ix = await program.methods
-				.requestWithdraw(withdrawRequestEquity, WithdrawUnit.TOKEN)
+				.investorRequestWithdraw(withdrawRequestEquity, WithdrawUnit.TOKEN)
 				.accounts({
 					vault: vaultKey,
 					investor,
@@ -888,7 +866,7 @@ describe('phoenixVaults', () => {
 				},
 			];
 			const ix = await program.methods
-				.appointLiquidator()
+				.appointInvestorLiquidator()
 				.accounts({
 					vault: vaultKey,
 					investor,
@@ -904,7 +882,7 @@ describe('phoenixVaults', () => {
 		}
 	});
 
-	it('Liquidate Vault SOL/USDC Position', async () => {
+	it('Investor Liquidate Vault SOL/USDC Position', async () => {
 		const vaultBaseTokenAccount = getAssociatedTokenAddressSync(
 			solMint,
 			vaultKey,
@@ -969,7 +947,7 @@ describe('phoenixVaults', () => {
 				},
 			];
 			const ix = await program.methods
-				.liquidateUsdcMarket()
+				.investorLiquidateUsdcMarket()
 				.accounts({
 					vault: vaultKey,
 					investor,
@@ -1017,13 +995,6 @@ describe('phoenixVaults', () => {
 	});
 
 	it('Withdraw', async () => {
-		const markets: AccountMeta[] = marketKeys.map((pubkey) => {
-			return {
-				pubkey,
-				isWritable: false,
-				isSigner: false,
-			};
-		});
 		const withdrawIx = await program.methods
 			.investorWithdraw()
 			.accounts({
@@ -1074,5 +1045,179 @@ describe('phoenixVaults', () => {
 			QUOTE_PRECISION.toNumber();
 		console.log(`investor withdraw request: ${withdrawRequest}`);
 		assert.strictEqual(withdrawRequest, 0);
+	});
+
+	it('Withdraw Manager Profit Share from SOL/USDC Market', async () => {
+		const vaultStateBefore = await fetchTraderState(
+			conn,
+			solUsdcMarket,
+			vaultKey
+		);
+		const managerUsdcInMarket = vaultStateBefore.quoteUnitsFree;
+		console.log('vault USDC on SOL/USDC market to withdraw for manager:', managerUsdcInMarket);
+		assert.strictEqual(vaultStateBefore.baseUnitsFree, 0);
+		assert.strictEqual(vaultStateBefore.quoteUnitsFree, 49.95);
+
+		const vaultBaseTokenAccount = getAssociatedTokenAddressSync(
+			solMint,
+			vaultKey,
+			true
+		);
+		const vaultQuoteTokenAccount = getAssociatedTokenAddressSync(
+			usdcMint,
+			vaultKey,
+			true
+		);
+		const marketBaseTokenAccount = phoenix.getBaseVaultKey(
+			solUsdcMarket.toString()
+		);
+		const marketQuoteTokenAccount = phoenix.getQuoteVaultKey(
+			solUsdcMarket.toString()
+		);
+
+		const quoteLots = phoenix.quoteUnitsToQuoteLots(
+			managerUsdcInMarket,
+			solUsdcMarket.toString()
+		);
+		const params: MarketTransferParams = {
+			quoteLots: new BN(quoteLots),
+			baseLots: new BN(0),
+		};
+		const ix = await program.methods
+			.marketWithdraw(params)
+			.accounts({
+				vault: vaultKey,
+				delegate: manager.publicKey,
+				phoenix: PHOENIX_PROGRAM_ID,
+				logAuthority: getLogAuthority(),
+				market: solUsdcMarket,
+				baseMint: solMint,
+				quoteMint: usdcMint,
+				vaultBaseTokenAccount,
+				vaultQuoteTokenAccount,
+				marketBaseTokenAccount,
+				marketQuoteTokenAccount,
+			})
+			.remainingAccounts([
+				{
+					pubkey: solUsdcMarket,
+					isWritable: false,
+					isSigner: false,
+				},
+			])
+			.instruction();
+		await sendAndConfirm(conn, payer, [ix], [manager]);
+
+		const vaultStateAfter = await fetchTraderState(
+			conn,
+			solUsdcMarket,
+			vaultKey
+		);
+		console.log('vault USDC on SOL/USDC market after withdrawal:', vaultStateAfter.quoteUnitsFree);
+		assert.strictEqual(vaultStateAfter.baseUnitsFree, 0);
+		assert.strictEqual(vaultStateAfter.quoteUnitsFree, 0);
+
+		const managerUsdc = await getTokenBalance(conn, managerUsdcAta);
+		console.log('manager USDC:', managerUsdc);
+	});
+
+	it('Manager Deposit', async () => {
+		// const managerUsdcAtaAcct = await conn.getAccountInfo(managerUsdcAta);
+		// if (managerUsdcAtaAcct === null) {
+		// 	const createAtaIx = createAssociatedTokenAccountInstruction(
+		// 		provider.publicKey,
+		// 		managerUsdcAta,
+		// 		manager.publicKey,
+		// 		usdcMint
+		// 	);
+		// 	const mintToIx = createMintToInstruction(
+		// 		usdcMint,
+		// 		managerUsdcAta,
+		// 		mintAuth.publicKey,
+		// 		usdcAmount.toNumber()
+		// 	);
+		// 	await sendAndConfirm(conn, payer, [createAtaIx, mintToIx], [mintAuth]);
+		// }
+
+		const managerUsdc = await getTokenBalance(conn, managerUsdcAta);
+		const managerUsdcToDepositBN = new BN(managerUsdc * QUOTE_PRECISION.toNumber());
+
+		const ix = await program.methods
+			.managerDeposit(managerUsdcToDepositBN)
+			.accounts({
+				vault: vaultKey,
+				manager: manager.publicKey,
+				marketRegistry,
+				managerQuoteTokenAccount: managerUsdcAta,
+				vaultQuoteTokenAccount: vaultUsdcAta,
+			})
+			.remainingAccounts(markets)
+			.instruction();
+		await sendAndConfirm(conn, payer, [ix], [manager]);
+
+		const vaultAcct = await program.account.vault.fetch(vaultKey);
+		const managerDeposits = vaultAcct.managerNetDeposits
+			.div(QUOTE_PRECISION)
+			.toNumber();
+		console.log('manager deposits:', managerDeposits);
+	});
+
+	it('Manager Request Withdraw', async () => {
+		const managerEquity = await fetchManagerEquity(program, conn, vaultKey);
+		console.log('manager equity to withdraw:', managerEquity);
+		const managerEquityBN = new BN(managerEquity * QUOTE_PRECISION.toNumber());
+
+		const ix = await program.methods
+			.managerRequestWithdraw(managerEquityBN, WithdrawUnit.TOKEN)
+			.accounts({
+				vault: vaultKey,
+				manager: manager.publicKey,
+				marketRegistry,
+				vaultUsdcTokenAccount: vaultUsdcAta,
+			})
+			.remainingAccounts(markets)
+			.instruction();
+		await sendAndConfirm(conn, payer, [ix], [manager]);
+
+		const vaultAcctAfter = await program.account.vault.fetch(vaultKey);
+		const managerWithdrawRequest =
+			vaultAcctAfter.lastManagerWithdrawRequest.value;
+		assert(managerWithdrawRequest.eq(managerEquityBN));
+	});
+
+	it('Manager Withdraw', async () => {
+		const ix = await program.methods
+			.managerWithdraw()
+			.accounts({
+				vault: vaultKey,
+				manager: manager.publicKey,
+				marketRegistry,
+				managerQuoteTokenAccount: managerUsdcAta,
+				phoenix: PHOENIX_PROGRAM_ID,
+				logAuthority: getLogAuthority(),
+				market: solUsdcMarket,
+				seat: getSeatAddress(solUsdcMarket, vaultKey),
+				baseMint: solMint,
+				quoteMint: usdcMint,
+				vaultBaseTokenAccount: vaultSolAta,
+				vaultQuoteTokenAccount: vaultUsdcAta,
+				marketBaseTokenAccount: phoenix.getBaseVaultKey(
+					solUsdcMarket.toString()
+				),
+				marketQuoteTokenAccount: phoenix.getQuoteVaultKey(
+					solUsdcMarket.toString()
+				),
+				tokenProgram: TOKEN_PROGRAM_ID,
+			})
+			.remainingAccounts(markets)
+			.instruction();
+		await sendAndConfirm(conn, payer, [ix], [manager]);
+
+		const managerEquity = await fetchManagerEquity(program, conn, vaultKey);
+		console.log('manager equity in vault after withdrawal:', managerEquity);
+
+		const managerUsdc = await getTokenBalance(conn, managerUsdcAta);
+		console.log('manager USDC after withdrawal:', managerUsdc);
+		assert(managerUsdc === 1224.775015);
 	});
 });

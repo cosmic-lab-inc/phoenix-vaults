@@ -464,7 +464,7 @@ export type PhoenixVaults = {
 			];
 		},
 		{
-			name: 'requestWithdraw';
+			name: 'investorRequestWithdraw';
 			docs: ['Investor request withdrawal of funds from the vault.'];
 			accounts: [
 				{
@@ -680,7 +680,7 @@ export type PhoenixVaults = {
 			];
 		},
 		{
-			name: 'appointLiquidator';
+			name: 'appointInvestorLiquidator';
 			docs: [
 				'Assign an investor as delegate to enable liquidation of market positions.'
 			];
@@ -714,9 +714,38 @@ export type PhoenixVaults = {
 			args: [];
 		},
 		{
-			name: 'liquidateUsdcMarket';
+			name: 'appointManagerLiquidator';
 			docs: [
-				'After `appoint_liquidator` the investor can liquidate a USDC denominated market position',
+				'Assign a vault manager as delegate to enable liquidation of market positions.'
+			];
+			accounts: [
+				{
+					name: 'vault';
+					isMut: true;
+					isSigner: false;
+				},
+				{
+					name: 'manager';
+					isMut: false;
+					isSigner: true;
+				},
+				{
+					name: 'marketRegistry';
+					isMut: false;
+					isSigner: false;
+				},
+				{
+					name: 'vaultQuoteTokenAccount';
+					isMut: true;
+					isSigner: false;
+				}
+			];
+			args: [];
+		},
+		{
+			name: 'investorLiquidateUsdcMarket';
+			docs: [
+				'After `appoint_investor_liquidator` the investor can liquidate a USDC denominated market position',
 				'to fulfill their withdrawal request.'
 			];
 			accounts: [
@@ -804,9 +833,9 @@ export type PhoenixVaults = {
 			args: [];
 		},
 		{
-			name: 'liquidateSolMarket';
+			name: 'investorLiquidateSolMarket';
 			docs: [
-				'After `appoint_liquidator` the investor can liquidate a SOL denominated market position',
+				'After `appoint_investor_liquidator` the investor can liquidate a SOL denominated market position',
 				'to fulfill their withdrawal request.'
 			];
 			accounts: [
@@ -832,6 +861,206 @@ export type PhoenixVaults = {
 				},
 				{
 					name: 'investorUsdcTokenAccount';
+					isMut: true;
+					isSigner: false;
+				},
+				{
+					name: 'phoenix';
+					isMut: false;
+					isSigner: false;
+				},
+				{
+					name: 'logAuthority';
+					isMut: false;
+					isSigner: false;
+				},
+				{
+					name: 'market';
+					isMut: true;
+					isSigner: false;
+				},
+				{
+					name: 'seat';
+					isMut: false;
+					isSigner: false;
+				},
+				{
+					name: 'baseMint';
+					isMut: false;
+					isSigner: false;
+				},
+				{
+					name: 'solMint';
+					isMut: false;
+					isSigner: false;
+				},
+				{
+					name: 'usdcMint';
+					isMut: false;
+					isSigner: false;
+				},
+				{
+					name: 'vaultBaseTokenAccount';
+					isMut: true;
+					isSigner: false;
+				},
+				{
+					name: 'vaultSolTokenAccount';
+					isMut: true;
+					isSigner: false;
+				},
+				{
+					name: 'vaultUsdcTokenAccount';
+					isMut: true;
+					isSigner: false;
+				},
+				{
+					name: 'marketBaseTokenAccount';
+					isMut: true;
+					isSigner: false;
+				},
+				{
+					name: 'marketSolTokenAccount';
+					isMut: true;
+					isSigner: false;
+				},
+				{
+					name: 'solUsdcMarket';
+					isMut: true;
+					isSigner: false;
+				},
+				{
+					name: 'solUsdcMarketSeat';
+					isMut: false;
+					isSigner: false;
+				},
+				{
+					name: 'solUsdcMarketSolTokenAccount';
+					isMut: true;
+					isSigner: false;
+				},
+				{
+					name: 'solUsdcMarketUsdcTokenAccount';
+					isMut: true;
+					isSigner: false;
+				},
+				{
+					name: 'tokenProgram';
+					isMut: false;
+					isSigner: false;
+				}
+			];
+			args: [];
+		},
+		{
+			name: 'managerLiquidateUsdcMarket';
+			docs: [
+				'After `appoint_manager_liquidator` the manager can liquidate a USDC denominated market position',
+				'to fulfill their withdrawal request.'
+			];
+			accounts: [
+				{
+					name: 'vault';
+					isMut: true;
+					isSigner: false;
+				},
+				{
+					name: 'manager';
+					isMut: false;
+					isSigner: true;
+				},
+				{
+					name: 'marketRegistry';
+					isMut: false;
+					isSigner: false;
+				},
+				{
+					name: 'managerUsdcTokenAccount';
+					isMut: true;
+					isSigner: false;
+				},
+				{
+					name: 'phoenix';
+					isMut: false;
+					isSigner: false;
+				},
+				{
+					name: 'logAuthority';
+					isMut: false;
+					isSigner: false;
+				},
+				{
+					name: 'market';
+					isMut: true;
+					isSigner: false;
+				},
+				{
+					name: 'seat';
+					isMut: false;
+					isSigner: false;
+				},
+				{
+					name: 'baseMint';
+					isMut: false;
+					isSigner: false;
+				},
+				{
+					name: 'usdcMint';
+					isMut: false;
+					isSigner: false;
+				},
+				{
+					name: 'vaultBaseTokenAccount';
+					isMut: true;
+					isSigner: false;
+				},
+				{
+					name: 'vaultUsdcTokenAccount';
+					isMut: true;
+					isSigner: false;
+				},
+				{
+					name: 'marketBaseTokenAccount';
+					isMut: true;
+					isSigner: false;
+				},
+				{
+					name: 'marketUsdcTokenAccount';
+					isMut: true;
+					isSigner: false;
+				},
+				{
+					name: 'tokenProgram';
+					isMut: false;
+					isSigner: false;
+				}
+			];
+			args: [];
+		},
+		{
+			name: 'managerLiquidateSolMarket';
+			docs: [
+				'After `appoint_manager_liquidator` the manager can liquidate a SOL denominated market position',
+				'to fulfill their withdrawal request.'
+			];
+			accounts: [
+				{
+					name: 'vault';
+					isMut: true;
+					isSigner: false;
+				},
+				{
+					name: 'manager';
+					isMut: false;
+					isSigner: true;
+				},
+				{
+					name: 'marketRegistry';
+					isMut: false;
+					isSigner: false;
+				},
+				{
+					name: 'managerUsdcTokenAccount';
 					isMut: true;
 					isSigner: false;
 				},
@@ -964,6 +1193,191 @@ export type PhoenixVaults = {
 				},
 				{
 					name: 'authority';
+					isMut: false;
+					isSigner: true;
+				},
+				{
+					name: 'marketRegistry';
+					isMut: false;
+					isSigner: false;
+				},
+				{
+					name: 'vaultUsdcTokenAccount';
+					isMut: true;
+					isSigner: false;
+				}
+			];
+			args: [];
+		},
+		{
+			name: 'managerWithdraw';
+			accounts: [
+				{
+					name: 'vault';
+					isMut: true;
+					isSigner: false;
+				},
+				{
+					name: 'manager';
+					isMut: false;
+					isSigner: true;
+				},
+				{
+					name: 'marketRegistry';
+					isMut: false;
+					isSigner: false;
+				},
+				{
+					name: 'managerQuoteTokenAccount';
+					isMut: true;
+					isSigner: false;
+				},
+				{
+					name: 'phoenix';
+					isMut: false;
+					isSigner: false;
+				},
+				{
+					name: 'logAuthority';
+					isMut: false;
+					isSigner: false;
+				},
+				{
+					name: 'market';
+					isMut: true;
+					isSigner: false;
+				},
+				{
+					name: 'seat';
+					isMut: false;
+					isSigner: false;
+				},
+				{
+					name: 'baseMint';
+					isMut: false;
+					isSigner: false;
+				},
+				{
+					name: 'quoteMint';
+					isMut: false;
+					isSigner: false;
+				},
+				{
+					name: 'vaultBaseTokenAccount';
+					isMut: true;
+					isSigner: false;
+				},
+				{
+					name: 'vaultQuoteTokenAccount';
+					isMut: true;
+					isSigner: false;
+				},
+				{
+					name: 'marketBaseTokenAccount';
+					isMut: true;
+					isSigner: false;
+				},
+				{
+					name: 'marketQuoteTokenAccount';
+					isMut: true;
+					isSigner: false;
+				},
+				{
+					name: 'tokenProgram';
+					isMut: false;
+					isSigner: false;
+				}
+			];
+			args: [];
+		},
+		{
+			name: 'managerDeposit';
+			accounts: [
+				{
+					name: 'vault';
+					isMut: true;
+					isSigner: false;
+				},
+				{
+					name: 'manager';
+					isMut: false;
+					isSigner: true;
+				},
+				{
+					name: 'marketRegistry';
+					isMut: false;
+					isSigner: false;
+				},
+				{
+					name: 'managerQuoteTokenAccount';
+					isMut: true;
+					isSigner: false;
+				},
+				{
+					name: 'vaultQuoteTokenAccount';
+					isMut: true;
+					isSigner: false;
+				},
+				{
+					name: 'tokenProgram';
+					isMut: false;
+					isSigner: false;
+				}
+			];
+			args: [
+				{
+					name: 'amount';
+					type: 'u64';
+				}
+			];
+		},
+		{
+			name: 'managerRequestWithdraw';
+			accounts: [
+				{
+					name: 'vault';
+					isMut: true;
+					isSigner: false;
+				},
+				{
+					name: 'manager';
+					isMut: false;
+					isSigner: true;
+				},
+				{
+					name: 'marketRegistry';
+					isMut: false;
+					isSigner: false;
+				},
+				{
+					name: 'vaultUsdcTokenAccount';
+					isMut: true;
+					isSigner: false;
+				}
+			];
+			args: [
+				{
+					name: 'withdrawAmount';
+					type: 'u64';
+				},
+				{
+					name: 'withdrawUnit';
+					type: {
+						defined: 'WithdrawUnit';
+					};
+				}
+			];
+		},
+		{
+			name: 'managerCancelWithdrawRequest';
+			accounts: [
+				{
+					name: 'vault';
+					isMut: true;
+					isSigner: false;
+				},
+				{
+					name: 'manager';
 					isMut: false;
 					isSigner: true;
 				},
@@ -2471,7 +2885,7 @@ export const IDL: PhoenixVaults = {
 			],
 		},
 		{
-			name: 'requestWithdraw',
+			name: 'investorRequestWithdraw',
 			docs: ['Investor request withdrawal of funds from the vault.'],
 			accounts: [
 				{
@@ -2687,7 +3101,7 @@ export const IDL: PhoenixVaults = {
 			],
 		},
 		{
-			name: 'appointLiquidator',
+			name: 'appointInvestorLiquidator',
 			docs: [
 				'Assign an investor as delegate to enable liquidation of market positions.',
 			],
@@ -2721,9 +3135,38 @@ export const IDL: PhoenixVaults = {
 			args: [],
 		},
 		{
-			name: 'liquidateUsdcMarket',
+			name: 'appointManagerLiquidator',
 			docs: [
-				'After `appoint_liquidator` the investor can liquidate a USDC denominated market position',
+				'Assign a vault manager as delegate to enable liquidation of market positions.',
+			],
+			accounts: [
+				{
+					name: 'vault',
+					isMut: true,
+					isSigner: false,
+				},
+				{
+					name: 'manager',
+					isMut: false,
+					isSigner: true,
+				},
+				{
+					name: 'marketRegistry',
+					isMut: false,
+					isSigner: false,
+				},
+				{
+					name: 'vaultQuoteTokenAccount',
+					isMut: true,
+					isSigner: false,
+				},
+			],
+			args: [],
+		},
+		{
+			name: 'investorLiquidateUsdcMarket',
+			docs: [
+				'After `appoint_investor_liquidator` the investor can liquidate a USDC denominated market position',
 				'to fulfill their withdrawal request.',
 			],
 			accounts: [
@@ -2811,9 +3254,9 @@ export const IDL: PhoenixVaults = {
 			args: [],
 		},
 		{
-			name: 'liquidateSolMarket',
+			name: 'investorLiquidateSolMarket',
 			docs: [
-				'After `appoint_liquidator` the investor can liquidate a SOL denominated market position',
+				'After `appoint_investor_liquidator` the investor can liquidate a SOL denominated market position',
 				'to fulfill their withdrawal request.',
 			],
 			accounts: [
@@ -2839,6 +3282,206 @@ export const IDL: PhoenixVaults = {
 				},
 				{
 					name: 'investorUsdcTokenAccount',
+					isMut: true,
+					isSigner: false,
+				},
+				{
+					name: 'phoenix',
+					isMut: false,
+					isSigner: false,
+				},
+				{
+					name: 'logAuthority',
+					isMut: false,
+					isSigner: false,
+				},
+				{
+					name: 'market',
+					isMut: true,
+					isSigner: false,
+				},
+				{
+					name: 'seat',
+					isMut: false,
+					isSigner: false,
+				},
+				{
+					name: 'baseMint',
+					isMut: false,
+					isSigner: false,
+				},
+				{
+					name: 'solMint',
+					isMut: false,
+					isSigner: false,
+				},
+				{
+					name: 'usdcMint',
+					isMut: false,
+					isSigner: false,
+				},
+				{
+					name: 'vaultBaseTokenAccount',
+					isMut: true,
+					isSigner: false,
+				},
+				{
+					name: 'vaultSolTokenAccount',
+					isMut: true,
+					isSigner: false,
+				},
+				{
+					name: 'vaultUsdcTokenAccount',
+					isMut: true,
+					isSigner: false,
+				},
+				{
+					name: 'marketBaseTokenAccount',
+					isMut: true,
+					isSigner: false,
+				},
+				{
+					name: 'marketSolTokenAccount',
+					isMut: true,
+					isSigner: false,
+				},
+				{
+					name: 'solUsdcMarket',
+					isMut: true,
+					isSigner: false,
+				},
+				{
+					name: 'solUsdcMarketSeat',
+					isMut: false,
+					isSigner: false,
+				},
+				{
+					name: 'solUsdcMarketSolTokenAccount',
+					isMut: true,
+					isSigner: false,
+				},
+				{
+					name: 'solUsdcMarketUsdcTokenAccount',
+					isMut: true,
+					isSigner: false,
+				},
+				{
+					name: 'tokenProgram',
+					isMut: false,
+					isSigner: false,
+				},
+			],
+			args: [],
+		},
+		{
+			name: 'managerLiquidateUsdcMarket',
+			docs: [
+				'After `appoint_manager_liquidator` the manager can liquidate a USDC denominated market position',
+				'to fulfill their withdrawal request.',
+			],
+			accounts: [
+				{
+					name: 'vault',
+					isMut: true,
+					isSigner: false,
+				},
+				{
+					name: 'manager',
+					isMut: false,
+					isSigner: true,
+				},
+				{
+					name: 'marketRegistry',
+					isMut: false,
+					isSigner: false,
+				},
+				{
+					name: 'managerUsdcTokenAccount',
+					isMut: true,
+					isSigner: false,
+				},
+				{
+					name: 'phoenix',
+					isMut: false,
+					isSigner: false,
+				},
+				{
+					name: 'logAuthority',
+					isMut: false,
+					isSigner: false,
+				},
+				{
+					name: 'market',
+					isMut: true,
+					isSigner: false,
+				},
+				{
+					name: 'seat',
+					isMut: false,
+					isSigner: false,
+				},
+				{
+					name: 'baseMint',
+					isMut: false,
+					isSigner: false,
+				},
+				{
+					name: 'usdcMint',
+					isMut: false,
+					isSigner: false,
+				},
+				{
+					name: 'vaultBaseTokenAccount',
+					isMut: true,
+					isSigner: false,
+				},
+				{
+					name: 'vaultUsdcTokenAccount',
+					isMut: true,
+					isSigner: false,
+				},
+				{
+					name: 'marketBaseTokenAccount',
+					isMut: true,
+					isSigner: false,
+				},
+				{
+					name: 'marketUsdcTokenAccount',
+					isMut: true,
+					isSigner: false,
+				},
+				{
+					name: 'tokenProgram',
+					isMut: false,
+					isSigner: false,
+				},
+			],
+			args: [],
+		},
+		{
+			name: 'managerLiquidateSolMarket',
+			docs: [
+				'After `appoint_manager_liquidator` the manager can liquidate a SOL denominated market position',
+				'to fulfill their withdrawal request.',
+			],
+			accounts: [
+				{
+					name: 'vault',
+					isMut: true,
+					isSigner: false,
+				},
+				{
+					name: 'manager',
+					isMut: false,
+					isSigner: true,
+				},
+				{
+					name: 'marketRegistry',
+					isMut: false,
+					isSigner: false,
+				},
+				{
+					name: 'managerUsdcTokenAccount',
 					isMut: true,
 					isSigner: false,
 				},
@@ -2971,6 +3614,191 @@ export const IDL: PhoenixVaults = {
 				},
 				{
 					name: 'authority',
+					isMut: false,
+					isSigner: true,
+				},
+				{
+					name: 'marketRegistry',
+					isMut: false,
+					isSigner: false,
+				},
+				{
+					name: 'vaultUsdcTokenAccount',
+					isMut: true,
+					isSigner: false,
+				},
+			],
+			args: [],
+		},
+		{
+			name: 'managerWithdraw',
+			accounts: [
+				{
+					name: 'vault',
+					isMut: true,
+					isSigner: false,
+				},
+				{
+					name: 'manager',
+					isMut: false,
+					isSigner: true,
+				},
+				{
+					name: 'marketRegistry',
+					isMut: false,
+					isSigner: false,
+				},
+				{
+					name: 'managerQuoteTokenAccount',
+					isMut: true,
+					isSigner: false,
+				},
+				{
+					name: 'phoenix',
+					isMut: false,
+					isSigner: false,
+				},
+				{
+					name: 'logAuthority',
+					isMut: false,
+					isSigner: false,
+				},
+				{
+					name: 'market',
+					isMut: true,
+					isSigner: false,
+				},
+				{
+					name: 'seat',
+					isMut: false,
+					isSigner: false,
+				},
+				{
+					name: 'baseMint',
+					isMut: false,
+					isSigner: false,
+				},
+				{
+					name: 'quoteMint',
+					isMut: false,
+					isSigner: false,
+				},
+				{
+					name: 'vaultBaseTokenAccount',
+					isMut: true,
+					isSigner: false,
+				},
+				{
+					name: 'vaultQuoteTokenAccount',
+					isMut: true,
+					isSigner: false,
+				},
+				{
+					name: 'marketBaseTokenAccount',
+					isMut: true,
+					isSigner: false,
+				},
+				{
+					name: 'marketQuoteTokenAccount',
+					isMut: true,
+					isSigner: false,
+				},
+				{
+					name: 'tokenProgram',
+					isMut: false,
+					isSigner: false,
+				},
+			],
+			args: [],
+		},
+		{
+			name: 'managerDeposit',
+			accounts: [
+				{
+					name: 'vault',
+					isMut: true,
+					isSigner: false,
+				},
+				{
+					name: 'manager',
+					isMut: false,
+					isSigner: true,
+				},
+				{
+					name: 'marketRegistry',
+					isMut: false,
+					isSigner: false,
+				},
+				{
+					name: 'managerQuoteTokenAccount',
+					isMut: true,
+					isSigner: false,
+				},
+				{
+					name: 'vaultQuoteTokenAccount',
+					isMut: true,
+					isSigner: false,
+				},
+				{
+					name: 'tokenProgram',
+					isMut: false,
+					isSigner: false,
+				},
+			],
+			args: [
+				{
+					name: 'amount',
+					type: 'u64',
+				},
+			],
+		},
+		{
+			name: 'managerRequestWithdraw',
+			accounts: [
+				{
+					name: 'vault',
+					isMut: true,
+					isSigner: false,
+				},
+				{
+					name: 'manager',
+					isMut: false,
+					isSigner: true,
+				},
+				{
+					name: 'marketRegistry',
+					isMut: false,
+					isSigner: false,
+				},
+				{
+					name: 'vaultUsdcTokenAccount',
+					isMut: true,
+					isSigner: false,
+				},
+			],
+			args: [
+				{
+					name: 'withdrawAmount',
+					type: 'u64',
+				},
+				{
+					name: 'withdrawUnit',
+					type: {
+						defined: 'WithdrawUnit',
+					},
+				},
+			],
+		},
+		{
+			name: 'managerCancelWithdrawRequest',
+			accounts: [
+				{
+					name: 'vault',
+					isMut: true,
+					isSigner: false,
+				},
+				{
+					name: 'manager',
 					isMut: false,
 					isSigner: true,
 				},

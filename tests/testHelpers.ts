@@ -413,7 +413,7 @@ export async function calcFee(
 	}
 }
 
-function isAvailable(position: MarketPosition) {
+export function isAvailable(position: MarketPosition) {
 	return (
 		position.baseLotsFree.eq(ZERO) &&
 		position.baseLotsLocked.eq(ZERO) &&
@@ -464,6 +464,17 @@ export async function fetchInvestorShares(
 	return investorAcct.vaultShares.toNumber();
 }
 
+export async function fetchManagerShares(
+	program: anchor.Program<PhoenixVaults>,
+	vault: PublicKey
+): Promise<number> {
+	const vaultAcct = await program.account.vault.fetch(vault);
+	return vaultAcct.totalShares
+		.sub(vaultAcct.investorShares)
+		.sub(vaultAcct.protocolProfitAndFeeShares)
+		.toNumber();
+}
+
 export async function fetchInvestorEquity(
 	program: anchor.Program<PhoenixVaults>,
 	conn: Connection,
@@ -474,6 +485,17 @@ export async function fetchInvestorEquity(
 	const vaultShares = await fetchVaultShares(program, vault);
 	const vaultEquity = await fetchVaultEquity(program, conn, vault);
 	return (investorShares / vaultShares) * vaultEquity;
+}
+
+export async function fetchManagerEquity(
+	program: anchor.Program<PhoenixVaults>,
+	conn: Connection,
+	vault: PublicKey
+): Promise<number> {
+	const managerShares = await fetchManagerShares(program, vault);
+	const vaultShares = await fetchVaultShares(program, vault);
+	const vaultEquity = await fetchVaultEquity(program, conn, vault);
+	return (managerShares / vaultShares) * vaultEquity;
 }
 
 export function amountToShares(
@@ -599,4 +621,20 @@ export async function fetchMarketPosition(
 		baseUnitsFree,
 		baseUnitsLocked,
 	};
+}
+
+export async function getTokenBalance(
+	conn: Connection,
+	tokenAccount: PublicKey
+): Promise<number> {
+	const result = await conn.getTokenAccountBalance(tokenAccount);
+	if (!result) {
+		return 0;
+	}
+	const value: number | null = result.value.uiAmount;
+	if (value) {
+		return Number(value);
+	} else {
+		return 0;
+	}
 }

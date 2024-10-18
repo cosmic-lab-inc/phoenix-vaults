@@ -28,15 +28,15 @@ use crate::{declare_vault_seeds, validate};
 ///     * swap SOL into USDC
 ///     * withdraw quote USDC `vault_quote_token_account`
 /// * transfer quote USDC to `investor_quote_token_account`
-pub fn liquidate_sol_market<'c: 'info, 'info>(
-    ctx: Context<'_, '_, 'c, 'info, LiquidateSolMarket<'info>>,
+pub fn investor_liquidate_sol_market<'c: 'info, 'info>(
+    ctx: Context<'_, '_, 'c, 'info, InvestorLiquidateSolMarket<'info>>,
 ) -> Result<()> {
     let now = Clock::get()?.unix_timestamp;
 
     let mut vault = ctx.accounts.vault.load_mut()?;
     let investor = ctx.accounts.investor.load()?;
 
-    if let Err(e) = vault.check_liquidator(&investor, now) {
+    if let Err(e) = vault.check_liquidator(&ctx.accounts.authority, now) {
         vault.reset_liquidation_delegate();
         return Err(e.into());
     }
@@ -44,7 +44,8 @@ pub fn liquidate_sol_market<'c: 'info, 'info>(
     let registry = ctx.accounts.market_registry.load()?;
     let vault_usdc = &ctx.accounts.vault_usdc_token_account;
 
-    if let Err(e) = ctx.check_cant_withdraw(&investor, vault_usdc, &registry) {
+    if let Err(e) = ctx.check_cant_withdraw(&investor.last_withdraw_request, vault_usdc, &registry)
+    {
         vault.reset_liquidation_delegate();
         return Err(e);
     }
@@ -90,7 +91,7 @@ pub fn liquidate_sol_market<'c: 'info, 'info>(
         .bids
         .first()
         .map_or(0, |bid| bid.price_in_ticks);
-    let quote_atoms_per_quote_lot = header.get_quote_lot_size().as_u64();
+    // let quote_atoms_per_quote_lot = header.get_quote_lot_size().as_u64();
 
     //
     // SOL/USDC market
@@ -190,7 +191,7 @@ pub fn liquidate_sol_market<'c: 'info, 'info>(
 
         let bl_to_sell =
             quote_lots_to_base_lots(&header, ql_to_sell, tick_price).min(base_lots_available);
-        let params = LiquidateSolMarket::build_swap_params(bl_to_sell)?;
+        let params = InvestorLiquidateSolMarket::build_swap_params(bl_to_sell)?;
 
         let ql_to_withdraw = sol_lots_available + ql_to_sell;
         let sol_atoms_to_withdraw = quote_lots_to_quote_atoms(&header, ql_to_withdraw);
@@ -252,8 +253,9 @@ pub fn liquidate_sol_market<'c: 'info, 'info>(
     })?;
 
     // sell SOL into USDC
-    let params =
-        LiquidateSolMarket::build_swap_params(sol_base_lots_on_sol_usdc_market_to_withdraw)?;
+    let params = InvestorLiquidateSolMarket::build_swap_params(
+        sol_base_lots_on_sol_usdc_market_to_withdraw,
+    )?;
     ctx.phoenix_trade_sol_usdc_market(params)?;
 
     // withdraw quote USDC to `vault_usdc_token_account`
@@ -275,7 +277,7 @@ pub fn liquidate_sol_market<'c: 'info, 'info>(
 }
 
 #[derive(Accounts)]
-pub struct LiquidateSolMarket<'info> {
+pub struct InvestorLiquidateSolMarket<'info> {
     #[account(
         mut,
         constraint = is_liquidator_for_vault(&vault, &authority)?
@@ -376,7 +378,7 @@ pub struct LiquidateSolMarket<'info> {
     pub token_program: Program<'info, Token>,
 }
 
-impl<'info> LiquidateSolMarket<'info> {
+impl<'info> InvestorLiquidateSolMarket<'info> {
     pub fn build_swap_params(bl_to_sell: u64) -> Result<OrderPacket> {
         Ok(OrderPacket::new_ioc(
             Side::Ask,
@@ -395,7 +397,7 @@ impl<'info> LiquidateSolMarket<'info> {
     }
 }
 
-impl<'info> PhoenixWithdrawCPI for Context<'_, '_, '_, 'info, LiquidateSolMarket<'info>> {
+impl<'info> PhoenixWithdrawCPI for Context<'_, '_, '_, 'info, InvestorLiquidateSolMarket<'info>> {
     fn phoenix_withdraw(&self, params: MarketTransferParams) -> Result<()> {
         let trader_index = 3;
         let mut ix = phoenix::program::instruction_builders::create_withdraw_funds_with_custom_amounts_instruction(
@@ -436,7 +438,7 @@ impl<'info> PhoenixWithdrawCPI for Context<'_, '_, '_, 'info, LiquidateSolMarket
 }
 
 impl<'info> PhoenixWithdrawSolUsdcMarketCPI
-    for Context<'_, '_, '_, 'info, LiquidateSolMarket<'info>>
+    for Context<'_, '_, '_, 'info, InvestorLiquidateSolMarket<'info>>
 {
     fn phoenix_withdraw_sol_usdc_market(&self, params: MarketTransferParams) -> Result<()> {
         let trader_index = 3;
@@ -481,7 +483,9 @@ impl<'info> PhoenixWithdrawSolUsdcMarketCPI
     }
 }
 
-impl<'info> PhoenixTradeSolUsdcMarketCPI for Context<'_, '_, '_, 'info, LiquidateSolMarket<'info>> {
+impl<'info> PhoenixTradeSolUsdcMarketCPI
+    for Context<'_, '_, '_, 'info, InvestorLiquidateSolMarket<'info>>
+{
     fn phoenix_trade_sol_usdc_market(&self, order: OrderPacket) -> Result<()> {
         validate!(
             order.is_take_only(),
@@ -535,7 +539,7 @@ impl<'info> PhoenixTradeSolUsdcMarketCPI for Context<'_, '_, '_, 'info, Liquidat
     }
 }
 
-impl<'info> PhoenixTradeCPI for Context<'_, '_, '_, 'info, LiquidateSolMarket<'info>> {
+impl<'info> PhoenixTradeCPI for Context<'_, '_, '_, 'info, InvestorLiquidateSolMarket<'info>> {
     fn phoenix_trade(&self, order: OrderPacket) -> Result<()> {
         validate!(
             order.is_take_only(),
@@ -586,7 +590,7 @@ impl<'info> PhoenixTradeCPI for Context<'_, '_, '_, 'info, LiquidateSolMarket<'i
 }
 
 impl<'info> PhoenixDepositSolUsdcMarketCPI
-    for Context<'_, '_, '_, 'info, LiquidateSolMarket<'info>>
+    for Context<'_, '_, '_, 'info, InvestorLiquidateSolMarket<'info>>
 {
     fn phoenix_deposit_sol_usdc_market(&self, params: MarketTransferParams) -> Result<()> {
         let trader_index = 3;
@@ -635,7 +639,7 @@ impl<'info> PhoenixDepositSolUsdcMarketCPI
     }
 }
 
-impl<'info> TokenTransferCPI for Context<'_, '_, '_, 'info, LiquidateSolMarket<'info>> {
+impl<'info> TokenTransferCPI for Context<'_, '_, '_, 'info, InvestorLiquidateSolMarket<'info>> {
     fn token_transfer(&self, amount: u64) -> Result<()> {
         let cpi_accounts = Transfer {
             from: self

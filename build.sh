@@ -21,10 +21,11 @@ cargo fmt || exit 1
 
 anchor build || exit 1
 
+yarn idl || exit 1
+
 yarn && cd ts/sdk && yarn && yarn build || exit 1
 
 home
 
 yarn prettify:fix || exit 1
 
-yarn idl || exit 1

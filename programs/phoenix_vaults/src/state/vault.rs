@@ -558,7 +558,7 @@ impl Vault {
         Ok(())
     }
 
-    pub fn manager_withdraw(&mut self, vault_equity: u64, now: i64) -> Result<u64> {
+    pub fn manager_withdraw(&mut self, vault_equity: u64, now: i64) -> Result<(u64, bool)> {
         self.last_manager_withdraw_request
             .check_redeem_period_finished(self, now)?;
 
@@ -643,7 +643,9 @@ impl Vault {
             .safe_sub(self.last_manager_withdraw_request.value)?;
         self.last_manager_withdraw_request.reset(now)?;
 
-        Ok(n_tokens)
+        let finishing_liquidation = self.liquidator == self.manager;
+
+        Ok((n_tokens, finishing_liquidation))
     }
 
     pub fn in_liquidation(&self) -> bool {
@@ -664,9 +666,9 @@ impl Vault {
         Ok(())
     }
 
-    pub fn check_liquidator(&self, investor: &Investor, now: i64) -> VaultResult {
+    pub fn check_liquidator(&self, signer: &Signer, now: i64) -> VaultResult {
         validate!(
-            self.liquidator == investor.authority,
+            &self.liquidator == signer.key,
             ErrorCode::InvalidLiquidator,
             "Investor is not the liquidator"
         )?;
@@ -682,11 +684,11 @@ impl Vault {
 
     pub fn check_delegate_available_for_liquidation(
         &self,
-        investor: &Investor,
+        signer: &Signer,
         now: i64,
     ) -> VaultResult {
         validate!(
-            self.liquidator != investor.authority,
+            &self.liquidator != signer.key,
             ErrorCode::DelegateNotAvailableForLiquidation,
             "vault in liquidation by another investor"
         )?;

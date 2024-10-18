@@ -21,7 +21,6 @@ import {
 	MOCK_SOL_USDC_MARKET,
 	MOCK_MARKET_AUTHORITY,
 	QUOTE_PRECISION,
-	MOCK_USDC_PRECISION,
 	MOCK_SOL_PRECISION,
 	PHOENIX_PROGRAM_ID,
 	PHOENIX_SEAT_MANAGER_PROGRAM_ID,
@@ -31,7 +30,6 @@ import {
 	MOCK_JUP_SOL_MARKET,
 	MOCK_JUP_MINT,
 	MOCK_SOL_DECIMALS,
-	MarketPosition,
 } from '../ts/sdk';
 import { BN } from '@coral-xyz/anchor';
 import {
@@ -50,11 +48,6 @@ import {
 	fetchTraderState,
 	fetchInvestorEquity,
 	calculateRealizedInvestorEquity,
-	parseTraderState,
-	simulate,
-	fetchVaultEquity,
-	calcFee,
-	amountMinusFee,
 	fetchMarketPosition,
 	amountPlusFee,
 } from './testHelpers';
@@ -871,7 +864,7 @@ describe('phoenixVaults', () => {
 
 		try {
 			const ix = await program.methods
-				.requestWithdraw(withdrawRequestEquity, WithdrawUnit.TOKEN)
+				.investorRequestWithdraw(withdrawRequestEquity, WithdrawUnit.TOKEN)
 				.accounts({
 					vault: vaultKey,
 					investor,
@@ -911,7 +904,7 @@ describe('phoenixVaults', () => {
 				},
 			];
 			const ix = await program.methods
-				.appointLiquidator()
+				.appointInvestorLiquidator()
 				.accounts({
 					vault: vaultKey,
 					investor,
@@ -1000,7 +993,7 @@ describe('phoenixVaults', () => {
 
 		try {
 			const ix = await program.methods
-				.liquidateSolMarket()
+				.investorLiquidateSolMarket()
 				.accounts({
 					vault: vaultKey,
 					investor,

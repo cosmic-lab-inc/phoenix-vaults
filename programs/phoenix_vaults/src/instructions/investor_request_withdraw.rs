@@ -12,8 +12,8 @@ use crate::state::{Investor, MarketMapProvider, MarketRegistry, Vault, WithdrawU
 /// Then it will flag that balance within the vault token accounts as pending withdrawal,
 /// and therefore unusable by the vault to trade.
 /// Once the withdrawal is finalized, the pending withdrawal will be nullified.
-pub fn request_withdraw<'c: 'info, 'info>(
-    ctx: Context<'_, '_, 'c, 'info, RequestWithdraw<'info>>,
+pub fn investor_request_withdraw<'c: 'info, 'info>(
+    ctx: Context<'_, '_, 'c, 'info, InvestorRequestWithdraw<'info>>,
     withdraw_amount: u64,
     withdraw_unit: WithdrawUnit,
 ) -> Result<()> {
@@ -38,7 +38,7 @@ pub fn request_withdraw<'c: 'info, 'info>(
 }
 
 #[derive(Accounts)]
-pub struct RequestWithdraw<'info> {
+pub struct InvestorRequestWithdraw<'info> {
     #[account(mut)]
     pub vault: AccountLoader<'info, Vault>,
 

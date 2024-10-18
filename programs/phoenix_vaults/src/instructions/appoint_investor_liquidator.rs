@@ -10,8 +10,8 @@ use crate::state::{Investor, MarketMapProvider, MarketRegistry, Vault};
 /// then the investor is granted authority to sign for liquidation of the vault position on Phoenix markets.
 /// The investor can liquidate assets into USDC by calling `liquidate_usdc_market` or `liquidate_sol_market`,
 /// depending on whether the Phoenix market is denominated in USDC or SOL.
-pub fn appoint_liquidator<'c: 'info, 'info>(
-    ctx: Context<'_, '_, 'c, 'info, AppointLiquidator<'info>>,
+pub fn appoint_investor_liquidator<'c: 'info, 'info>(
+    ctx: Context<'_, '_, 'c, 'info, AppointInvestorLiquidator<'info>>,
 ) -> Result<()> {
     let now = Clock::get()?.unix_timestamp;
 
@@ -25,9 +25,9 @@ pub fn appoint_liquidator<'c: 'info, 'info>(
         .last_withdraw_request
         .check_redeem_period_finished(&vault, now)?;
     // 2. Check that the depositor is unable to withdraw
-    ctx.check_cant_withdraw(&investor, vault_usdc, &registry)?;
+    ctx.check_cant_withdraw(&investor.last_withdraw_request, vault_usdc, &registry)?;
     // 3. Check that the vault is not already in liquidation for another investor
-    vault.check_delegate_available_for_liquidation(&investor, now)?;
+    vault.check_delegate_available_for_liquidation(&ctx.accounts.authority, now)?;
 
     vault.set_liquidation_delegate(investor.authority, now);
 
@@ -37,7 +37,7 @@ pub fn appoint_liquidator<'c: 'info, 'info>(
 }
 
 #[derive(Accounts)]
-pub struct AppointLiquidator<'info> {
+pub struct AppointInvestorLiquidator<'info> {
     #[account(mut)]
     pub vault: AccountLoader<'info, Vault>,
 
