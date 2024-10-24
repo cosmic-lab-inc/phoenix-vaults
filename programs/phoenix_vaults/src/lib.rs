@@ -236,4 +236,17 @@ pub mod phoenix_vaults {
     ) -> Result<()> {
         instructions::protocol_cancel_withdraw_request(ctx)
     }
+
+    pub fn cancel_all_orders<'c: 'info, 'info>(
+        ctx: Context<'_, '_, 'c, 'info, CancelAllOrders<'info>>,
+    ) -> Result<()> {
+        instructions::cancel_all_orders(ctx)
+    }
+
+    pub fn cancel_multiple_orders_by_id<'c: 'info, 'info>(
+        ctx: Context<'_, '_, 'c, 'info, CancelMultipleOrdersById<'info>>,
+        params: CancelMultipleOrdersParams,
+    ) -> Result<()> {
+        instructions::cancel_multiple_orders_by_id(ctx, params)
+    }
 }

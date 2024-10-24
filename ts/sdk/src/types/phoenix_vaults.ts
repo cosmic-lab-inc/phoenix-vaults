@@ -1766,6 +1766,91 @@ export type PhoenixVaults = {
 				}
 			];
 			args: [];
+		},
+		{
+			name: 'cancelAllOrders';
+			accounts: [
+				{
+					name: 'vault';
+					isMut: true;
+					isSigner: false;
+					docs: [
+						'If delegate has authority to sign for vault, then any Phoenix CPI is valid.',
+						'Phoenix CPI validates that opaque instruction data is a [`PhoenixInstruction`],',
+						'so this is safe since any Phoenix CPI is secure.'
+					];
+				},
+				{
+					name: 'delegate';
+					isMut: false;
+					isSigner: true;
+					docs: [
+						'Is manager by default, but can be delegated to another pubkey using `update_delegate`'
+					];
+				},
+				{
+					name: 'phoenix';
+					isMut: false;
+					isSigner: false;
+				},
+				{
+					name: 'logAuthority';
+					isMut: false;
+					isSigner: false;
+				},
+				{
+					name: 'market';
+					isMut: true;
+					isSigner: false;
+				}
+			];
+			args: [];
+		},
+		{
+			name: 'cancelMultipleOrdersById';
+			accounts: [
+				{
+					name: 'vault';
+					isMut: true;
+					isSigner: false;
+					docs: [
+						'If delegate has authority to sign for vault, then any Phoenix CPI is valid.',
+						'Phoenix CPI validates that opaque instruction data is a [`PhoenixInstruction`],',
+						'so this is safe since any Phoenix CPI is secure.'
+					];
+				},
+				{
+					name: 'delegate';
+					isMut: false;
+					isSigner: true;
+					docs: [
+						'Is manager by default, but can be delegated to another pubkey using `update_delegate`'
+					];
+				},
+				{
+					name: 'phoenix';
+					isMut: false;
+					isSigner: false;
+				},
+				{
+					name: 'logAuthority';
+					isMut: false;
+					isSigner: false;
+				},
+				{
+					name: 'market';
+					isMut: true;
+					isSigner: false;
+				}
+			];
+			args: [
+				{
+					name: 'params';
+					type: {
+						defined: 'CancelMultipleOrdersParams';
+					};
+				}
+			];
 		}
 	];
 	accounts: [
@@ -2215,6 +2300,44 @@ export type PhoenixVaults = {
 			};
 		},
 		{
+			name: 'CancelMultipleOrdersParams';
+			type: {
+				kind: 'struct';
+				fields: [
+					{
+						name: 'orders';
+						type: {
+							vec: {
+								defined: 'CancelOrderParams';
+							};
+						};
+					}
+				];
+			};
+		},
+		{
+			name: 'CancelOrderParams';
+			type: {
+				kind: 'struct';
+				fields: [
+					{
+						name: 'side';
+						type: {
+							defined: 'Side';
+						};
+					},
+					{
+						name: 'priceInTicks';
+						type: 'u64';
+					},
+					{
+						name: 'orderSequenceNumber';
+						type: 'u64';
+					}
+				];
+			};
+		},
+		{
 			name: 'VaultParams';
 			type: {
 				kind: 'struct';
@@ -2399,6 +2522,20 @@ export type PhoenixVaults = {
 						name: 'ts';
 						docs: ['request ts of vault withdraw'];
 						type: 'i64';
+					}
+				];
+			};
+		},
+		{
+			name: 'Side';
+			type: {
+				kind: 'enum';
+				variants: [
+					{
+						name: 'Bid';
+					},
+					{
+						name: 'Ask';
 					}
 				];
 			};
@@ -4561,6 +4698,91 @@ export const IDL: PhoenixVaults = {
 			],
 			args: [],
 		},
+		{
+			name: 'cancelAllOrders',
+			accounts: [
+				{
+					name: 'vault',
+					isMut: true,
+					isSigner: false,
+					docs: [
+						'If delegate has authority to sign for vault, then any Phoenix CPI is valid.',
+						'Phoenix CPI validates that opaque instruction data is a [`PhoenixInstruction`],',
+						'so this is safe since any Phoenix CPI is secure.',
+					],
+				},
+				{
+					name: 'delegate',
+					isMut: false,
+					isSigner: true,
+					docs: [
+						'Is manager by default, but can be delegated to another pubkey using `update_delegate`',
+					],
+				},
+				{
+					name: 'phoenix',
+					isMut: false,
+					isSigner: false,
+				},
+				{
+					name: 'logAuthority',
+					isMut: false,
+					isSigner: false,
+				},
+				{
+					name: 'market',
+					isMut: true,
+					isSigner: false,
+				},
+			],
+			args: [],
+		},
+		{
+			name: 'cancelMultipleOrdersById',
+			accounts: [
+				{
+					name: 'vault',
+					isMut: true,
+					isSigner: false,
+					docs: [
+						'If delegate has authority to sign for vault, then any Phoenix CPI is valid.',
+						'Phoenix CPI validates that opaque instruction data is a [`PhoenixInstruction`],',
+						'so this is safe since any Phoenix CPI is secure.',
+					],
+				},
+				{
+					name: 'delegate',
+					isMut: false,
+					isSigner: true,
+					docs: [
+						'Is manager by default, but can be delegated to another pubkey using `update_delegate`',
+					],
+				},
+				{
+					name: 'phoenix',
+					isMut: false,
+					isSigner: false,
+				},
+				{
+					name: 'logAuthority',
+					isMut: false,
+					isSigner: false,
+				},
+				{
+					name: 'market',
+					isMut: true,
+					isSigner: false,
+				},
+			],
+			args: [
+				{
+					name: 'params',
+					type: {
+						defined: 'CancelMultipleOrdersParams',
+					},
+				},
+			],
+		},
 	],
 	accounts: [
 		{
@@ -5009,6 +5231,44 @@ export const IDL: PhoenixVaults = {
 			},
 		},
 		{
+			name: 'CancelMultipleOrdersParams',
+			type: {
+				kind: 'struct',
+				fields: [
+					{
+						name: 'orders',
+						type: {
+							vec: {
+								defined: 'CancelOrderParams',
+							},
+						},
+					},
+				],
+			},
+		},
+		{
+			name: 'CancelOrderParams',
+			type: {
+				kind: 'struct',
+				fields: [
+					{
+						name: 'side',
+						type: {
+							defined: 'Side',
+						},
+					},
+					{
+						name: 'priceInTicks',
+						type: 'u64',
+					},
+					{
+						name: 'orderSequenceNumber',
+						type: 'u64',
+					},
+				],
+			},
+		},
+		{
 			name: 'VaultParams',
 			type: {
 				kind: 'struct',
@@ -5193,6 +5453,20 @@ export const IDL: PhoenixVaults = {
 						name: 'ts',
 						docs: ['request ts of vault withdraw'],
 						type: 'i64',
+					},
+				],
+			},
+		},
+		{
+			name: 'Side',
+			type: {
+				kind: 'enum',
+				variants: [
+					{
+						name: 'Bid',
+					},
+					{
+						name: 'Ask',
 					},
 				],
 			},

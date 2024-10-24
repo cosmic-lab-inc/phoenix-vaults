@@ -390,7 +390,7 @@ impl<'info> ProtocolLiquidateSolMarket<'info> {
     }
 }
 
-impl<'info> PhoenixWithdrawCPI for Context<'_, '_, '_, 'info, ProtocolLiquidateSolMarket<'info>> {
+impl<'info> PhoenixWithdraw for Context<'_, '_, '_, 'info, ProtocolLiquidateSolMarket<'info>> {
     fn phoenix_withdraw(&self, params: MarketTransferParams) -> Result<()> {
         let trader_index = 3;
         let mut ix = phoenix::program::instruction_builders::create_withdraw_funds_with_custom_amounts_instruction(
@@ -430,7 +430,7 @@ impl<'info> PhoenixWithdrawCPI for Context<'_, '_, '_, 'info, ProtocolLiquidateS
     }
 }
 
-impl<'info> PhoenixWithdrawSolUsdcMarketCPI
+impl<'info> PhoenixWithdrawSolUsdcMarket
     for Context<'_, '_, '_, 'info, ProtocolLiquidateSolMarket<'info>>
 {
     fn phoenix_withdraw_sol_usdc_market(&self, params: MarketTransferParams) -> Result<()> {
@@ -476,7 +476,7 @@ impl<'info> PhoenixWithdrawSolUsdcMarketCPI
     }
 }
 
-impl<'info> PhoenixTradeSolUsdcMarketCPI
+impl<'info> PhoenixTradeSolUsdcMarket
     for Context<'_, '_, '_, 'info, ProtocolLiquidateSolMarket<'info>>
 {
     fn phoenix_trade_sol_usdc_market(&self, order: OrderPacket) -> Result<()> {
@@ -532,7 +532,7 @@ impl<'info> PhoenixTradeSolUsdcMarketCPI
     }
 }
 
-impl<'info> PhoenixTradeCPI for Context<'_, '_, '_, 'info, ProtocolLiquidateSolMarket<'info>> {
+impl<'info> PhoenixTrade for Context<'_, '_, '_, 'info, ProtocolLiquidateSolMarket<'info>> {
     fn phoenix_trade(&self, order: OrderPacket) -> Result<()> {
         validate!(
             order.is_take_only(),
@@ -582,7 +582,7 @@ impl<'info> PhoenixTradeCPI for Context<'_, '_, '_, 'info, ProtocolLiquidateSolM
     }
 }
 
-impl<'info> PhoenixDepositSolUsdcMarketCPI
+impl<'info> PhoenixDepositSolUsdcMarket
     for Context<'_, '_, '_, 'info, ProtocolLiquidateSolMarket<'info>>
 {
     fn phoenix_deposit_sol_usdc_market(&self, params: MarketTransferParams) -> Result<()> {
@@ -632,7 +632,7 @@ impl<'info> PhoenixDepositSolUsdcMarketCPI
     }
 }
 
-impl<'info> TokenTransferCPI for Context<'_, '_, '_, 'info, ProtocolLiquidateSolMarket<'info>> {
+impl<'info> TokenTransfer for Context<'_, '_, '_, 'info, ProtocolLiquidateSolMarket<'info>> {
     fn token_transfer(&self, amount: u64) -> Result<()> {
         let cpi_accounts = Transfer {
             from: self

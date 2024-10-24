@@ -4,9 +4,7 @@ use crate::constants::{
 use crate::error::{ErrorCode, VaultResult};
 use crate::math::{amount_to_shares, calculate_rebase_info, shares_to_amount, Cast, SafeMath};
 use crate::state::withdraw_request::WithdrawRequest;
-use crate::state::{
-    Investor, InvestorAction, InvestorRecord, MarketPosition, VaultFee, WithdrawUnit,
-};
+use crate::state::{InvestorAction, InvestorRecord, MarketPosition, VaultFee, WithdrawUnit};
 use crate::{validate, Size};
 use anchor_lang::prelude::*;
 use drift_macros::assert_no_slop;

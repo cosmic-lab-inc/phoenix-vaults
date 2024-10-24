@@ -2,7 +2,7 @@ use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Token, TokenAccount, Transfer};
 
 use crate::constraints::*;
-use crate::cpis::TokenTransferCPI;
+use crate::cpis::TokenTransfer;
 
 use crate::state::{MarketMapProvider, MarketRegistry, Vault};
 
@@ -60,7 +60,7 @@ pub struct ManagerDeposit<'info> {
     pub token_program: Program<'info, Token>,
 }
 
-impl<'info> TokenTransferCPI for Context<'_, '_, '_, 'info, ManagerDeposit<'info>> {
+impl<'info> TokenTransfer for Context<'_, '_, '_, 'info, ManagerDeposit<'info>> {
     fn token_transfer(&self, amount: u64) -> Result<()> {
         let cpi_accounts = Transfer {
             from: self

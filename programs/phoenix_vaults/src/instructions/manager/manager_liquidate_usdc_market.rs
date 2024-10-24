@@ -9,7 +9,7 @@ use solana_program::program::invoke_signed;
 
 use crate::constants::PERCENTAGE_PRECISION;
 use crate::constraints::*;
-use crate::cpis::{PhoenixTradeCPI, PhoenixWithdrawCPI, TokenTransferCPI};
+use crate::cpis::{PhoenixTrade, PhoenixWithdraw, TokenTransfer};
 use crate::error::ErrorCode;
 use crate::math::*;
 use crate::state::{
@@ -233,7 +233,7 @@ impl<'info> ManagerLiquidateUsdcMarket<'info> {
     }
 }
 
-impl<'info> PhoenixWithdrawCPI for Context<'_, '_, '_, 'info, ManagerLiquidateUsdcMarket<'info>> {
+impl<'info> PhoenixWithdraw for Context<'_, '_, '_, 'info, ManagerLiquidateUsdcMarket<'info>> {
     fn phoenix_withdraw(&self, params: MarketTransferParams) -> Result<()> {
         declare_vault_seeds!(self.accounts.vault, seeds);
 
@@ -274,7 +274,7 @@ impl<'info> PhoenixWithdrawCPI for Context<'_, '_, '_, 'info, ManagerLiquidateUs
     }
 }
 
-impl<'info> PhoenixTradeCPI for Context<'_, '_, '_, 'info, ManagerLiquidateUsdcMarket<'info>> {
+impl<'info> PhoenixTrade for Context<'_, '_, '_, 'info, ManagerLiquidateUsdcMarket<'info>> {
     fn phoenix_trade(&self, order: OrderPacket) -> Result<()> {
         validate!(
             order.is_take_only(),
@@ -324,7 +324,7 @@ impl<'info> PhoenixTradeCPI for Context<'_, '_, '_, 'info, ManagerLiquidateUsdcM
     }
 }
 
-impl<'info> TokenTransferCPI for Context<'_, '_, '_, 'info, ManagerLiquidateUsdcMarket<'info>> {
+impl<'info> TokenTransfer for Context<'_, '_, '_, 'info, ManagerLiquidateUsdcMarket<'info>> {
     fn token_transfer(&self, amount: u64) -> Result<()> {
         let cpi_accounts = Transfer {
             from: self

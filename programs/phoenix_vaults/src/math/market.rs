@@ -48,10 +48,6 @@ pub fn quote_lots_to_quote_atoms(header: &MarketHeader, quote_lots: u64) -> u64 
     quote_lots * quote_atoms_per_quote_lot
 }
 
-pub fn quote_lots_to_quote_atoms_no_header(quote_atoms_per_quote_lot: u64, quote_lots: u64) -> u64 {
-    quote_lots * quote_atoms_per_quote_lot
-}
-
 pub fn base_lots_and_price_to_quote_atoms(
     header: &MarketHeader,
     base_lots: u64,
@@ -100,11 +96,6 @@ pub fn quote_lots_to_base_lots(header: &MarketHeader, quote_lots: u64, price_in_
 pub fn base_atoms_to_base_lots_rounded_down(header: &MarketHeader, base_atoms: u64) -> u64 {
     let base_atoms_per_base_lot = header.get_base_lot_size().as_u64();
     base_atoms / base_atoms_per_base_lot
-}
-
-pub fn base_atoms_to_base_lots_rounded_up(header: &MarketHeader, base_atoms: u64) -> u64 {
-    let base_atoms_per_base_lot = header.get_base_lot_size().as_u64();
-    1 + base_atoms.saturating_sub(1) / base_atoms_per_base_lot
 }
 
 pub fn base_lots_to_base_atoms(header: &MarketHeader, base_lots: u64) -> u64 {

@@ -126,3 +126,17 @@ export type UpdateVaultParams = {
 	permissioned: boolean | null;
 	delegate: PublicKey | null;
 };
+
+export class OrderSide {
+	static readonly BID = { bid: {} };
+	static readonly ASK = { ask: {} };
+}
+
+export type CancelOrderParams = {
+	side: OrderSide;
+	priceInTicks: BN;
+	orderSequenceNumber: BN;
+};
+export type CancelMultipleOrdersParams = {
+	orders: CancelOrderParams[];
+};

@@ -4,7 +4,7 @@ use phoenix::program::deposit::DepositParams;
 use solana_program::program::invoke_signed;
 
 use crate::constraints::*;
-use crate::cpis::PhoenixDepositCPI;
+use crate::cpis::PhoenixDeposit;
 use crate::declare_vault_seeds;
 use crate::state::{MarketMapProvider, MarketTransferParams, PhoenixProgram, Vault};
 
@@ -83,7 +83,7 @@ pub struct MarketDeposit<'info> {
     pub token_program: Program<'info, Token>,
 }
 
-impl<'info> PhoenixDepositCPI for Context<'_, '_, '_, 'info, MarketDeposit<'info>> {
+impl<'info> PhoenixDeposit for Context<'_, '_, '_, 'info, MarketDeposit<'info>> {
     fn phoenix_deposit(&self, params: MarketTransferParams) -> Result<()> {
         let trader_index = 3;
         let mut ix = phoenix::program::instruction_builders::create_deposit_funds_instruction(

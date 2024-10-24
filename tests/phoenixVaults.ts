@@ -28,6 +28,8 @@ import {
 	WithdrawUnit,
 	LOCALNET_MARKET_CONFIG,
 	MarketTransferParams,
+	CancelOrderParams,
+	CancelMultipleOrdersParams,
 } from '../ts/sdk';
 import { BN } from '@coral-xyz/anchor';
 import {
@@ -50,6 +52,7 @@ import {
 	fetchManagerEquity,
 	getTokenBalance,
 	fetchProtocolEquity,
+	fetchOpenOrders,
 } from './testHelpers';
 import {
 	Client as PhoenixClient,
@@ -418,6 +421,106 @@ describe('phoenixVaults', () => {
 	//
 	// Simulate profitable trade by vault for 25% gain
 	//
+
+	it('Taker Place SOL/USDC Buy Order w/o Maker', async () => {
+		const priceInTicks = phoenix.floatPriceToTicks(
+			startSolUsdcPrice,
+			solUsdcMarket.toBase58()
+		);
+		const numBaseLots = phoenix.rawBaseUnitsToBaseLotsRoundedDown(
+			1,
+			solUsdcMarket.toBase58()
+		);
+		const takerOrderPacket = getLimitOrderPacket({
+			side: Side.Bid,
+			priceInTicks,
+			numBaseLots,
+			useOnlyDepositedFunds: true,
+		});
+		const order = encodeLimitOrderPacketWithFreeFunds(takerOrderPacket);
+
+		const vaultBaseTokenAccount = getAssociatedTokenAddressSync(
+			solMint,
+			vaultKey,
+			true
+		);
+		const vaultQuoteTokenAccount = getAssociatedTokenAddressSync(
+			usdcMint,
+			vaultKey,
+			true
+		);
+		const marketBaseTokenAccount = phoenix.getBaseVaultKey(
+			solUsdcMarket.toString()
+		);
+		const marketQuoteTokenAccount = phoenix.getQuoteVaultKey(
+			solUsdcMarket.toString()
+		);
+
+		const vaultBefore = await fetchTraderState(conn, solUsdcMarket, vaultKey);
+		console.log(
+			`taker deposited tokens before buy, sol: ${vaultBefore.baseUnitsFree}, usdc: ${vaultBefore.quoteUnitsFree}`
+		);
+		assert.strictEqual(vaultBefore.baseUnitsFree, 0);
+		assert.strictEqual(vaultBefore.quoteUnitsFree, 1000);
+
+		const ix = await program.methods
+			.placeLimitOrder({
+				order,
+			})
+			.accounts({
+				vault: vaultKey,
+				delegate: manager.publicKey,
+				phoenix: PHOENIX_PROGRAM_ID,
+				logAuthority: getLogAuthority(),
+				market: solUsdcMarket,
+				seat: getSeatAddress(solUsdcMarket, vaultKey),
+				baseMint: solMint,
+				quoteMint: usdcMint,
+				vaultBaseTokenAccount,
+				vaultQuoteTokenAccount,
+				marketBaseTokenAccount,
+				marketQuoteTokenAccount,
+				tokenProgram: TOKEN_PROGRAM_ID,
+			})
+			.remainingAccounts(markets)
+			.instruction();
+		await sendAndConfirm(conn, payer, [ix], [manager]);
+	});
+
+	it('Cancel Taker Order', async () => {
+		const orders: CancelOrderParams[] = (
+			await fetchOpenOrders(conn, solUsdcMarket, vaultKey)
+		).map((o) => {
+			return {
+				side: o.side,
+				priceInTicks: o.priceInTicks,
+				orderSequenceNumber: o.orderSequenceNumber,
+			};
+		});
+		assert.strictEqual(orders.length, 1);
+		const params: CancelMultipleOrdersParams = {
+			orders,
+		};
+		const ix = await program.methods
+			.cancelMultipleOrdersById(params)
+			.accounts({
+				vault: vaultKey,
+				delegate: manager.publicKey,
+				phoenix: PHOENIX_PROGRAM_ID,
+				logAuthority: getLogAuthority(),
+				market: solUsdcMarket,
+			})
+			.remainingAccounts(markets)
+			.instruction();
+		await sendAndConfirm(conn, payer, [ix]);
+
+		const ordersAfterCancel = await fetchOpenOrders(
+			conn,
+			solUsdcMarket,
+			vaultKey
+		);
+		assert.strictEqual(ordersAfterCancel.length, 0);
+	});
 
 	it('Maker Sell SOL/USDC', async () => {
 		const marketState = await fetchMarketState(conn, solUsdcMarket);

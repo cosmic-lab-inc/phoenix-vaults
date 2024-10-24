@@ -8,7 +8,7 @@ use crate::constraints::{
     is_delegate_for_vault, is_sol_mint, is_sol_token_for_vault, is_usdc_mint,
     is_usdc_token_for_vault,
 };
-use crate::cpis::PhoenixTradeCPI;
+use crate::cpis::PhoenixTrade;
 use crate::error::ErrorCode;
 use crate::state::{MarketMapProvider, PhoenixProgram, Vault};
 use crate::{declare_vault_seeds, validate};
@@ -105,7 +105,7 @@ pub struct PlaceLimitOrder<'info> {
     pub token_program: Program<'info, Token>,
 }
 
-impl<'info> PhoenixTradeCPI for Context<'_, '_, '_, 'info, PlaceLimitOrder<'info>> {
+impl<'info> PhoenixTrade for Context<'_, '_, '_, 'info, PlaceLimitOrder<'info>> {
     fn phoenix_trade(&self, order: OrderPacket) -> Result<()> {
         validate!(
             order.no_deposit_or_withdrawal(),
@@ -129,8 +129,8 @@ impl<'info> PhoenixTradeCPI for Context<'_, '_, '_, 'info, PlaceLimitOrder<'info
         // #[account(4, name = "seat")]
         // #[account(5, writable, name = "base_account", desc = "Trader base token account")]
         // #[account(6, writable, name = "quote_account", desc = "Trader quote token account")]
-        // #[account(7, writable, name = "base_vault", desc = "Base vault PDA, seeds are [b'vault', market_address, base_mint_address]")]
-        // #[account(8, writable, name = "quote_vault", desc = "Quote vault PDA, seeds are [b'vault', market_address, quote_mint_address]")]
+        // #[account(7, writable, name = "base_vault", desc = "Base vault PDA, seeds are [b"vault", market_address, base_mint_address]")]
+        // #[account(8, writable, name = "quote_vault", desc = "Quote vault PDA, seeds are [b"vault", market_address, quote_mint_address]")]
         // #[account(9, name = "token_program", desc = "Token program")]
         let accounts = [
             self.accounts.phoenix.to_account_info(),

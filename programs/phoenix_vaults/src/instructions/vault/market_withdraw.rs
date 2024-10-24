@@ -3,7 +3,7 @@ use anchor_spl::token::{Mint, Token, TokenAccount};
 use solana_program::program::invoke_signed;
 
 use crate::constraints::*;
-use crate::cpis::PhoenixWithdrawCPI;
+use crate::cpis::PhoenixWithdraw;
 use crate::declare_vault_seeds;
 use crate::state::{MarketMapProvider, MarketTransferParams, PhoenixProgram, Vault};
 
@@ -80,7 +80,7 @@ pub struct MarketWithdraw<'info> {
     pub token_program: Program<'info, Token>,
 }
 
-impl<'info> PhoenixWithdrawCPI for Context<'_, '_, '_, 'info, MarketWithdraw<'info>> {
+impl<'info> PhoenixWithdraw for Context<'_, '_, '_, 'info, MarketWithdraw<'info>> {
     fn phoenix_withdraw(&self, params: MarketTransferParams) -> Result<()> {
         let trader_index = 3;
         let mut ix = phoenix::program::instruction_builders::create_withdraw_funds_with_custom_amounts_instruction(

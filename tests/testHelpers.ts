@@ -17,6 +17,7 @@ import { BN } from '@coral-xyz/anchor';
 import {
 	Investor,
 	MarketPosition,
+	OrderSide,
 	PERCENTAGE_PRECISION,
 	PhoenixVaults,
 	QUOTE_PRECISION,
@@ -25,6 +26,9 @@ import {
 	ZERO,
 } from '../ts/sdk';
 import {
+	CancelMultipleOrdersByIdParams,
+	CancelMultipleOrdersByIdWithFreeFundsInstructionArgs,
+	CancelMultipleOrdersByIdWithFreeFundsStruct,
 	deserializeMarketData,
 	getExpectedOutAmountRouter,
 	MarketState,
@@ -35,7 +39,9 @@ import {
 	PlaceLimitOrderWithFreeFundsInstructionArgs,
 	placeLimitOrderWithFreeFundsInstructionDiscriminator,
 	PlaceLimitOrderWithFreeFundsStruct,
+	cancelMultipleOrdersByIdInstructionDiscriminator,
 	Side,
+	toNum,
 } from '@ellipsis-labs/phoenix-sdk';
 
 export async function simulate(
@@ -666,4 +672,107 @@ export async function getTokenBalance(
 	} else {
 		return 0;
 	}
+}
+
+export async function fetchOpenOrders(
+	conn: Connection,
+	market: PublicKey,
+	trader: PublicKey
+): Promise<
+	{
+		side: OrderSide;
+		orderSequenceNumber: BN;
+		priceInTicks: BN;
+		baseLots: BN;
+	}[]
+> {
+	const marketState = await fetchMarketState(conn, market);
+	const traderState = marketState.data.traders.get(trader.toString());
+	if (!traderState) {
+		throw Error(`TraderState not found for trader ${trader.toString()}`);
+	}
+	const traderIndex = marketState.data.traderPubkeyToTraderIndex.get(
+		trader.toString()
+	);
+	const orders = [];
+
+	for (const [orderId, order] of marketState.data.bids) {
+		if (toNum(order.traderIndex) === traderIndex) {
+			let orderSequenceNumber: BN;
+			if (orderId.orderSequenceNumber instanceof BN) {
+				orderSequenceNumber = orderId.orderSequenceNumber;
+			} else {
+				orderSequenceNumber = new BN(orderId.orderSequenceNumber as number);
+			}
+
+			let priceInTicks: BN;
+			if (orderId.priceInTicks instanceof BN) {
+				priceInTicks = orderId.priceInTicks;
+			} else {
+				priceInTicks = new BN(orderId.priceInTicks as number);
+			}
+
+			let baseLots: BN;
+			if (order.numBaseLots instanceof BN) {
+				baseLots = order.numBaseLots;
+			} else {
+				baseLots = new BN(order.numBaseLots as number);
+			}
+
+			const bid = {
+				side: OrderSide.BID,
+				orderSequenceNumber,
+				priceInTicks,
+				baseLots,
+			};
+			orders.push(bid);
+		}
+	}
+
+	for (const [orderId, order] of marketState.data.asks) {
+		if (toNum(order.traderIndex) === traderIndex) {
+			let orderSequenceNumber: BN;
+			if (orderId.orderSequenceNumber instanceof BN) {
+				orderSequenceNumber = orderId.orderSequenceNumber;
+			} else {
+				orderSequenceNumber = new BN(orderId.orderSequenceNumber as number);
+			}
+
+			let priceInTicks: BN;
+			if (orderId.priceInTicks instanceof BN) {
+				priceInTicks = orderId.priceInTicks;
+			} else {
+				priceInTicks = new BN(orderId.priceInTicks as number);
+			}
+
+			let baseLots: BN;
+			if (order.numBaseLots instanceof BN) {
+				baseLots = order.numBaseLots;
+			} else {
+				baseLots = new BN(order.numBaseLots as number);
+			}
+
+			const ask = {
+				side: OrderSide.ASK,
+				orderSequenceNumber,
+				priceInTicks,
+				baseLots,
+			};
+			orders.push(ask);
+		}
+	}
+	return orders;
+}
+
+export function encodeCancelMultipleOrdersParams(
+	params: CancelMultipleOrdersByIdParams
+): Buffer {
+	const args: CancelMultipleOrdersByIdWithFreeFundsInstructionArgs = {
+		params,
+	};
+	const [buffer] = CancelMultipleOrdersByIdWithFreeFundsStruct.serialize({
+		instructionDiscriminator: cancelMultipleOrdersByIdInstructionDiscriminator,
+		...args,
+	});
+	return Buffer.from(buffer) as Buffer;
 }
