@@ -502,6 +502,7 @@ describe('phoenixVaults', () => {
 			orders,
 		};
 		const ix = await program.methods
+			// @ts-ignore
 			.cancelMultipleOrdersById(params)
 			.accounts({
 				vault: vaultKey,

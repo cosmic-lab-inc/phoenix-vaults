@@ -91,7 +91,8 @@ deploy_program() {
     --url "$rpc_url" \
     --fee-payer "$auth" \
     --with-compute-unit-price 10000 \
-    --buffer "$buffer"
+    --buffer "$buffer" \
+    --verbose
 }
 
 deploy_idl() {
@@ -107,11 +108,13 @@ deploy_idl() {
 }
 
 deploy_program || exit 1
+echo "Program deployed!"
 
 deploy_idl || exit 1
+echo "IDL uploaded!"
 
 auth_sol_after=$(solana balance -k "$auth" | awk '{print $1}')
-echo "Program authority $auth_id has balance of $auth_sol_before SOL after deployment"
+echo "Program authority $auth_id has balance of $auth_sol_after SOL after deployment"
 
 deploy_cost=$(echo "$auth_sol_before - $auth_sol_after" | bc)
 echo "Program deploy cost $deploy_cost SOL"
