@@ -54,6 +54,10 @@ if [[ $no_build == false ]]; then
   ./build.sh
 fi
 
+# solana toolchain ends at 1.18.X, agave takes over at 2.0.X and beyond
+# versions >=2.0.X have the --use-rpc option and --max-sign-attempts which are needed to deploy without failure
+agave-install init 2.0.8
+
 keypair="$HOME/.config/solana/phoenix_vaults.json"
 program_id=$(solana address -k "$keypair")
 rpc_url=$(solana config get | grep "RPC URL" | cut -d " " -f 3)
@@ -90,9 +94,10 @@ deploy_program() {
     --upgrade-authority "$auth" \
     --url "$rpc_url" \
     --fee-payer "$auth" \
-    --with-compute-unit-price 10000 \
+    --with-compute-unit-price 100000 \
     --buffer "$buffer" \
-    --verbose
+    --max-sign-attempts 1000 \
+    --use-rpc
 }
 
 deploy_idl() {
